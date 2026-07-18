@@ -250,25 +250,27 @@ namespace CSAccess.Game
         {
             var sb = new StringBuilder();
 
-            // Cycle, energy, condition: the values behind the rendered HUD meters and cycle
-            // display live as Cycle Controller FSM locals (docs/verification/A + survey) —
-            // NOT PlayMaker globals as earlier believed.
-            var cycleFsm = FindFsm("Cycle Controller");
-            if (cycleFsm != null)
+            // Energy and condition: read the HUD bar FSMs that drive the rendered meters
+            // (live-verified 2026-07-18). The Cycle Controller's same-named locals are only
+            // populated transiently during the end-cycle computation — zero at Idle — and the
+            // game renders no cycle number at all, so neither is spoken here (clocks-not-content:
+            // the K clock dial covers time the way the game shows it).
+            var energyFsm = FindFsm("Energy Bar System", "Energy UI");
+            if (energyFsm != null && TryReadFsmNumber(energyFsm, "Player Energy", out int energy))
+                sb.Append("Energy ").Append(energy).Append(". ");
+            var conditionFsm = FindFsm("Condition System", "Energy UI");
+            if (conditionFsm != null && TryReadFsmNumber(conditionFsm, "Player Condition", out int condition))
             {
-                if (TryReadFsmNumber(cycleFsm, "Cycle Count", out int cycleCount))
-                    sb.Append("Cycle ").Append(cycleCount).Append(". ");
-                if (TryReadFsmNumber(cycleFsm, "Player Energy", out int energy))
-                    sb.Append("Energy ").Append(energy).Append(". ");
-                if (TryReadFsmNumber(cycleFsm, "Player Condition", out int condition))
-                    sb.Append("Condition ").Append(condition).Append(". ");
-                if (cycleFsm.FsmVariables.GetFsmBool("Starving")?.Value == true)
-                    sb.Append("Starving. ");
+                sb.Append("Condition ").Append(condition);
+                // The FSM holds the rendered condition label in per-state string vars;
+                // exactly the current one is non-empty (e.g. Fading = "FADING").
+                string word = ConditionWord(conditionFsm);
+                if (word != null) sb.Append(", ").Append(word.ToLowerInvariant());
+                sb.Append(". ");
             }
-            else
-            {
-                Plugin.Log.LogInfo("[Status] Cycle Controller FSM not found; meters unavailable.");
-            }
+            if (energyFsm == null || conditionFsm == null)
+                Plugin.Log.LogInfo("[Status] HUD meter FSM missing: energy="
+                    + (energyFsm != null) + " condition=" + (conditionFsm != null));
 
             var cryo = GameObject.Find("Letterbox Canvas/Bottom UI/Inventory/ITEM Inventory UI/Cryo Slot /Amount");
             if (cryo != null)
@@ -286,6 +288,21 @@ namespace CSAccess.Game
                 }
             }
             return sb.Length > 0 ? "Status: " + sb.ToString().TrimEnd() : "Status not available.";
+        }
+
+        private static readonly string[] ConditionWordVars =
+            { "Stable", "Flickering", "Fading", "Declining", "Breaking", "Attempting Recovery" };
+
+        /// <summary>The Condition System keeps one string var per display label; only the
+        /// current condition band's var is non-empty.</summary>
+        private static string ConditionWord(PlayMakerFSM fsm)
+        {
+            foreach (var name in ConditionWordVars)
+            {
+                string v = fsm.FsmVariables.GetFsmString(name)?.Value;
+                if (!string.IsNullOrEmpty(v)) return v;
+            }
+            return null;
         }
 
         /// <summary>Presence-aware numeric read: distinguishes a genuine 0 from a missing

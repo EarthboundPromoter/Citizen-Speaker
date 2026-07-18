@@ -70,6 +70,8 @@ Screenshot (shot_141937_575.png): the always-on gamepad dice HUD (Top UI/Dice UI
 
 MAJOR DATA FIND (supersedes StatFsm hunt for report 4): root object "Cycle Controller" FSM holds Player Energy, Player Condition, Cycle Count, Starving, Die Condition, LightCycle, Intro Complete? as plain FSM variables. Read directly — no PlayMaker globals needed.
 
+LIVE CORRECTION (validation session, same day): the Cycle Controller locals are TRANSIENT — zero at Idle even mid-playthrough (Intro Complete?=0 on a completed-intro save). The live stores are the HUD bar FSMs: `Letterbox Canvas/Top UI/Energy UI/Energy Bar System` (Player Energy) and `.../Condition System` (Player Condition + the rendered condition label held in per-band string vars, exactly one non-empty, e.g. Fading="FADING"). C readout rewired to those. The game renders NO cycle number anywhere in station view (live /texts sweep) — cycle count dropped from the readout per render-honesty; the K clock dial is the game's own time display. Bonus capture: Cycle Controller's idle state is literally named `Idle` (the end-cycle announcement bracket for report 3 is `Idle` -> ... -> `Idle`).
+
 ### 8. GOVERNING DESIGN ITEM (owner-set): define and announce the interaction modality of each moment — never assume
 
 Owner (verbatim intent): "Instead of assuming what the game wants, we need to define the interaction modality of this specific moment in the game's intro flow and make that clear."
