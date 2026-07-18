@@ -1,0 +1,63 @@
+using BepInEx;
+using BepInEx.Configuration;
+using BepInEx.Logging;
+using CSAccess.Speech;
+using HarmonyLib;
+using UnityEngine;
+using Priority = CSAccess.Speech.Priority;
+
+namespace CSAccess
+{
+    [BepInPlugin(Id, "Citizen Sleeper Access", "0.1.0")]
+    public class Plugin : BaseUnityPlugin
+    {
+        public const string Id = "com.sleeperaccess.mod";
+
+        internal static ManualLogSource Log;
+        internal static ConfigEntry<bool> AutoReadDialogue;
+        internal static ConfigEntry<bool> SpeakSpeakerNames;
+        internal static ConfigEntry<bool> AnnounceFocus;
+        internal static ConfigEntry<bool> ForceGamepadUI;
+
+        private InputManager _input;
+        private Watchers _watchers;
+
+        private void Awake()
+        {
+            Log = Logger;
+            Application.runInBackground = true;
+
+            AutoReadDialogue = Config.Bind("Speech", "AutoReadDialogue", true,
+                "Automatically read dialogue lines as they appear.");
+            SpeakSpeakerNames = Config.Bind("Speech", "SpeakSpeakerNames", true,
+                "Prefix dialogue lines with the speaker's name.");
+            AnnounceFocus = Config.Bind("Speech", "AnnounceFocus", true,
+                "Announce UI elements when they receive focus.");
+            ForceGamepadUI = Config.Bind("Input", "ForceGamepadUI", true,
+                "Keep the game's UI in gamepad mode so the keyboard dice flow works.");
+
+            SpeechService.Init();
+
+            var harmony = new Harmony(Id);
+            harmony.PatchAll(typeof(Plugin).Assembly);
+
+            _input = new InputManager(this);
+            _watchers = new Watchers();
+
+            Log.LogInfo("Citizen Sleeper Access 0.1.0 loaded. Press F1 in game for commands.");
+            SpeechService.Say("Citizen Sleeper Access loaded. Press F1 for commands.", Priority.Queued, "init");
+        }
+
+        private void Update()
+        {
+            _input.Tick();
+            _watchers.Tick();
+            SpeechService.Tick();
+        }
+
+        private void OnDestroy()
+        {
+            SpeechService.Shutdown();
+        }
+    }
+}
