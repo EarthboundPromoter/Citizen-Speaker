@@ -160,6 +160,18 @@ Owner: K's read-all-clocks-at-location "sucks" as the primary idiom. Want: a clo
 
 Live card evidence (Manual Salvage): the modifier row renders ALL FOUR labels (-1, 0, +1, +2) as separate TMP texts; the player's applied modifier (+1 here) is distinguished graphically. `Describe.CollectSkillLine` → `SiblingModifier` returns the FIRST matching text — "-1" — so announcements say "ENDURE -1" regardless of actual modifier. Session 2's "ENDURE -1" utterances were this bug (I misread them as endurance cost at the time). Fix at triage: identify the applied modifier by its rendered emphasis (color/alpha/scale difference between row labels — inspect live), per render-gated speech rule. Also verify which skill the sweep matches when multiple skill words render on one card.
 
+### 22. Dice spend: auto-read the outcome's narrative text (owner, triage session)
+
+Owner request: when a die is spent and the action resolves, the mod should auto-read the narrative text the outcome triggers — not just "MANUAL SALVAGE: neutral outcome" (current behavior, report 13). Rendered by the game post-resolution, so squarely inside the rendered-only speech rule.
+
+Leads: locate where the outcome narrative renders (action card outcome panel? dialogue-system route? notification?) — check live at next resolution; the Action Controller FSM's outcome text wiring (report 11 dump) is the static reference. Speak it AFTER the outcome-type announcement, through the normal queue (no flush).
+
+### 23. Live narrate clock diff on action outcome (owner, triage session)
+
+Owner request: when an action outcome moves a clock, always speak the increment or decrement — whichever it is — as part of the outcome announcement.
+
+Presumption to confirm from source: that clock and action are always tied together by the location. Static lead: the Manual Salvage Action Controller FSM dump (report 11) showed per-action clock wiring in the FSM — enumerate that wiring across actions to confirm the invariant (or find counterexamples, e.g. cloud/data actions, drive clocks). If confirmed, diff the clock's progress var across resolution (K-dial transcode already reads the rendered value) and append "CLOCK NAME: +1 segment, 3 of 6" style wording — exact idiom at owner's call. Ties into report 3's designed end-cycle summary (same speak-real-data-at-the-moment principle).
+
 ## Post-session static findings (UnityPy on level1, 2026-07-18 afternoon)
 
 - BUILD SKEW: session was tested on the PRE-choice-rework DLL (game launched ~13:22; choice-rework built 13:24, deployed at exit 14:30). Committed source + next launch = choice rework. All 9 reports were filed against the old build.
