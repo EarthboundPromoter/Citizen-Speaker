@@ -12,7 +12,6 @@ namespace CSAccess
     {
         private const float Interval = 0.4f;
         private float _nextCheck;
-        private float _nextModeCheck;
 
         private readonly HashSet<int> _seenPanels = new HashSet<int>();
         private Transform _tutorialRoot;
@@ -44,14 +43,38 @@ namespace CSAccess
             CheckNotifications();
             CheckClassCarousel();
             CheckActionOutcomes();
+            CheckDiceAllocation();
             CheckSoleContinue();
             CheckResponseFocus();
+            CheckPauseMenu();
+            CheckDriveLog();
+            // Mode switching is last-input-wins in InputManager.Tick now — the old 3s
+            // re-assert loop fought sighted co-pilot mouse use (hid the cursor).
+        }
 
-            if (Plugin.ForceGamepadUI.Value && Time.unscaledTime >= _nextModeCheck)
+        private Transform _pauseCanvas;
+        private bool _pauseWasOpen;
+
+        /// <summary>On pause-menu open, speak the menu's own last-autosave line — the game is
+        /// autosave-only, so this is what "can I safely quit?" sounds like.</summary>
+        private void CheckPauseMenu()
+        {
+            if (_pauseCanvas == null)
             {
-                _nextModeCheck = Time.unscaledTime + 3f;
-                GameQueries.EnsureGamepadMode();
+                var root = GameObject.Find("PAUSE");
+                if (root == null) return;
+                _pauseCanvas = root.transform.Find("Pause Canvas");
+                if (_pauseCanvas == null) return;
             }
+            bool open = _pauseCanvas.gameObject.activeInHierarchy;
+            if (open && !_pauseWasOpen)
+            {
+                var autosave = _pauseCanvas.Find("Time SInce Last Autosave");
+                string line = autosave != null ? UI.Describe.JoinTexts(autosave.gameObject, 3) : null;
+                SpeechService.Say("Paused." + (line != null ? " " + line + "." : ""),
+                    Priority.Queued, "nav");
+            }
+            _pauseWasOpen = open;
         }
 
         /// <summary>One-time diagnostic: log all PlayMaker global variables so we can learn
@@ -116,7 +139,7 @@ namespace CSAccess
                 int id = panel.GetInstanceID();
                 if (_seenPanels.Contains(id)) continue;
                 _seenPanels.Add(id);
-                AnnouncePanelTexts(panel, "tutorial", "Tutorial. ", ". Press T to continue.");
+                AnnouncePanelTexts(panel, "tutorial", "Tutorial. ", ". Press Enter to continue.");
             }
             // Allow re-announcing panels after they close.
             _seenPanels.RemoveWhere(id =>
@@ -286,6 +309,81 @@ namespace CSAccess
                 SpeechService.Say(actionName + ": " + outcome + ".", Priority.Queued, "outcome");
             }
             if (_controllerStates.Count > 300) _controllerStates.Clear();
+        }
+
+        private string _diceSystemState;
+        private bool _diceStateKnown;
+        private float _lastSlottedTime = -10f;
+        private readonly Dictionary<int, string> _diceSlotStates = new Dictionary<int, string>();
+
+        /// <summary>Announce dice-allocation mode transitions. The Dice Gamepad System FSM is
+        /// Off outside the picker and Active inside it; the game selects the cursor Buttons
+        /// into the EventSystem itself, so per-die announcements ride the focus watcher
+        /// (see docs/ui-state-map.md 6b).</summary>
+        private void CheckDiceAllocation()
+        {
+            var system = GameQueries.DiceSystemFsm();
+            if (system == null) return;
+            string state = system.ActiveStateName;
+            if (!_diceStateKnown)
+            {
+                _diceSystemState = state;
+                _diceStateKnown = true;
+            }
+            else if (state != _diceSystemState)
+            {
+                string previous = _diceSystemState;
+                _diceSystemState = state;
+                if (state == "Active")
+                    SpeechService.Say("Choose a die. Arrows to choose, Enter to slot, Backspace to cancel.",
+                        Priority.Immediate, "dice");
+                else if (previous == "Active" && Time.unscaledTime - _lastSlottedTime > 1.5f)
+                    SpeechService.Say("Die picker closed.", Priority.Immediate, "dice");
+            }
+
+            // A slot FSM reaching Slotted is the commit signal; the outcome watcher speaks next.
+            foreach (var fsm in PlayMakerFSM.FsmList)
+            {
+                if (fsm == null || fsm.gameObject == null) continue;
+                if (fsm.gameObject.name != "Gamepad Dice Slot" || !fsm.gameObject.activeInHierarchy) continue;
+                int id = fsm.GetInstanceID();
+                string slotState = fsm.ActiveStateName;
+                if (_diceSlotStates.TryGetValue(id, out string prev) && prev == slotState) continue;
+                bool known = _diceSlotStates.ContainsKey(id);
+                _diceSlotStates[id] = slotState;
+                if (!known || slotState != "Slotted") continue;
+
+                _lastSlottedTime = Time.unscaledTime;
+                var root = UI.Describe.FindActionRoot(fsm.transform);
+                string actionName = root != null
+                    ? (UI.Describe.TextUnder(root, "Action Name") ?? root.name)
+                    : "action";
+                SpeechService.Say("Die slotted. " + actionName + ".", Priority.Queued, "dice");
+            }
+            if (_diceSlotStates.Count > 300) _diceSlotStates.Clear();
+        }
+
+        private Transform _driveLog;
+        private bool _driveLogWasOpen;
+
+        /// <summary>Announce the drive log window opening/closing. The window hides via its
+        /// CanvasGroup (Animator-driven), so visibility is alpha, not active state.</summary>
+        private void CheckDriveLog()
+        {
+            if (_driveLog == null)
+            {
+                var win = GameObject.Find("Letterbox Canvas/Drive System/CS Drive Log");
+                if (win == null) return;
+                _driveLog = win.transform;
+            }
+            var group = _driveLog.GetComponent<CanvasGroup>();
+            bool open = _driveLog.gameObject.activeInHierarchy && (group == null || group.alpha > 0.5f);
+            if (open != _driveLogWasOpen)
+            {
+                SpeechService.Say(open ? "Drive log open." : "Drive log closed.",
+                    Priority.Immediate, "nav");
+                _driveLogWasOpen = open;
+            }
         }
 
         private static void AnnouncePanelTexts(Transform panel, string source, string prefix, string suffix)

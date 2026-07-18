@@ -1,11 +1,8 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using CSAccess.Speech;
 using CSAccess.UI;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace CSAccess.Game
 {
@@ -34,6 +31,20 @@ namespace CSAccess.Game
             return sb.ToString();
         }
 
+        // ---------- Scripted input pauses ----------
+
+        /// <summary>The Tutorial System's Input Pauser FSM pauses player input during scripted
+        /// windows (tutorial transitions, intro beats). Hardware input goes through Rewired and
+        /// is genuinely paused; the mod's synthetic uGUI events would bypass it and can break
+        /// scripted chains (the intro tutorial hang, sessions 2 and 3). Honor the pause.</summary>
+        public static bool InputPaused()
+        {
+            var pauser = FindFsm("Input Pauser", "Tutorial System");
+            if (pauser == null) return false;
+            string state = pauser.ActiveStateName;
+            return !string.IsNullOrEmpty(state) && state != "UNPAUSED";
+        }
+
         // ---------- Gamepad-mode enforcement ----------
 
         public static void EnsureGamepadMode()
@@ -42,7 +53,20 @@ namespace CSAccess.Game
             if (manager != null && manager.ActiveStateName == "Mouse")
             {
                 manager.SendEvent("Gamepad");
-                Plugin.Log.LogInfo("[Game] Switched UI to gamepad mode for keyboard dice flow.");
+                Plugin.Log.LogInfo("[Game] Keyboard input: asserted gamepad UI mode.");
+            }
+        }
+
+        /// <summary>A mouse click claims mouse mode (cursor for a sighted co-pilot).
+        /// Sends the Gamepad Manager's own Mouse event; if the FSM's current state has no
+        /// transition for it, the event is dropped harmlessly.</summary>
+        public static void EnsureMouseMode()
+        {
+            var manager = FindFsm("Gamepad Manager");
+            if (manager != null && manager.ActiveStateName != "Mouse")
+            {
+                manager.SendEvent("Mouse");
+                Plugin.Log.LogInfo("[Game] Mouse click: asserted mouse UI mode.");
             }
         }
 
@@ -160,19 +184,41 @@ namespace CSAccess.Game
             return sb.ToString();
         }
 
-        /// <summary>Best-effort clock progress from the segment FSM's int variables.</summary>
+        /// <summary>Read the clock's active "N Step Clock" dial. Everything spoken is rendered
+        /// on the dial: filled wedges (ClockValue), segment count (dial variant), the +/- glyph
+        /// (Positive?), and the CYCLE CLOCK banner (Cycle Clock?). Verified live against the
+        /// Back in Business 8-step dial, session 5.</summary>
         private static string ClockProgress(Transform clock)
         {
-            var fsm = clock.GetComponentInChildren<PlayMakerFSM>(false);
-            if (fsm == null) return null;
-            int steps = ParseLeadingInt(fsm.gameObject.name);
-            foreach (var iv in fsm.FsmVariables.IntVariables)
+            foreach (Transform child in clock)
             {
-                string n = iv.Name.ToLowerInvariant();
-                if (n.Contains("segment") || n.Contains("progress") || n.Contains("count") || n.Contains("step"))
-                    return iv.Value + (steps > 0 ? " of " + steps + " segments" : " segments");
+                if (!child.gameObject.activeInHierarchy || !child.name.Contains("Step ")) continue;
+                var fsm = child.GetComponent<PlayMakerFSM>();
+                if (fsm == null) continue;
+
+                int steps = ParseLeadingInt(child.name);
+                int value = ReadFsmNumber(fsm, "ClockValue");
+                bool positive = fsm.FsmVariables.GetFsmBool("Positive?")?.Value ?? false;
+                bool cycle = fsm.FsmVariables.GetFsmBool("Cycle Clock?")?.Value ?? false;
+
+                var sb = new StringBuilder();
+                if (steps > 0) sb.Append(value).Append(" of ").Append(steps).Append(" segments, ");
+                sb.Append(positive ? "positive" : "negative");
+                if (cycle) sb.Append(" cycle");
+                sb.Append(" clock");
+                return sb.ToString();
             }
             return null;
+        }
+
+        /// <summary>PlayMaker numeric variable that may be authored as int or float.</summary>
+        private static int ReadFsmNumber(PlayMakerFSM fsm, string name)
+        {
+            var iv = fsm.FsmVariables.GetFsmInt(name);
+            if (iv != null) return iv.Value;
+            var fv = fsm.FsmVariables.GetFsmFloat(name);
+            if (fv != null) return Mathf.RoundToInt(fv.Value);
+            return 0;
         }
 
         private static int ParseLeadingInt(string name)
@@ -221,44 +267,32 @@ namespace CSAccess.Game
             return sb.Length > 0 ? "Status: " + sb : "Status not available.";
         }
 
-        // ---------- Dice slotting (gamepad FSM path, proven via bridge survey) ----------
+        // ---------- Dice allocation mode (native uGUI picker; see docs/ui-state-map.md 6b) ----------
 
-        public static IEnumerator SlotDieRoutine(Transform actionRoot, int dieNumber)
+        /// <summary>The Dice Gamepad System FSM owns allocation mode: Off -> Active while the
+        /// die picker is open. The picker's cursors are ordinary uGUI Buttons the game itself
+        /// selects into the EventSystem, so arrows and Enter drive them natively.</summary>
+        public static PlayMakerFSM DiceSystemFsm()
         {
-            EnsureGamepadMode();
-            yield return new WaitForSeconds(0.2f);
-
-            PlayMakerFSM slotFsm = null;
-            foreach (var fsm in actionRoot.GetComponentsInChildren<PlayMakerFSM>(true))
-            {
-                if (fsm.gameObject.name == "Gamepad Dice Slot") { slotFsm = fsm; break; }
-            }
-            if (slotFsm == null)
-            {
-                SpeechService.Say("This action does not take dice.", Priority.Immediate, "dice");
-                yield break;
-            }
-
-            slotFsm.SendEvent("Click");
-            yield return new WaitForSeconds(0.35f);
-
-            var cursorFsm = FindFsm("Dice Cursor " + dieNumber);
-            if (cursorFsm == null)
-            {
-                SpeechService.Say("Die " + dieNumber + " not found.", Priority.Immediate, "dice");
-                yield break;
-            }
-            cursorFsm.SendEvent("Click");
-            yield return new WaitForSeconds(0.6f);
-
-            string buttonLabel = Describe.TextUnder(actionRoot, "Dice Slot Button");
-            if (buttonLabel != null && buttonLabel.ToUpperInvariant().Contains("START"))
-                SpeechService.Say("Die " + dieNumber + " slotted. Press Enter to start the action.",
-                    Priority.Immediate, "dice");
-            else
-                SpeechService.Say("Could not slot die " + dieNumber + ". " +
-                    (buttonLabel ?? ""), Priority.Immediate, "dice");
+            return FindFsm("Dice Gamepad System", "Dice UI");
         }
 
+        public static bool DiceAllocationActive()
+        {
+            var fsm = DiceSystemFsm();
+            return fsm != null && fsm.ActiveStateName == "Active";
+        }
+
+        /// <summary>Spoken description of the die a picker cursor stands for.</summary>
+        public static string DescribeDieForCursor(int cursorNumber)
+        {
+            foreach (var die in GetDice())
+            {
+                if (die.SlotNumber != cursorNumber) continue;
+                if (die.State == "Used") return "Die " + cursorNumber + ", used";
+                return "Die " + cursorNumber + ", value " + die.Value;
+            }
+            return "Die " + cursorNumber;
+        }
     }
 }

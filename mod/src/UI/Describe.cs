@@ -12,8 +12,26 @@ namespace CSAccess.UI
     {
         public static string Element(GameObject go, bool detailed)
         {
+            string desc = ElementCore(go, detailed);
+            if (desc == null || go == null) return desc;
+            var selectable = go.GetComponent<Selectable>();
+            if (selectable != null && !selectable.IsInteractable())
+                desc += ", disabled";
+            return desc;
+        }
+
+        private static string ElementCore(GameObject go, bool detailed)
+        {
             if (go == null) return null;
             string name = go.name;
+
+            if (name.StartsWith("Dice Cursor "))
+            {
+                // Die picker: cursor N stands for die N (native uGUI Buttons the game
+                // selects itself; see docs/ui-state-map.md 6b).
+                int.TryParse(name.Substring("Dice Cursor ".Length), out int cursorNum);
+                return Game.GameQueries.DescribeDieForCursor(cursorNum);
+            }
 
             if (name.StartsWith("Response: "))
             {
@@ -59,6 +77,8 @@ namespace CSAccess.UI
             {
                 var selectable = go.GetComponent<Selectable>();
                 string role = selectable is Button ? " button" : "";
+                if (selectable is Toggle toggle)
+                    role = toggle.isOn ? " toggle, on" : " toggle, off";
                 return label + role;
             }
             return name;
@@ -83,7 +103,8 @@ namespace CSAccess.UI
             if (rating != null) sb.Append(", ").Append(rating.ToLowerInvariant());
 
             string buttonLabel = TextUnder(root, "Dice Slot Button");
-            if (buttonLabel != null) sb.Append(". ").Append(buttonLabel);
+            if (buttonLabel != null && !buttonLabel.Equals(actionName, System.StringComparison.OrdinalIgnoreCase))
+                sb.Append(". ").Append(buttonLabel);
 
             if (detailed)
             {

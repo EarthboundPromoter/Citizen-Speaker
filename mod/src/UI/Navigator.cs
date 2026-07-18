@@ -68,14 +68,19 @@ namespace CSAccess.UI
             };
             ExecuteEvents.Execute(current, move, ExecuteEvents.moveHandler);
 
-            // Dead end (or sole focusable element): repeat the current element so an
-            // arrow press is never silent.
+            // Dead end (or sole focusable element): say so — a bare repeat sounds like
+            // motion, and an arrow press must never be silent.
             if (es.currentSelectedGameObject == current)
-                SpeechService.Say(Describe.Element(current, detailed: false), Priority.Immediate, "focus");
+                SpeechService.Say(Describe.Element(current, detailed: false) + ". Nothing that way.",
+                    Priority.Immediate, "focus");
         }
 
+        private static float _lastActivate = -1f;
+
         /// <summary>Activate the focused element. The game's keyboard map only navigates —
-        /// it never submits — so Enter activation is the mod's job.</summary>
+        /// it never submits — so Enter activation is the mod's job. Rapid repeats are
+        /// debounced: scripted UI (tutorial chains) can be mid-transition right after an
+        /// activation, and a second click there breaks the script.</summary>
         public static void ActivateCurrent()
         {
             var go = Current();
@@ -84,19 +89,37 @@ namespace CSAccess.UI
                 SpeechService.Say("Nothing focused.", Priority.Immediate, "nav");
                 return;
             }
+            if (Time.unscaledTime - _lastActivate < 0.3f) return;
+            _lastActivate = Time.unscaledTime;
             Click(go);
         }
 
         public static void Click(GameObject go)
         {
+            // A disabled Selectable swallows clicks silently — say so instead
+            // (the game gates buttons this way, e.g. End Cycle during the intro).
+            var selectable = go.GetComponent<Selectable>();
+            if (selectable != null && !selectable.IsInteractable())
+            {
+                SpeechService.Say(Describe.Element(go, detailed: false) + ".", Priority.Immediate, "nav");
+                return;
+            }
+
+            // Exactly ONE activation path, like Unity's own input module (submit for
+            // keyboard/gamepad, pointer click as fallback). Firing both invokes a
+            // Button's onClick twice per press — double-dispatching scripted events
+            // (the tutorial-chain hangs, sessions 2 through 6).
             var es = EventSystem.current;
-            var ped = new PointerEventData(es);
-            ExecuteEvents.Execute(go, ped, ExecuteEvents.pointerEnterHandler);
-            ExecuteEvents.Execute(go, ped, ExecuteEvents.pointerDownHandler);
-            ExecuteEvents.Execute(go, ped, ExecuteEvents.pointerUpHandler);
-            bool clicked = ExecuteEvents.Execute(go, ped, ExecuteEvents.pointerClickHandler);
-            bool submitted = ExecuteEvents.Execute(go, ped, ExecuteEvents.submitHandler);
-            if (!clicked && !submitted)
+            bool activated = ExecuteEvents.Execute(go, new BaseEventData(es), ExecuteEvents.submitHandler);
+            if (!activated)
+            {
+                var ped = new PointerEventData(es);
+                ExecuteEvents.Execute(go, ped, ExecuteEvents.pointerEnterHandler);
+                ExecuteEvents.Execute(go, ped, ExecuteEvents.pointerDownHandler);
+                ExecuteEvents.Execute(go, ped, ExecuteEvents.pointerUpHandler);
+                activated = ExecuteEvents.Execute(go, ped, ExecuteEvents.pointerClickHandler);
+            }
+            if (!activated)
                 SpeechService.Say("Not activatable.", Priority.Immediate, "nav");
         }
     }

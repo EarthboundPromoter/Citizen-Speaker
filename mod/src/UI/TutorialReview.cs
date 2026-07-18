@@ -20,7 +20,13 @@ namespace CSAccess.UI
             foreach (Transform child in root.transform)
             {
                 if (child.name == "Button") continue;
-                if (child.gameObject.activeInHierarchy) return child;
+                if (!child.gameObject.activeInHierarchy) continue;
+                // The Tutorial System permanently hosts always-active helper objects
+                // (tutorial triggers, Input Pauser). Only a child that actually renders
+                // text is a tutorial panel — without this check IsActive() is always
+                // true and eats Up/Down everywhere (the silent pause-menu arrows bug).
+                if (child.GetComponentInChildren<TMP_Text>(false) == null) continue;
+                return child;
             }
             return null;
         }
@@ -41,7 +47,7 @@ namespace CSAccess.UI
             int next = Mathf.Clamp(_index + delta, 0, items.Count - 1);
             string boundary = "";
             if (next == _index)
-                boundary = delta > 0 ? "End of tutorial. Press T to continue. " : "Top of tutorial. ";
+                boundary = delta > 0 ? "End of tutorial. Press Enter to continue. " : "Top of tutorial. ";
             _index = next;
             SpeechService.Say(boundary + items[_index], Priority.Immediate, "tutorial");
         }

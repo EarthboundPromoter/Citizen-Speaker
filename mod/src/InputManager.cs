@@ -24,6 +24,17 @@ namespace CSAccess
 
         public void Tick()
         {
+            // --- Last-input-wins mode switching: a mouse click claims mouse mode; any
+            //     keyboard key re-asserts gamepad mode (which the mod's navigation needs).
+            //     Both ride the Gamepad Manager's own Mouse/Gamepad events. ---
+            if (Plugin.ForceGamepadUI.Value)
+            {
+                if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) || Input.GetMouseButtonDown(2))
+                    GameQueries.EnsureMouseMode();
+                else if (Input.anyKeyDown)
+                    GameQueries.EnsureGamepadMode();
+            }
+
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
             // --- Speech control ---
@@ -34,6 +45,13 @@ namespace CSAccess
 
             // --- Help ---
             if (Input.GetKeyDown(KeyCode.F1)) { SpeakHelp(); return; }
+
+            // --- Scripted input pause: the game is mid-transition and controller input
+            //     would be paused too. Swallow game-facing keys; speech keys above still work.
+            //     Exception: the pauser stays PAUSED while a tutorial panel awaits its
+            //     continue — when the game has selected that button itself, it is asking
+            //     for input, so Enter must pass. ---
+            if (GameQueries.InputPaused() && !TutorialContinueFocused()) return;
 
             // --- Repeat dialogue line ---
             if (Input.GetKeyDown(KeyCode.F2))
@@ -83,6 +101,15 @@ namespace CSAccess
                 if (Input.GetKeyDown(KeyCode.RightArrow)) { CharacterSelect.ChangeClass(right: true); return; }
             }
 
+            // --- Response menus render vertically but their navigation graph is horizontal:
+            //     remap Up/Down to the graph's own axis so keys match what's rendered.
+            //     The moves themselves stay native. ---
+            if (DialogueState.MenuOpen)
+            {
+                if (Input.GetKeyDown(KeyCode.DownArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Right); return; }
+                if (Input.GetKeyDown(KeyCode.UpArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Left); return; }
+            }
+
             // --- Choice number keys (when a response menu is open) ---
             if (DialogueState.MenuOpen)
             {
@@ -91,18 +118,6 @@ namespace CSAccess
                     if (Input.GetKeyDown(KeyCode.Alpha1 + i))
                     {
                         PickResponse(i);
-                        return;
-                    }
-                }
-            }
-            else
-            {
-                // --- Dice number keys (when an action is focused) ---
-                for (int i = 0; i < 6; i++)
-                {
-                    if (Input.GetKeyDown(KeyCode.Alpha1 + i))
-                    {
-                        TrySlotDie(i + 1);
                         return;
                     }
                 }
@@ -139,7 +154,10 @@ namespace CSAccess
             }
             if (Input.GetKeyDown(KeyCode.J))
             {
-                ClickFirstActive("Drive tracker",
+                // The Drive Log Button is the real open/close control; the tracker HUD
+                // is a passive display (old target — J appeared to do nothing).
+                ClickFirstActive("Drive log",
+                    "Letterbox Canvas/Drive System/Drive Log Button",
                     "Letterbox Canvas/Drive System/Drive Tracker HUD",
                     "Letterbox Canvas/Drive System");
                 return;
@@ -152,6 +170,12 @@ namespace CSAccess
             }
             if (Input.GetKeyDown(KeyCode.Backspace))
             {
+                // In the die picker, cancel through the picker's own Back event.
+                if (GameQueries.DiceAllocationActive())
+                {
+                    GameQueries.DiceSystemFsm()?.SendEvent("Back");
+                    return;
+                }
                 ClickFirstActive("Leave or back",
                     "Letterbox Canvas/Top UI/Leave Button",
                     "Back Button", "Close Button", "BACK");
@@ -164,11 +188,14 @@ namespace CSAccess
                 return;
             }
 
-            // --- Tutorial continue ---
+            // --- Tutorial: T re-engages the game's own continue button (the game selects it
+            //     itself when a tutorial opens; Enter fires it through the native submit path).
+            //     Never click it directly — a click outside the tutorial FSM's awaiting state
+            //     closes the panel without dispatching its event and hangs the intro script. ---
             if (Input.GetKeyDown(KeyCode.T))
             {
                 var button = GameObject.Find("Letterbox Canvas/Tutorial System/Button");
-                if (button != null && button.activeInHierarchy) Navigator.Click(button);
+                if (button != null && button.activeInHierarchy) Navigator.Select(button);
                 else SpeechService.Say("No tutorial open.", Priority.Immediate, "nav");
                 return;
             }
@@ -187,6 +214,16 @@ namespace CSAccess
             }
         }
 
+        /// <summary>True when the game has put selection on the Tutorial System's continue
+        /// button — the one case where input is wanted while the Input Pauser is PAUSED.</summary>
+        private static bool TutorialContinueFocused()
+        {
+            var selected = Navigator.Current();
+            return selected != null && selected.activeInHierarchy &&
+                   selected.name == "Button" &&
+                   Describe.HasAncestor(selected, "Tutorial System");
+        }
+
         /// <summary>Activate a controller-button-bound element: prefer a uGUI Button on the
         /// object or its children, else fall back to a Click event on its FSM.</summary>
         private static void ClickFirstActive(string label, params string[] paths)
@@ -197,9 +234,16 @@ namespace CSAccess
                 if (go == null || !go.activeInHierarchy) continue;
 
                 var button = go.GetComponent<Button>() ?? go.GetComponentInChildren<Button>(false);
-                if (button != null && button.IsInteractable())
+                if (button != null)
                 {
-                    Navigator.Click(button.gameObject);
+                    if (button.IsInteractable())
+                    {
+                        Navigator.Click(button.gameObject);
+                        return;
+                    }
+                    // A disabled button is the game gating this control — report it,
+                    // never bypass it through the FSM.
+                    SpeechService.Say(label + " is disabled.", Priority.Immediate, "nav");
                     return;
                 }
                 var fsm = go.GetComponent<PlayMakerFSM>() ?? go.GetComponentInChildren<PlayMakerFSM>(false);
@@ -227,20 +271,6 @@ namespace CSAccess
                 }
             }
             SpeechService.Say("Choice not found.", Priority.Immediate, "choices");
-        }
-
-        private void TrySlotDie(int dieNumber)
-        {
-            var current = Navigator.Current();
-            var actionRoot = current != null ? Describe.FindActionRoot(current.transform) : null;
-            if (actionRoot == null && _actionIndex >= 0 && _actionIndex < _actionPanels.Count)
-                actionRoot = _actionPanels[_actionIndex];
-            if (actionRoot == null)
-            {
-                SpeechService.Say("No action focused. Press Tab to cycle actions.", Priority.Immediate, "dice");
-                return;
-            }
-            _host.StartCoroutine(GameQueries.SlotDieRoutine(actionRoot, dieNumber));
         }
 
         private void CycleActions(int delta)
@@ -281,11 +311,13 @@ namespace CSAccess
                 "Arrows and Enter use the game's own navigation. Space: describe the focused element in detail. " +
                 "Tab: jump between actions at this location. L: jump between locations and characters. " +
                 "I: toggle inventory items and data. U: character window. J: drive tracker. " +
-                "S: scan. Backspace: leave or back. Shift R: reroll dice. " +
-                "Number keys: pick a dialogue choice, or slot that die into the focused action. " +
+                "S: scan. Backspace: leave, back, or cancel the die picker. Shift R: reroll dice. " +
+                "Number keys: pick a dialogue choice. " +
+                "Enter on an action opens the game's die picker. Arrows choose a die, Enter slots it. " +
                 "D: read dice. K: read clocks. C: read status. " +
                 "F2: repeat dialogue line. R: repeat last speech. " +
-                "Left and right brackets: speech history. Grave: stop speech. T: continue tutorial.",
+                "Left and right brackets: speech history. Grave: stop speech. " +
+                "T: focus the tutorial's continue button; Enter fires it.",
                 Priority.Immediate, "help");
         }
     }
