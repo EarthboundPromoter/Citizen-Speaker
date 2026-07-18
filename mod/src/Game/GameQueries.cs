@@ -249,11 +249,32 @@ namespace CSAccess.Game
         public static string DescribeStatus()
         {
             var sb = new StringBuilder();
+
+            // Cycle, energy, condition: the values behind the rendered HUD meters and cycle
+            // display live as Cycle Controller FSM locals (docs/verification/A + survey) —
+            // NOT PlayMaker globals as earlier believed.
+            var cycleFsm = FindFsm("Cycle Controller");
+            if (cycleFsm != null)
+            {
+                if (TryReadFsmNumber(cycleFsm, "Cycle Count", out int cycleCount))
+                    sb.Append("Cycle ").Append(cycleCount).Append(". ");
+                if (TryReadFsmNumber(cycleFsm, "Player Energy", out int energy))
+                    sb.Append("Energy ").Append(energy).Append(". ");
+                if (TryReadFsmNumber(cycleFsm, "Player Condition", out int condition))
+                    sb.Append("Condition ").Append(condition).Append(". ");
+                if (cycleFsm.FsmVariables.GetFsmBool("Starving")?.Value == true)
+                    sb.Append("Starving. ");
+            }
+            else
+            {
+                Plugin.Log.LogInfo("[Status] Cycle Controller FSM not found; meters unavailable.");
+            }
+
             var cryo = GameObject.Find("Letterbox Canvas/Bottom UI/Inventory/ITEM Inventory UI/Cryo Slot /Amount");
             if (cryo != null)
             {
                 var tmp = cryo.GetComponent<TMP_Text>();
-                if (tmp != null) sb.Append("Cryo: ").Append(tmp.text.Trim()).Append(". ");
+                if (tmp != null) sb.Append("Cryo ").Append(tmp.text.Trim().TrimEnd('.')).Append(". ");
             }
             var driveRoot = GameObject.Find("Letterbox Canvas/Drive System/Drive Tracker HUD");
             if (driveRoot != null)
@@ -261,10 +282,22 @@ namespace CSAccess.Game
                 foreach (var tmp in driveRoot.GetComponentsInChildren<TMP_Text>(false))
                 {
                     string txt = tmp.text?.Trim();
-                    if (!string.IsNullOrEmpty(txt)) sb.Append(txt).Append(". ");
+                    if (!string.IsNullOrEmpty(txt)) sb.Append(txt.TrimEnd('.')).Append(". ");
                 }
             }
-            return sb.Length > 0 ? "Status: " + sb : "Status not available.";
+            return sb.Length > 0 ? "Status: " + sb.ToString().TrimEnd() : "Status not available.";
+        }
+
+        /// <summary>Presence-aware numeric read: distinguishes a genuine 0 from a missing
+        /// variable (energy 0 is a real, meaningful value).</summary>
+        private static bool TryReadFsmNumber(PlayMakerFSM fsm, string name, out int value)
+        {
+            var iv = fsm.FsmVariables.GetFsmInt(name);
+            if (iv != null) { value = iv.Value; return true; }
+            var fv = fsm.FsmVariables.GetFsmFloat(name);
+            if (fv != null) { value = Mathf.RoundToInt(fv.Value); return true; }
+            value = 0;
+            return false;
         }
 
         // ---------- Dice allocation mode (native uGUI picker; see docs/ui-state-map.md 6b) ----------

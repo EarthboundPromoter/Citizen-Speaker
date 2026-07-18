@@ -68,10 +68,10 @@ namespace CSAccess.UI
             };
             ExecuteEvents.Execute(current, move, ExecuteEvents.moveHandler);
 
-            // Dead end (or sole focusable element): say so — a bare repeat sounds like
-            // motion, and an arrow press must never be silent.
+            // Dead end (or sole focusable element): repeat the element bare — the repeat
+            // itself is the dead-end signal, and an arrow press must never be silent.
             if (es.currentSelectedGameObject == current)
-                SpeechService.Say(Describe.Element(current, detailed: false) + ". Nothing that way.",
+                SpeechService.Say(Describe.Element(current, detailed: false),
                     Priority.Immediate, "focus");
         }
 

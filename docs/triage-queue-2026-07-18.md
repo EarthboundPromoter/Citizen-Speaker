@@ -162,6 +162,8 @@ Live card evidence (Manual Salvage): the modifier row renders ALL FOUR labels (-
 
 ### 22. Dice spend: auto-read the outcome's narrative text (owner, triage session)
 
+OWNER CORRECTION (triage session): the outcome text is ALREADY reachable — pressing Space on a completed action reads the completion text through the existing describe path. Brief A's "our patches won't catch it" applies only to the automatic dialogue-subtitle route. #22 is therefore a TIMING problem only: on Action Controller Outcome state entry, trigger the same read path Space uses, against the same rendered labels. Binding design rule (owner-set, applies pipeline-wide): FSM signals are CLOCKS, never CONTENT — they say when to speak; what is spoken comes only from rendered text/UI. If the game renders no feedback for an event, the mod speaks nothing.
+
 Owner request: when a die is spent and the action resolves, the mod should auto-read the narrative text the outcome triggers — not just "MANUAL SALVAGE: neutral outcome" (current behavior, report 13). Rendered by the game post-resolution, so squarely inside the rendered-only speech rule.
 
 Leads: locate where the outcome narrative renders (action card outcome panel? dialogue-system route? notification?) — check live at next resolution; the Action Controller FSM's outcome text wiring (report 11 dump) is the static reference. Speak it AFTER the outcome-type announcement, through the normal queue (no flush).

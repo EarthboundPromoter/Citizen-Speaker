@@ -92,8 +92,8 @@ namespace CSAccess.UI
             if (root == null) return FirstText(anywhereInAction) ?? anywhereInAction.name;
 
             var sb = new StringBuilder();
-            string actionName = TextUnder(root, "Action Name");
-            sb.Append(actionName ?? CleanActionRootName(root.name));
+            string spokenName = TextUnder(root, "Action Name") ?? CleanActionRootName(root.name);
+            sb.Append(spokenName);
 
             // Skill name + modifier live in small labeled texts; sweep for known skill words.
             string skills = CollectSkillLine(root);
@@ -102,8 +102,13 @@ namespace CSAccess.UI
             string rating = TextUnder(root, "Rating Name");
             if (rating != null) sb.Append(", ").Append(rating.ToLowerInvariant());
 
+            // Affordance: a "Gamepad Dice Slot" child (even inactive) marks a die-taking
+            // action; its absence marks a plain activate button. Universal differentiator —
+            // "Dice Slot Button" itself is present on ALL actions (docs/verification/C).
+            sb.Append(TakesDie(root) ? ". Takes a die" : ". Enter to activate");
+
             string buttonLabel = TextUnder(root, "Dice Slot Button");
-            if (buttonLabel != null && !buttonLabel.Equals(actionName, System.StringComparison.OrdinalIgnoreCase))
+            if (buttonLabel != null && !buttonLabel.Equals(spokenName, System.StringComparison.OrdinalIgnoreCase))
                 sb.Append(". ").Append(buttonLabel);
 
             if (detailed)
@@ -114,6 +119,15 @@ namespace CSAccess.UI
                 if (perCycle != null) sb.Append(". ").Append(perCycle);
             }
             return sb.ToString();
+        }
+
+        /// <summary>Die-taking actions carry a "Gamepad Dice Slot" descendant (inactive while
+        /// the picker is closed, so search inactive too); plain-activate actions never do.</summary>
+        private static bool TakesDie(Transform actionRoot)
+        {
+            foreach (var t in actionRoot.GetComponentsInChildren<Transform>(true))
+                if (t.name == "Gamepad Dice Slot") return true;
+            return false;
         }
 
         public static Transform FindActionRoot(Transform t)
@@ -159,17 +173,67 @@ namespace CSAccess.UI
             return null;
         }
 
+        private static readonly string[] ModifierLabels = { "-1", "0", "+1", "+2" };
+
+        /// <summary>The modifier row renders ALL FOUR labels (-1, 0, +1, +2) as separate texts;
+        /// the applied one is distinguished graphically (triage report 12). Pick the single
+        /// color outlier; if emphasis can't be resolved, speak no modifier rather than a wrong
+        /// one, and log the row once for live calibration.</summary>
         private static string SiblingModifier(Transform skillText)
         {
             var parent = skillText.parent;
             if (parent == null) return null;
+            var candidates = new System.Collections.Generic.List<TMP_Text>();
             foreach (var tmp in parent.GetComponentsInChildren<TMP_Text>(false))
             {
                 string txt = tmp.text?.Trim();
-                if (txt == "+1" || txt == "+2" || txt == "-1" || txt == "0")
-                    return txt;
+                if (System.Array.IndexOf(ModifierLabels, txt) >= 0)
+                    candidates.Add(tmp);
+            }
+            if (candidates.Count == 0) return null;
+            if (candidates.Count == 1) return candidates[0].text.Trim();
+
+            var outlier = SingleColorOutlier(candidates);
+            if (outlier != null) return outlier.text.Trim();
+
+            if (!_modifierRowLogged)
+            {
+                _modifierRowLogged = true;
+                var dump = new StringBuilder("[Describe] modifier row emphasis unresolved:");
+                foreach (var c in candidates)
+                    dump.Append(' ').Append(c.text.Trim()).Append('=').Append(c.color)
+                        .Append("/a").Append(c.alpha.ToString("0.00"));
+                Plugin.Log.LogInfo(dump.ToString());
             }
             return null;
+        }
+
+        private static bool _modifierRowLogged;
+
+        /// <summary>The one text whose rendered color (incl. alpha) differs from all others,
+        /// or null if the row doesn't split cleanly into one-vs-rest.</summary>
+        private static TMP_Text SingleColorOutlier(System.Collections.Generic.List<TMP_Text> texts)
+        {
+            TMP_Text outlier = null;
+            for (int i = 0; i < texts.Count; i++)
+            {
+                bool matchesAnother = false;
+                for (int j = 0; j < texts.Count; j++)
+                {
+                    if (i == j) continue;
+                    if (ColorsClose(texts[i].color, texts[j].color)) { matchesAnother = true; break; }
+                }
+                if (matchesAnother) continue;
+                if (outlier != null) return null;
+                outlier = texts[i];
+            }
+            return outlier;
+        }
+
+        private static bool ColorsClose(Color a, Color b)
+        {
+            return Mathf.Abs(a.r - b.r) < 0.05f && Mathf.Abs(a.g - b.g) < 0.05f
+                && Mathf.Abs(a.b - b.b) < 0.05f && Mathf.Abs(a.a - b.a) < 0.05f;
         }
 
         public static bool HasAncestor(GameObject go, string name)
