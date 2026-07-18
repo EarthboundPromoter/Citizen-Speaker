@@ -1,0 +1,980 @@
+=== 1_Action Groups: 177 location/group children ===
+
+-- Dragos's Yard Actions (INACTIVE): 2 action(s), 2 clock(s), 1 other
+     ACTION: Manual Salvage Action
+     ACTION: Hull Dissection Action
+     CLOCK:  Back in Business Clock
+     CLOCK:  A Debt Called In Clock
+     OTHER:  Clock Connector
+
+-- Dragos's Yard Actions 2 (INACTIVE): 2 action(s), 3 clock(s), 0 other
+     ACTION: Cutter Salvage Action
+     ACTION: Forensic Trawl Action
+     CLOCK:  'Winter Light' Clock
+     CLOCK:  Yard Clearance Clock
+     CLOCK:  Dragos Nerve Clock
+
+-- Dragos's Yard Actions -1 (INACTIVE): 1 action(s), 2 clock(s), 2 other
+     ACTION: Negotiate the Debt Action
+     CLOCK:  Final Deadline Clock
+     CLOCK:  Holding Payments Clock
+     OTHER:  Clock Connector (1)
+     OTHER:  Cryo Action Template
+
+-- Empty Container Actions (INACTIVE): 4 action(s), 3 clock(s), 6 other
+     ACTION: Inject Stabilizer Action (INACTIVE)
+     ACTION: Sunbathe Action (INACTIVE)
+     ACTION: Self Repair Action (INACTIVE)
+     ACTION: End Cycle Action
+     CLOCK:  Hunted Clock (INACTIVE)
+     CLOCK:  Maywick Clock (INACTIVE)
+     CLOCK:  Terminal Flux Clock (INACTIVE)
+     OTHER:  Action Switch (Stabilizer)
+     OTHER:  Action Switch (Hunted)
+     OTHER:  Action Switch (Sunbathe)
+     OTHER:  Action Switch (Self Repair)
+     OTHER:  Action Switch (Maywick)
+     OTHER:  Action Switch (Terminal Flux)
+
+-- Rotunda Actions (INACTIVE): 1 action(s), 2 clock(s), 2 other
+     ACTION: Explore the Rotunda Action
+     CLOCK:  Dock Watcher Clock
+     CLOCK:  Havenage Watchlist Clock
+     OTHER:  Clock Connector
+     OTHER:  Steal Dock Plans Action 
+
+-- Overlook Bar Actions (INACTIVE): 2 action(s), 0 clock(s), 1 other
+     ACTION: Buy Rations Action
+     ACTION: Get a Drink Action
+     OTHER:  Overlook Regular
+
+-- Overlook Bar Actions 2 (INACTIVE): 2 action(s), 1 clock(s), 0 other
+     ACTION: Buy Rations Action
+     ACTION: Bar Shift Action
+     CLOCK:  Good Service Clock
+
+-- Overlook Bar Actions 3 (INACTIVE): 2 action(s), 0 clock(s), 1 other
+     ACTION: Build the Still Action
+     ACTION: Bar Shift 2 Action
+     OTHER:  Overlook Distillery
+
+-- Overlook Bar Actions 4 (INACTIVE): 2 action(s), 1 clock(s), 0 other
+     ACTION: Grove Spores Action
+     ACTION: Bar Shift 2 Action
+     CLOCK:  Home grown Clock
+
+-- Overlook Bar Actions 5 (INACTIVE): 0 action(s), 1 clock(s), 1 other
+     CLOCK:  First Batch Clock
+     OTHER:  Bar Shift 2 Action (1)
+
+-- Overlook Bar Actions 6 (INACTIVE): 3 action(s), 0 clock(s), 0 other
+     ACTION: Bar Shift 2 Action
+     ACTION: Deliver Girolles Action
+     ACTION: Deliver Matsutake Action
+
+-- The Ambergris Actions (INACTIVE): 2 action(s), 2 clock(s), 1 other
+     ACTION: Amber Hull Repairs Action
+     ACTION: Rewire Drones Action
+     CLOCK:  Shipshape Clock
+     CLOCK:  Grounded Clock
+     OTHER:  Clock Connector
+
+-- The Ambergris Actions -1 (INACTIVE): 0 action(s), 2 clock(s), 0 other
+     CLOCK:  Emergency Repairs Clock
+     CLOCK:  Patchwork Hull Clock
+
+-- The Ambergris Actions 2 (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Deliver Shipmind
+
+-- The Ambergris Actions 4 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Ankhita is Away Clock
+
+-- Sealed Dock Actions (INACTIVE): 0 action(s), 1 clock(s), 1 other
+     CLOCK:  Unsealing The Dock Clock
+     OTHER:  Encrypted Key Action Template
+
+-- Sealed Dock Actions 2 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Hunter Data Action
+     CLOCK:  Data Compiling Clock
+
+-- Sealed Dock Actions 3 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Insert Shipmind Action
+
+-- Server Unit Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Encrypted Key Action Template
+
+-- Drone Bay Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Encrypted Key Action Template
+
+-- Atrium Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Encrypted Key Action Template
+
+-- Tangled Nest Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Imprinted Shipmind Action
+     CLOCK:  Core Nest Clock
+
+-- Isolated Nest Actions (INACTIVE): 1 action(s), 0 clock(s), 1 other
+     ACTION: Imprinted Shipmind Action
+     OTHER:  Core Nest Clock (1)
+
+-- Glowing Nest Actions (INACTIVE): 1 action(s), 0 clock(s), 1 other
+     ACTION: Imprinted Shipmind Action
+     OTHER:  Core Nest Clock (2)
+
+-- Core Nest Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Imprinted Shipmind Action
+
+-- Bright Market Actions (INACTIVE): 1 action(s), 1 clock(s), 2 other
+     ACTION: Explore the Market Action
+     CLOCK:  Local Knowledge Clock
+     OTHER:  Clock Connector
+     OTHER:  Ask for Directions Action 
+
+-- Emphis's Stall Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Order Fungus Action
+     CLOCK:  Fungus Fan Clock
+
+-- Emphis's Stall Actions 2 (INACTIVE): 2 action(s), 0 clock(s), 0 other
+     ACTION: Order Fungus Action
+     ACTION: Deliver Girolles Action
+
+-- Emphis's Stall Actions 2b (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Prep Clock 2b
+
+-- Emphis's Stall Actions 3 (INACTIVE): 2 action(s), 0 clock(s), 0 other
+     ACTION: Deliver Matsutake Action
+     ACTION: Order Fungus Action
+
+-- Emphis's Stall Actions 3b (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Prep Clock 3b
+
+-- Emphis's Stall Actions 4 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Order Fungus Action
+
+-- Sabine's Surgery Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Sourcing Stabilizer Clock
+
+-- Sabine's Surgery Actions 2 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Aquire Stabilizer Action
+
+-- Yatagan Dispensary Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Aquire Stabilizer Action 2
+
+-- Scrap Freighter Actions (INACTIVE): 2 action(s), 2 clock(s), 0 other
+     ACTION: Buy Some Scrap Action
+     ACTION: Unload Containers Action
+     CLOCK:  Offloading Scrap Clock (INACTIVE)
+     CLOCK:  Scrap Allowance Clock
+
+-- Dock B-2 Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Salvage Sortie Clock
+
+-- Merchant Freighter Actions (INACTIVE): 1 action(s), 2 clock(s), 3 other
+     ACTION: Haggle Over Prices Action
+     CLOCK:  Offloading Goods Clock (INACTIVE)
+     CLOCK:  Limited Supply Clock
+     OTHER:  Action Switch (Haggling)
+     OTHER:  Buy Shipmind Fragment
+     OTHER:  Buy Shipmind Fragment 2 (INACTIVE)
+
+-- Dock C-4 Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Helion Crossing Clock
+
+-- Ort Exchange Actions (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Play The Exchange Action
+     ACTION: Sell Components Action
+     CLOCK:  Ort Trader Clock
+     OTHER:  Clock Connector 
+
+-- Ort Exchange Actions 2 (INACTIVE): 2 action(s), 0 clock(s), 0 other
+     ACTION: Play The Exchange Action
+     ACTION: Sell Components Action
+
+-- Ort Fabricator Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Fabricate Shipmind Action
+
+-- Feng's Bay Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Solheim Data Action
+     CLOCK:  Scoping The Systems Clock
+
+-- Feng's Bay Actions 2 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Feng MIA Clock
+
+-- Feng's Bay Actions 3 (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Havenage in Crisis
+
+-- Unit 207-F Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Sabines Passkey Action Template
+
+-- Unit 207-F Actions 2 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Yatagan Data Action
+     CLOCK:  Yatagan Hacked Clock
+
+-- Unit 207-F Actions 3 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Painful Patience Clock
+
+-- Shipyard Actions (INACTIVE): 1 action(s), 1 clock(s), 3 other
+     ACTION: Haul Materials Action
+     CLOCK:  Yard Hand Clock
+     OTHER:  Clock Connector
+     OTHER:  Assist a Shipbuilder Action 
+     OTHER:  Loop Switch (Quality Control)
+
+-- Shipyard Actions 2 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Sidereal Draw Clock
+
+-- Unit Assembly Actions (INACTIVE): 2 action(s), 3 clock(s), 2 other
+     ACTION: Structural Fitting Action
+     ACTION: Systems Fitting Action
+     CLOCK:  Welders Mate Clock
+     CLOCK:  Junior Tech Clock
+     CLOCK:  QC Clock
+     OTHER:  Clock Connector (1)
+     OTHER:  Loop Switch (Yard Hand) (1)
+
+-- Sidereal Bridge Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Sidereal Fit-up Action
+     CLOCK:  Sidereal Horizon Clock
+
+-- Sidereal Hull Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Sidereal Assembly Action
+     CLOCK:  Sidereal Horizon Clock
+
+-- Havenage Offices Actions (INACTIVE): 2 action(s), 1 clock(s), 0 other
+     ACTION: Shipmind Supply Action
+     ACTION: Yatagan Data Action
+     CLOCK:  Gang Intelligence Clock (INACTIVE)
+
+-- Celis Ship Actions (INACTIVE): 2 action(s), 2 clock(s), 1 other
+     ACTION: Observe and Explore Action
+     ACTION: Bluff Past Security Action
+     CLOCK:  Celis Infiltration Clock
+     CLOCK:  Celis Lockdown Clock
+     OTHER:  Clock Connector (1)
+
+-- Celis Ship Actions 2 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Locked Down Clock
+
+-- Celis Servers Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Extract Celis Data
+
+-- Lowend Actions (INACTIVE): 1 action(s), 1 clock(s), 2 other
+     ACTION: Play Tabla Action
+     CLOCK:  Lowender Clock
+     OTHER:  Clock Connector
+     OTHER:  Block Maintenance Action 
+
+-- The Warrens Actions (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Warren Hunt Action
+     ACTION: Warren Tracking Action
+     CLOCK:  Find the Nest Clock
+     OTHER:  Clock Connector (1)
+
+-- Tambour Teahouse Actions (INACTIVE): 2 action(s), 2 clock(s), 3 other
+     ACTION: Havenage Data Action
+     ACTION: Tabla Room Action
+     CLOCK:  Yatagan Planning Clock (INACTIVE)
+     CLOCK:  Hardin Rip Clock (INACTIVE)
+     OTHER:  Action Switch (Gumbox)
+     OTHER:  Hand-in Gum Box (INACTIVE)
+     OTHER:  Action Switch (rip clock) (INACTIVE)
+
+-- Founder's Gap Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Pay For Passage Action
+
+-- Founder's Gap Actions 2 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Pay For Passage 2 Action
+
+-- Lems Unit Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Babysit Mina Action
+     CLOCK:  Mina's Trust Clock
+
+-- Lems Unit Actions 2 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Lem's Out Clock
+
+-- Lems Unit Actions 3 (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Babysit Mina Action 2
+
+-- Min-Gi Express Actions (INACTIVE): 2 action(s), 1 clock(s), 2 other
+     ACTION: Express Delivery Action (INACTIVE)
+     ACTION: Noodle Manufacture Action
+     CLOCK:  Feng's Targets Clock (INACTIVE)
+     OTHER:  Action Switch (Delivery + Clock)
+     OTHER:  Express Delivery Action 2
+
+-- Derelict Unit Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Gather Materials Action
+     CLOCK:  Scrap Pile Clock
+
+-- Derelict Unit Actions 2 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Seal Unit Action
+     CLOCK:  Makeshift Apartment Clock
+
+-- Repaired Unit Actions (INACTIVE): 4 action(s), 2 clock(s), 10 other
+     ACTION: Feed a Stray Action
+     ACTION: Inject Stabilizer Action (INACTIVE)
+     ACTION: Sunbathe Action (INACTIVE)
+     ACTION: Self Repair Action (INACTIVE)
+     CLOCK:  Hunted Clock (INACTIVE)
+     CLOCK:  Terminal Flux Clock (INACTIVE)
+     OTHER:  Action Switch (Stabilizer)
+     OTHER:  Action Switch (Hunted)
+     OTHER:  Action Switch (Maywick) (2)
+     OTHER:  Action Switch (Sunbathe)
+     OTHER:  Action Switch (Self Repair)
+     OTHER:  Action Switch (The Stray)
+     OTHER:  Feed the Stray Action 2 (INACTIVE)
+     OTHER:  Maywick Clock (2) (INACTIVE)
+     OTHER:  End Cycle Action (1)
+     OTHER:  Action Switch (Terminal Flux)
+
+-- Free Spoke Actions (INACTIVE): 1 action(s), 1 clock(s), 2 other
+     ACTION: Scale the Spoke Action
+     CLOCK:  Spoke Climber Clock
+     OTHER:  Clock Connector
+     OTHER:  Cross the Warrens Action 
+
+-- Paz Import Export Actions (INACTIVE): 3 action(s), 0 clock(s), 0 other
+     ACTION: Buy Shipmind Action
+     ACTION: Sell Shipmind Action
+     ACTION: Export Matsutake Action
+
+-- Midline Freight Hub Actions (INACTIVE): 2 action(s), 0 clock(s), 1 other
+     ACTION: Freight Operator Action
+     ACTION: Steal a Shipment Action
+     OTHER:  Midline Security
+
+-- Ascender Car Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Ascend Action
+
+-- Descender Car Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Descend Action
+
+-- The Hub Actions (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Access Manifests Action
+     ACTION: Spacer Socialising Action
+     CLOCK:  Sea Legs Clock
+     OTHER:  Clock Connector
+
+-- Gimbal Lounge Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Buy A Spacer Meal
+
+-- Bliss's Bay 1 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Invest in Bliss Action
+
+-- Bliss's Bay 2 Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Repair Bid Click
+
+-- Ember's Wake Actions (INACTIVE): 2 action(s), 2 clock(s), 1 other
+     ACTION: Tank Cladding Action
+     ACTION: System Flush Action
+     CLOCK:  Sealing the Leaks Clock
+     CLOCK:  Ember's Wake Contract Clock
+     OTHER:  Clock Connector
+
+-- Bliss's Bay 3 Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Fresh Contract Clock
+
+-- Sycamore Seed Actions (INACTIVE): 2 action(s), 2 clock(s), 1 other
+     ACTION: Reinforce Bulkheads Action
+     ACTION: Sacrifice Section Action
+     CLOCK:  Saving the Crop Clock
+     CLOCK:  Fragile Biome Clock
+     OTHER:  Clock Connector
+
+-- Bliss's Bay 4 Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Third TIme Lucky Clock
+
+-- Starward Vector Actions (INACTIVE): 2 action(s), 2 clock(s), 1 other
+     ACTION: Debug Spur Control Action
+     ACTION: Patch Solar Sails Action
+     CLOCK:  Rigged and Ready Clock
+     CLOCK:  Solar Window Clock
+     OTHER:  Clock Connector
+
+-- Bliss's Bay 5 Actions (INACTIVE): 1 action(s), 1 clock(s), 1 other
+     ACTION: Component Repair Action
+     CLOCK:  Secret Ankhita Clock (INACTIVE)
+     OTHER:  Action Switch (Ankhita)
+
+-- Kisho Capsules Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Rent a Capsule Action
+
+-- Capsule 0451 Actions (INACTIVE): 4 action(s), 2 clock(s), 7 other
+     ACTION: Sunbathe Action (INACTIVE)
+     ACTION: Self Repair Action (INACTIVE)
+     ACTION: Inject Stabilizer Action (INACTIVE)
+     ACTION: End Cycle Action
+     CLOCK:  Hunted Clock (INACTIVE)
+     CLOCK:  Terminal Flux Clock (INACTIVE)
+     OTHER:  Action Switch (Stabilizer)
+     OTHER:  Action Switch (Maywick) (4)
+     OTHER:  Action Switch (Sunbathe)
+     OTHER:  Action Switch (Self Repair)
+     OTHER:  Action Switch (Hunted)
+     OTHER:  Maywick Clock (4) (INACTIVE)
+     OTHER:  Action Switch (Terminal Flux)
+
+-- Sidereal Dock Actions (INACTIVE): 0 action(s), 1 clock(s), 1 other
+     CLOCK:  A Way Onboard Clock
+     OTHER:  Scout the Dock
+
+-- Sidereal Dock Actions 2 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Sidereal Departure Clock
+
+-- Founder's Ferry Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Ferry Action
+
+-- Founder's Ferry Actions 2 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Ferry Action
+
+-- Greenway Actions (INACTIVE): 1 action(s), 1 clock(s), 2 other
+     ACTION: Walk the Greenway Action
+     CLOCK:  Going Green Clock
+     OTHER:  Clock Connector
+     OTHER:  Map the Pathways Action 
+
+-- Farm Stacks Actions (INACTIVE): 3 action(s), 2 clock(s), 0 other
+     ACTION: Work the Stacks Action
+     ACTION: Steal the Harvest Action
+     ACTION: Barter for Food Action
+     CLOCK:  Stack Worker Clock (INACTIVE)
+     CLOCK:  Thief Clock
+
+-- Mushroom Groves Actions (INACTIVE): 2 action(s), 0 clock(s), 0 other
+     ACTION: Forage for Fungus Action
+     ACTION: Collect Spores Action
+
+-- The Aviary Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Clear Overgrowth Action
+     CLOCK:  Sunlit Refuge Clock
+
+-- The Aviary 2 Actions (INACTIVE): 1 action(s), 0 clock(s), 2 other
+     ACTION: Germinate Spores Action
+     OTHER:  Fungal beds
+     OTHER:  Loop Switch (Fungus)
+
+-- The Aviary 3 Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Fungal Growth Clock
+
+-- The Aviary 4 Actions (INACTIVE): 1 action(s), 1 clock(s), 1 other
+     ACTION: Harvest Mushrooms Action
+     CLOCK:  Fungal Yield Clock
+     OTHER:  Loop Switch (Fungus)
+
+-- Hypha Commune Actions (INACTIVE): 1 action(s), 1 clock(s), 2 other
+     ACTION: Work the Grow Beds Action
+     CLOCK:  Matsu Member Clock
+     OTHER:  Clock Connector
+     OTHER:  Work the Canteen Action 
+
+-- Hypha Commune Actions 2 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Commune Shift Action
+
+-- Hypha Labs Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Grove Spores Action
+     CLOCK:  Spore Study Clock
+
+-- Hypha Labs Actions 2 (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Deliver Matsutake Action
+     ACTION: Deliver Girolles Action
+     CLOCK:  Fruiting Bodies Clock
+     OTHER:  Clock Connector (1)
+
+-- Hypha Labs Actions 3 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Deliver Clubheads Action
+     CLOCK:  Clubhead Analysis Clock
+
+-- Hypha Labs Actions 4 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Deliver Clubheads Action
+
+-- Riko's Growbeds Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Plant Seed Action
+
+-- Riko's Growbeds Actions 2 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Gardener's Gift Clock
+
+-- Hypha Dorm Actions (INACTIVE): 3 action(s), 2 clock(s), 8 other
+     ACTION: Inject Stabilizer Action (INACTIVE)
+     ACTION: Sunbathe Action (INACTIVE)
+     ACTION: Self Repair Action (INACTIVE)
+     CLOCK:  Hunted Clock (INACTIVE)
+     CLOCK:  Terminal Flux Clock (INACTIVE)
+     OTHER:  Action Switch (Stabilizer)
+     OTHER:  Action Switch (Maywick) (1)
+     OTHER:  Action Switch (Sunbathe)
+     OTHER:  Action Switch (Self Repair)
+     OTHER:  Action Switch (Hunted)
+     OTHER:  Maywick Clock (1) (INACTIVE)
+     OTHER:  End Cycle Action (1)
+     OTHER:  Action Switch (Terminal Flux)
+
+-- The Wastes Actions (INACTIVE): 1 action(s), 1 clock(s), 1 other
+     ACTION: Gather Scrap Action
+     CLOCK:  Wastelander Clock (INACTIVE)
+     OTHER:  Explore the Deeprim (INACTIVE)
+
+-- Castors Table Actions (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Yatagan Data Action
+     ACTION: Havenage Data Action
+     CLOCK:  Data Fence Clock (INACTIVE)
+     OTHER:  Clock Connector (1) (INACTIVE)
+
+-- Castors Table Actions 2 (INACTIVE): 0 action(s), 0 clock(s), 0 other
+
+-- Kompressor Club Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Ethan's Tab Clock
+
+-- Kompressor Club Actions 2 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Pay Ethan's Tab Action
+     CLOCK:  Ethan's Deadline Clock
+
+-- Kompressor Club Actions 3 (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Ethan's Tab Clock (1)
+
+-- Kompressor Club Actions 4 (INACTIVE): 0 action(s), 0 clock(s), 2 other
+     OTHER:  Action Switch (Tracker Removed)
+     OTHER:  Ethan's Vendetta
+
+-- Kompressor Club Actions 5 (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Work the Front Action
+     ACTION: Work the Back Action
+     CLOCK:  Ethan's Debt Clock
+     OTHER:  Clock Connector (1)
+
+-- Kompressor Club Actions 6 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Grab the Gun Action
+
+-- Lowend Gate Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Pay Lowend Toll Action
+
+-- Rabiah's Office Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Appointment with Rabiah Clock
+
+-- Rabiah's Ward Actions (INACTIVE): 2 action(s), 0 clock(s), 2 other
+     ACTION: Collect Tithes Action
+     ACTION: Patrol the Ward Action
+     OTHER:  Clock Connector (1)
+     OTHER:  Yatagan Insider
+
+-- Sidereal Horizon Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Moving Horizon Clock
+
+-- Wild Margins Actions (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Look for Tracks Action
+     ACTION: Search for Signals Action
+     CLOCK:  Tracking Ashton Clock
+     OTHER:  Clock Connector
+
+-- AE1 MainFrame Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Imprinted Shipmind Action
+
+-- AE1 MainFrame Actions 2 (INACTIVE): 2 action(s), 2 clock(s), 0 other
+     ACTION: Redirect Branches Action
+     ACTION: Slice Hardware Action
+     CLOCK:  Killer is Dead Clock
+     CLOCK:  Catch a Killer Clock
+
+-- AE1 Branch 01 Actions (INACTIVE): 0 action(s), 1 clock(s), 1 other
+     CLOCK:  Branch Access Clock
+     OTHER:  Encrypted Key Action Template
+
+-- AE1 Branch 02 Actions (INACTIVE): 0 action(s), 0 clock(s), 2 other
+     OTHER:  Encrypted Key Action Template (1)
+     OTHER:  Branch Access Clock (1)
+
+-- AE1 Branch 03 Actions (INACTIVE): 0 action(s), 0 clock(s), 2 other
+     OTHER:  Encrypted Key Action Template (2)
+     OTHER:  Branch Access Clock (2)
+
+-- Rabiah's Office Actions 2 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Enemy of my Enemy Clock
+
+-- Yannick's Ward Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Patrol the Block Action
+     CLOCK:   Yannick's Trust Clock
+
+-- Yannick's Office Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Search the Office Action
+
+-- Rabiah's Office Actions 3 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  The Aftermath Clock
+
+-- Feng's Bay Actions 1b (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Shipyard Rip Clock
+
+-- Service Dock Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Waiting for Feng Clock
+
+-- Service Dock Actions 2 (INACTIVE): 0 action(s), 2 clock(s), 0 other
+     CLOCK:  Conway Extraction Clock
+     CLOCK:  Fengs Progress Clock
+
+-- Ambergris Revisited Actions (INACTIVE): 1 action(s), 0 clock(s), 1 other
+     ACTION: Disarm the Ship Action
+     OTHER:  Refitting Amber
+
+-- Bliss's Bay 6 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Component Repair Action
+
+-- Reservoir S3 Actions (INACTIVE): 2 action(s), 2 clock(s), 1 other
+     ACTION: Siphon Water Action
+     ACTION: Hack Alert System Action
+     CLOCK:  Havenage Alert Clock
+     CLOCK:  Water for the Flotilla Clock
+     OTHER:  Clock Connector
+
+-- Reservoir S3 Actions 2 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Reservoir Lockdown Clock
+
+-- Climbing Briar Actions (INACTIVE): 1 action(s), 0 clock(s), 1 other
+     ACTION: Supply Girolles Action
+     OTHER:  Flux Text
+
+-- Climbing Briar 2 Actions (INACTIVE): 1 action(s), 3 clock(s), 0 other
+     ACTION: Scrap for the Flotilla Action
+     CLOCK:  Briar's Hold Clock
+     CLOCK:  Peake's Plan Clock
+     CLOCK:  Eshe's Run Clock
+
+-- Algae Stack Actions (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Negotiate Access Action
+     CLOCK:  Algae Access Clock
+
+-- Algae Stack Actions 2 (INACTIVE): 2 action(s), 1 clock(s), 2 other
+     ACTION: Harvest Algae Action
+     ACTION: Accelerate Growth Action
+     CLOCK:  Algae Growth Clock
+     OTHER:  Clock Connector (1)
+     OTHER:  Food for the Flotilla
+
+-- Havenage Cordon Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Meeting Peake Clock
+
+-- Havenage Cordon Actions 2 (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Intercept Comms Action
+     ACTION: Blend in with a Crew Action
+     CLOCK:  Cordon Intel Clock
+     OTHER:  Clock Connector (1)
+
+-- Crew Canteen Actions (INACTIVE): 2 action(s), 2 clock(s), 1 other
+     ACTION: Deflect Suspicion Action
+     ACTION: Convince a Crew Action
+     CLOCK:  Havenage Suspicion Clock
+     CLOCK:  Tug Escort Clock
+     OTHER:  Clock Connector
+
+-- Havenage Hangar Actions (INACTIVE): 1 action(s), 1 clock(s), 1 other
+     ACTION: Slice Thrusters Action
+     CLOCK:  Briar Upgrade Clock
+     OTHER:  Havenage Suspicion Clock (1)
+
+-- Cordon Operations Actions (INACTIVE): 1 action(s), 1 clock(s), 1 other
+     ACTION: Sabotage Sensors Action
+     CLOCK:  Blind Spot Clock
+     OTHER:  Havenage Suspicion Clock (2)
+
+-- Briar Base Camp Actions (INACTIVE): 3 action(s), 2 clock(s), 8 other
+     ACTION: Inject Stabilizer Action (INACTIVE)
+     ACTION: Sunbathe Action (INACTIVE)
+     ACTION: Self Repair Action (INACTIVE)
+     CLOCK:  Hunted Clock (INACTIVE)
+     CLOCK:  Terminal Flux Clock (INACTIVE)
+     OTHER:  Action Switch (Stabilizer)
+     OTHER:  Action Switch (Maywick) (1)
+     OTHER:  Action Switch (Sunbathe)
+     OTHER:  Action Switch (Self Repair)
+     OTHER:  Action Switch (Hunted)
+     OTHER:  Maywick Clock (1) (INACTIVE)
+     OTHER:  End Cycle Action (1)
+     OTHER:  Action Switch (Terminal Flux)
+
+-- Havenage Cordon Actions 3 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Cleaning Up Clock
+
+-- Havenage Cordon Actions 4 (INACTIVE): 0 action(s), 1 clock(s), 1 other
+     CLOCK:  The Gathering Storm Clock
+     OTHER:  Flux Text
+
+-- Havenage Cordon Actions 5 (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Cordon Sweep Clock
+
+-- Havenage Cordon Actions 6 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Scrap for Passage Action
+
+-- Havenage Cordon Actions 7 (INACTIVE): 1 action(s), 0 clock(s), 1 other
+     ACTION: Send The Data Action
+     OTHER:  Flux Text
+
+-- The Flotilla Actions  (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Haul Supplies Action
+     ACTION: Damage Control Action
+     CLOCK:  Flotilla Friend Clock
+     OTHER:  Clock Connector
+
+-- Scuttled Ship Actions (INACTIVE): 0 action(s), 0 clock(s), 0 other
+
+-- Dusthouses Actions (INACTIVE): 0 action(s), 0 clock(s), 2 other
+     OTHER:  Systems Maintenance
+     OTHER:  Make Yourself Useful clock
+
+-- Dusthouses Actions 2 (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Stepsilk Care Action
+     ACTION: Dusthouse Shielding Action
+     CLOCK:  Preservation Clock
+     OTHER:  Clock Connector
+
+-- Dusthouses Actions 3 (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Dusthouse Tending Action
+     ACTION: Harvest Automation Action
+     CLOCK:  Greening Step Clock
+     OTHER:  Clock Connector
+
+-- Docking Structure Actions (INACTIVE): 1 action(s), 0 clock(s), 1 other
+     ACTION: Supply Unloading Action
+     OTHER:  Unwelcome Aid clock
+
+-- Docking Structure Actions 2 (INACTIVE): 1 action(s), 1 clock(s), 2 other
+     ACTION: Supply Spores Action
+     CLOCK:  Axis Supply Clock
+     OTHER:  Clock Connector (1)
+     OTHER:  Shipmind Replacement
+
+-- Docking Structure Actions 3 (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Crew Socialising Action
+     ACTION: Axis Job Board Action
+     CLOCK:  Axis Assistance Clock
+     OTHER:  Clock Connector (1)
+
+-- Docking Structure Actions 4 (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Crew Management Action
+     ACTION: Axis Reclamation Action
+     CLOCK:  Axis Assistance Clock
+     OTHER:  Clock Connector (1)
+
+-- Climbing Briar 3 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Deliver Flux Data 1 Action
+
+-- Climbing Briar 4 Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Peake's Progress Clock
+
+-- Climbing Briar 5 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Deliver Flux Data 2 Action
+
+-- Climbing Briar 6 Actions (INACTIVE): 0 action(s), 1 clock(s), 1 other
+     CLOCK:  Gathering Evidence Clock
+     OTHER:  Refuge Text
+
+-- Climbing Briar 7 Actions (INACTIVE): 1 action(s), 2 clock(s), 0 other
+     ACTION: Devise a Strategy Action
+     CLOCK:  A Desperate Plan Clock
+     CLOCK:  Terminal Flux Clock
+
+-- Climbing Briar 8 Actions (INACTIVE): 0 action(s), 1 clock(s), 0 other
+     CLOCK:  Terminal Flux Clock
+
+-- Pilgrim Seed Actions (INACTIVE): 2 action(s), 2 clock(s), 1 other
+     ACTION: Pilgrim Seed Support Action
+     ACTION: Pilgrim Seed Supply Action
+     CLOCK:  Step, Song and Hearth Clock
+     CLOCK:  Hearth Survival Clock
+     OTHER:  Clock Connector (1)
+
+-- Pilgrim Seed Actions 2 (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Step, Song and Hearth Clock (1)
+
+-- Pilgrim Seed Actions 3 (INACTIVE): 1 action(s), 1 clock(s), 2 other
+     ACTION: Supply Hauling Action
+     CLOCK:  Pilgrim Prep Clock
+     OTHER:  Clock Connector 
+     OTHER:  Berth Refitting Action 
+
+-- Life Support Actions 1 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Crack Access Codes Action
+     CLOCK:  Hacked Entry Clock
+
+-- Life Support Actions 2 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Seed Life Support Action
+     CLOCK:  Seed Systems Clock
+
+-- Rotational Control Actions 1 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Breach Bulkhead Action
+     CLOCK:  Forced Entry Clock
+
+-- Rotational Control Actions 2 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Seed Rotational Control Action
+     CLOCK:  Seed Systems Clock
+
+-- Power Routing Actions 1 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Persuade Security Action
+     CLOCK:  Negotiated Entry Clock
+
+-- Power Routing Actions 2 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Seed Power Routing Action
+     CLOCK:  Seed Systems Clock
+
+-- Feng's Bay Actions 4 (INACTIVE): 1 action(s), 1 clock(s), 0 other
+     ACTION: Find Feng Action
+     CLOCK:  A Difficult Man Clock
+
+-- Control Facility Actions (INACTIVE): 2 action(s), 1 clock(s), 1 other
+     ACTION: Explore Facility Action
+     ACTION: Hack Facility Action
+     CLOCK:  Crack the Facility Clock
+     OTHER:  Clock Connector
+
+=== 1_Action Groups TOTALS: 181 actions, 146 clocks, 142 other ===
+Groups with actions but ZERO clocks (41): ['Overlook Bar Actions', 'Overlook Bar Actions 3', 'Overlook Bar Actions 6', 'Sealed Dock Actions 3', 'Isolated Nest Actions', 'Glowing Nest Actions', 'Core Nest Actions', "Emphis's Stall Actions 2", "Emphis's Stall Actions 3", "Emphis's Stall Actions 4", "Sabine's Surgery Actions 2", 'Ort Exchange Actions 2', 'Ort Fabricator Actions', "Founder's Gap Actions", "Founder's Gap Actions 2", 'Paz Import Export Actions', 'Midline Freight Hub Actions', 'Ascender Car Actions', 'Descender Car Actions', "Bliss's Bay 1 Actions", 'Kisho Capsules Actions', "Founder's Ferry Actions", "Founder's Ferry Actions 2", 'Mushroom Groves Actions', 'The Aviary 2 Actions', 'Hypha Commune Actions 2', 'Hypha Labs Actions 4', "Riko's Growbeds Actions", 'Kompressor Club Actions 6', 'Lowend Gate Actions', "Rabiah's Ward Actions", 'AE1 MainFrame Actions', "Yannick's Office Actions", 'Ambergris Revisited Actions', "Bliss's Bay 6 Actions", 'Climbing Briar Actions', 'Havenage Cordon Actions 6', 'Havenage Cordon Actions 7', 'Docking Structure Actions', 'Climbing Briar 3 Actions', 'Climbing Briar 5 Actions']
+Groups with clocks but ZERO actions (35): ['Overlook Bar Actions 5', 'The Ambergris Actions -1', 'The Ambergris Actions 4', 'Sealed Dock Actions', "Sabine's Surgery Actions", 'Dock B-2 Actions', 'Dock C-4 Actions', "Feng's Bay Actions 2", 'Unit 207-F Actions 3', 'Shipyard Actions 2', 'Celis Ship Actions 2', 'Lems Unit Actions 2', "Bliss's Bay 3 Actions", "Bliss's Bay 4 Actions", 'Sidereal Dock Actions', 'Sidereal Dock Actions 2', 'The Aviary 3 Actions', "Riko's Growbeds Actions 2", 'Kompressor Club Actions', "Rabiah's Office Actions", 'Sidereal Horizon Actions', 'AE1 Branch 01 Actions', "Rabiah's Office Actions 2", "Rabiah's Office Actions 3", "Feng's Bay Actions 1b", 'Service Dock Actions', 'Service Dock Actions 2', 'Reservoir S3 Actions 2', 'Havenage Cordon Actions', 'Havenage Cordon Actions 3', 'Havenage Cordon Actions 4', 'Havenage Cordon Actions 5', 'Climbing Briar 4 Actions', 'Climbing Briar 6 Actions', 'Climbing Briar 8 Actions']
+
+=== 2_Hacking Action Groups: 40 location/group children ===
+
+-- Network Node 0831 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Network Node 0831 Action
+
+-- Network Node 4693 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Network Node 4693 Action
+
+-- Network Node Æ21 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Node Æ21 Action
+
+-- Network Node 9426 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Network Node 9426 Action
+
+-- Network Node 0021 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Network Node 0021 Action
+
+-- Network Node 0102 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Network Node 0102 Action
+
+-- Network Node Æ32 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Node Æ32 Action
+
+-- Network Node Æ07 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Node Æ07 Action
+
+-- Yatagan Agent Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Yatagan Agent 1 Action 
+
+-- Yatagan Agent 2 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Yatagan Agent 2 Action
+
+-- Havenage Agent Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Havenage Agent Action
+
+-- Havenage Agent 2 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Havenage Agent 2 Action
+
+-- Encrypted Gate S7 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Slot Solheim Cipher Action
+
+-- Encrypted Gate H4 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Slot Havenage Cipher Action
+
+-- Port H33 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Slot Ripperworm Action
+
+-- Nest 023 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Nest 023 Action
+
+-- Nest 005 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Nest 005 Action
+
+-- Nest 041 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Nest 041 Action
+
+-- Hardin Agent Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Hardin Agent Action 1 slot
+
+-- Hardin Agent Actions 2 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Slot Ripperworm 2 Action
+
+-- Hardin Agent 2 Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  Hardin Agent 2 Action slot (1)
+
+-- Hardin Agent 2 Actions 2 (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Slot Ripperworm 3 Action
+
+-- Conway Access Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Slot Ripperworm 4 Action
+
+-- Greenway Gate Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Slot Greeenway Cipher Action
+
+-- Network Node 422 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Network Node 422 Action
+
+-- Network Node 785 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Network Node 785 Action
+
+-- Network Node 564 Actions  (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Network Node 564 Action
+
+-- ConSec F1 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: ConSec F1 Hack Action
+
+-- ConSec S1 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: ConSec S1 Hack Action
+
+-- ConSec S2 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: ConSec S2 Hack Action
+
+-- ConSec X1 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: ConSec X2 Hack Action
+
+-- ConSec X2 Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  ConSec X2 Hack Action (1)
+
+-- ConSec X3 Actions (INACTIVE): 0 action(s), 0 clock(s), 1 other
+     OTHER:  ConSec X3 Hack Action (2)
+
+-- ConSec Port F Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Slot Ripperworm F Action
+
+-- ConSec Port S Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Slot Ripperworm S Action
+
+-- ConSec Port X Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Slot Ripperworm X Action
+
+-- Flux Node 1 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Flux Node 1 Action
+
+-- Flux Node 2 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Flux Node 2 Action
+
+-- Flux Node 3 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Flux Node 3 Action
+
+-- Flux Node 4 Actions (INACTIVE): 1 action(s), 0 clock(s), 0 other
+     ACTION: Flux Node 4 Action
+
+=== 2_Hacking Action Groups TOTALS: 35 actions, 0 clocks, 5 other ===
+Groups with actions but ZERO clocks (35): ['Network Node 0831 Actions', 'Network Node 4693 Actions', 'Network Node Æ21 Actions', 'Network Node 9426 Actions', 'Network Node 0021 Actions', 'Network Node 0102 Actions', 'Network Node Æ32 Actions', 'Network Node Æ07 Actions', 'Yatagan Agent 2 Actions', 'Havenage Agent Actions', 'Havenage Agent 2 Actions', 'Encrypted Gate S7 Actions', 'Encrypted Gate H4 Actions', 'Port H33 Actions', 'Nest 023 Actions', 'Nest 005 Actions', 'Nest 041 Actions', 'Hardin Agent Actions 2', 'Hardin Agent 2 Actions 2', 'Conway Access Actions', 'Greenway Gate Actions', 'Network Node 422 Actions', 'Network Node 785 Actions', 'Network Node 564 Actions ', 'ConSec F1 Actions', 'ConSec S1 Actions', 'ConSec S2 Actions', 'ConSec X1 Actions', 'ConSec Port F Actions', 'ConSec Port S Actions', 'ConSec Port X Actions', 'Flux Node 1 Actions', 'Flux Node 2 Actions', 'Flux Node 3 Actions', 'Flux Node 4 Actions']
+Groups with clocks but ZERO actions (0): []
+
+
+
+=== Drive System (top levels) ===
+Drive System
+  Drive Tracker HUD
+    Vertical Group
+      Quest Track Template
+        Quest Description
+        Quest Entry Description
+  CS Drive Log
+    Quest Log Window Main Panel
+      Vertical Group
+        Window Title (INACTIVE)
+        Main Button Horizontal Group
+        Quest Content Horizontal Group
+  Drive Log Button
+    BG
+    Outline
+    Highlight (INACTIVE)
+    Arrow
+    New Shine
+  Gamepad Prompt L
+    BG
+    Outline
+    Text (TMP)
