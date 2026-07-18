@@ -112,7 +112,7 @@ namespace CSAccess.Game
             foreach (var d in dice)
             {
                 sb.Append("die ").Append(d.SlotNumber).Append(", ");
-                if (d.State == "Used") sb.Append("used");
+                if (d.State == "Used") sb.Append("spent");
                 else if (d.State == "Slotted" || d.State.StartsWith("Boost")) sb.Append("value ").Append(d.Value).Append(", slotted");
                 else sb.Append("value ").Append(d.Value);
                 sb.Append(". ");
@@ -322,7 +322,7 @@ namespace CSAccess.Game
             foreach (var die in GetDice())
             {
                 if (die.SlotNumber != cursorNumber) continue;
-                if (die.State == "Used") return "Die " + cursorNumber + ", used";
+                if (die.State == "Used") return "Die " + cursorNumber + ", spent";
                 return "Die " + cursorNumber + ", value " + die.Value;
             }
             return "Die " + cursorNumber;
