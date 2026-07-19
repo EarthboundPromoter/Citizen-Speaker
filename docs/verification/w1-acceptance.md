@@ -16,8 +16,10 @@ All four predictions checked; substrate CONFIRMED. Details:
    this launch loaded a different playthrough (early-game drive tracker state,
    no upgrades spent) than the one the state log describes. Both saves
    presumably exist; which is current is the owner's to say. Numeric
-   energy/condition (bar-rendered, not text) still get their exact-number
-   cross-check via the C query's HUD-FSM read whenever the owner next presses C.
+   energy/condition cross-check CLOSED same session: the owner's C query
+   (HUD-FSM read) spoke "Energy 0. Condition 40, declining" — exact agreement
+   with the Lua snapshot. The single-store verdict (brief F) holds numerically;
+   W4's C-query migration to Lua is cleared.
    `drivePoints=?` = `Player_DrivePoints` unset in this save — presence-aware
    nil, working as designed.
 3. **PARTIALLY FALSIFIED, benign.** At the mid-load snapshot moment only
