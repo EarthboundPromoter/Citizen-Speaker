@@ -31,6 +31,33 @@ namespace CSAccess.Game
             return sb.ToString();
         }
 
+        // ---------- Cycle transition (end-cycle pipeline) ----------
+
+        private static PlayMakerFSM _cycleController;
+
+        public static PlayMakerFSM CycleControllerFsm()
+        {
+            if (_cycleController == null || _cycleController.gameObject == null)
+                _cycleController = FindFsm("Cycle Controller");
+            return _cycleController;
+        }
+
+        /// <summary>The Cycle Controller sits in Idle except while running the end-cycle
+        /// pipeline (live-verified; state list in docs/verification/A). During that pipeline
+        /// the game walks focus across every location's slots — announcements gate on this.</summary>
+        public static bool CycleTransitionActive()
+        {
+            var fsm = CycleControllerFsm();
+            return fsm != null && fsm.ActiveStateName != "Idle";
+        }
+
+        /// <summary>Durable commit signal: the game writes the slotted die's value here.</summary>
+        public static float SlottedDiceValueGlobal()
+        {
+            var v = HutongGames.PlayMaker.FsmVariables.GlobalVariables.GetFsmFloat("SlottedDiceValueGlobal");
+            return v != null ? v.Value : 0f;
+        }
+
         // ---------- Scripted input pauses ----------
 
         /// <summary>The Tutorial System's Input Pauser FSM pauses player input during scripted
@@ -250,27 +277,8 @@ namespace CSAccess.Game
         {
             var sb = new StringBuilder();
 
-            // Energy and condition: read the HUD bar FSMs that drive the rendered meters
-            // (live-verified 2026-07-18). The Cycle Controller's same-named locals are only
-            // populated transiently during the end-cycle computation — zero at Idle — and the
-            // game renders no cycle number at all, so neither is spoken here (clocks-not-content:
-            // the K clock dial covers time the way the game shows it).
-            var energyFsm = FindFsm("Energy Bar System", "Energy UI");
-            if (energyFsm != null && TryReadFsmNumber(energyFsm, "Player Energy", out int energy))
-                sb.Append("Energy ").Append(energy).Append(". ");
-            var conditionFsm = FindFsm("Condition System", "Energy UI");
-            if (conditionFsm != null && TryReadFsmNumber(conditionFsm, "Player Condition", out int condition))
-            {
-                sb.Append("Condition ").Append(condition);
-                // The FSM holds the rendered condition label in per-state string vars;
-                // exactly the current one is non-empty (e.g. Fading = "FADING").
-                string word = ConditionWord(conditionFsm);
-                if (word != null) sb.Append(", ").Append(word.ToLowerInvariant());
-                sb.Append(". ");
-            }
-            if (energyFsm == null || conditionFsm == null)
-                Plugin.Log.LogInfo("[Status] HUD meter FSM missing: energy="
-                    + (energyFsm != null) + " condition=" + (conditionFsm != null));
+            string meters = MetersBrief();
+            if (meters != null) sb.Append(meters).Append(' ');
 
             var cryo = GameObject.Find("Letterbox Canvas/Bottom UI/Inventory/ITEM Inventory UI/Cryo Slot /Amount");
             if (cryo != null)
@@ -288,6 +296,33 @@ namespace CSAccess.Game
                 }
             }
             return sb.Length > 0 ? "Status: " + sb.ToString().TrimEnd() : "Status not available.";
+        }
+
+        /// <summary>Energy and condition, read from the HUD bar FSMs that drive the rendered
+        /// meters (live-verified 2026-07-18). The Cycle Controller's same-named locals are only
+        /// populated transiently during the end-cycle computation — zero at Idle. The game
+        /// renders no cycle number in station view, so none is spoken (clocks-not-content;
+        /// the save-slot label's cycle display is a pending separate source).</summary>
+        public static string MetersBrief()
+        {
+            var sb = new StringBuilder();
+            var energyFsm = FindFsm("Energy Bar System", "Energy UI");
+            if (energyFsm != null && TryReadFsmNumber(energyFsm, "Player Energy", out int energy))
+                sb.Append("Energy ").Append(energy).Append(". ");
+            var conditionFsm = FindFsm("Condition System", "Energy UI");
+            if (conditionFsm != null && TryReadFsmNumber(conditionFsm, "Player Condition", out int condition))
+            {
+                sb.Append("Condition ").Append(condition);
+                // The FSM holds the rendered condition label in per-band string vars;
+                // exactly the current one is non-empty (e.g. Fading = "FADING").
+                string word = ConditionWord(conditionFsm);
+                if (word != null) sb.Append(", ").Append(word.ToLowerInvariant());
+                sb.Append('.');
+            }
+            if (energyFsm == null || conditionFsm == null)
+                Plugin.Log.LogInfo("[Status] HUD meter FSM missing: energy="
+                    + (energyFsm != null) + " condition=" + (conditionFsm != null));
+            return sb.Length > 0 ? sb.ToString().TrimEnd() : null;
         }
 
         private static readonly string[] ConditionWordVars =

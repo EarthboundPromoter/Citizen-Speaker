@@ -79,6 +79,10 @@ namespace CSAccess.UI
                 string role = selectable is Button ? " button" : "";
                 if (selectable is Toggle toggle)
                     role = toggle.isOn ? " toggle, on" : " toggle, off";
+                // Character window skill rows: each row's Confirm/Back buttons carry identical
+                // labels — prefix the owning skill so they're distinguishable (triage report 20).
+                string skillRow = AncestorDirectlyUnder(go, "SKILL List");
+                if (skillRow != null) return skillRow + ": " + label + role;
                 return label + role;
             }
             return name;
@@ -234,6 +238,15 @@ namespace CSAccess.UI
         {
             return Mathf.Abs(a.r - b.r) < 0.05f && Mathf.Abs(a.g - b.g) < 0.05f
                 && Mathf.Abs(a.b - b.b) < 0.05f && Mathf.Abs(a.a - b.a) < 0.05f;
+        }
+
+        /// <summary>Name of the ancestor of go that is a direct child of containerName,
+        /// or null if go isn't inside such a container.</summary>
+        private static string AncestorDirectlyUnder(GameObject go, string containerName)
+        {
+            for (var cur = go.transform; cur != null && cur.parent != null; cur = cur.parent)
+                if (cur.parent.name == containerName) return cur.name;
+            return null;
         }
 
         public static bool HasAncestor(GameObject go, string name)

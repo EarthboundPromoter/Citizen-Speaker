@@ -48,6 +48,8 @@ namespace CSAccess
             CheckResponseFocus();
             CheckPauseMenu();
             CheckDriveLog();
+            CheckCharacterWindow();
+            CheckCycleTransition();
             // Mode switching is last-input-wins in InputManager.Tick now — the old 3s
             // re-assert loop fought sighted co-pilot mouse use (hid the cursor).
         }
@@ -293,6 +295,9 @@ namespace CSAccess
                 _controllerStates[id] = state;
                 if (!known) continue;
 
+                if (previous == "Idle")
+                    _lastControllerLeftIdle = Time.unscaledTime;
+
                 string outcome = state switch
                 {
                     "Positive Outcome" => "positive outcome",
@@ -307,6 +312,14 @@ namespace CSAccess
                     ? (UI.Describe.TextUnder(actionRoot, "Action Name") ?? actionRoot.name)
                     : "Action";
                 SpeechService.Say(actionName + ": " + outcome + ".", Priority.Queued, "outcome");
+
+                // Auto-read the card's rendered result (triage 22/23): the visible outcome
+                // tier's effect lines, then the completion narrative the game writes into
+                // the card's Description element. Content is rendered text only; the FSM
+                // transition is just the clock.
+                string extras = DescribeOutcomeCard(actionRoot);
+                if (extras != null)
+                    SpeechService.Say(extras, Priority.Queued, "outcome");
             }
             if (_controllerStates.Count > 300) _controllerStates.Clear();
         }
@@ -314,6 +327,8 @@ namespace CSAccess
         private string _diceSystemState;
         private bool _diceStateKnown;
         private float _lastSlottedTime = -10f;
+        private float _slottedGlobalAtOpen;
+        private float _lastControllerLeftIdle = -10f;
         private readonly Dictionary<int, string> _diceSlotStates = new Dictionary<int, string>();
 
         /// <summary>Announce dice-allocation mode transitions. The Dice Gamepad System FSM is
@@ -335,10 +350,29 @@ namespace CSAccess
                 string previous = _diceSystemState;
                 _diceSystemState = state;
                 if (state == "Active")
+                {
+                    _slottedGlobalAtOpen = GameQueries.SlottedDiceValueGlobal();
                     SpeechService.Say("Choose a die. Arrows to choose, Enter to slot, Backspace to cancel.",
                         Priority.Immediate, "dice");
+                }
                 else if (previous == "Active" && Time.unscaledTime - _lastSlottedTime > 1.5f)
-                    SpeechService.Say("Die picker closed.", Priority.Immediate, "dice");
+                {
+                    // The slot FSM's Slotted state is transient and the poll misses it
+                    // (triage report 13) — decide commit vs cancel from durable signals:
+                    // the slotted-value global changing, or an Action Controller leaving
+                    // Idle just now (tracked by CheckActionOutcomes).
+                    bool committed = GameQueries.SlottedDiceValueGlobal() != _slottedGlobalAtOpen
+                        || Time.unscaledTime - _lastControllerLeftIdle < 1.5f;
+                    if (committed)
+                    {
+                        _lastSlottedTime = Time.unscaledTime;
+                        SpeechService.Say("Die slotted.", Priority.Immediate, "dice");
+                    }
+                    else
+                    {
+                        SpeechService.Say("Die picker closed.", Priority.Immediate, "dice");
+                    }
+                }
             }
 
             // A slot FSM reaching Slotted is the commit signal; the outcome watcher speaks next.
@@ -365,9 +399,12 @@ namespace CSAccess
 
         private Transform _driveLog;
         private bool _driveLogWasOpen;
+        private bool _driveLogBaselined;
 
         /// <summary>Announce the drive log window opening/closing. The window hides via its
-        /// CanvasGroup (Animator-driven), so visibility is alpha, not active state.</summary>
+        /// CanvasGroup (Animator-driven), so visibility is alpha, not active state. The first
+        /// sighting only records state — the Animator can sit at alpha 1 for a moment during
+        /// scene load, which spoke a false "open" (validation session 2026-07-18).</summary>
         private void CheckDriveLog()
         {
             if (_driveLog == null)
@@ -375,15 +412,145 @@ namespace CSAccess
                 var win = GameObject.Find("Letterbox Canvas/Drive System/CS Drive Log");
                 if (win == null) return;
                 _driveLog = win.transform;
+                _driveLogBaselined = false;
             }
             var group = _driveLog.GetComponent<CanvasGroup>();
             bool open = _driveLog.gameObject.activeInHierarchy && (group == null || group.alpha > 0.5f);
+            if (!_driveLogBaselined)
+            {
+                _driveLogBaselined = true;
+                _driveLogWasOpen = open;
+                return;
+            }
             if (open != _driveLogWasOpen)
             {
                 SpeechService.Say(open ? "Drive log open." : "Drive log closed.",
                     Priority.Immediate, "nav");
                 _driveLogWasOpen = open;
             }
+        }
+
+        private Transform _characterWindow;
+        private bool _charWindowWasOpen;
+        private bool _charWindowBaselined;
+
+        /// <summary>Announce the character window opening/closing (triage report 20 — the
+        /// window opens fine; the mod just never said so). Same CanvasGroup-alpha pattern as
+        /// the drive log. On open, also speak the upgrade tracker's rendered points line.</summary>
+        private void CheckCharacterWindow()
+        {
+            if (_characterWindow == null)
+            {
+                var win = GameObject.Find("Letterbox Canvas/Character Window");
+                if (win == null) return;
+                _characterWindow = win.transform;
+                _charWindowBaselined = false;
+            }
+            var group = _characterWindow.GetComponent<CanvasGroup>();
+            bool open = _characterWindow.gameObject.activeInHierarchy && (group == null || group.alpha > 0.5f);
+            if (!_charWindowBaselined)
+            {
+                _charWindowBaselined = true;
+                _charWindowWasOpen = open;
+                return;
+            }
+            if (open == _charWindowWasOpen) return;
+            _charWindowWasOpen = open;
+            if (!open)
+            {
+                SpeechService.Say("Character window closed.", Priority.Immediate, "nav");
+                return;
+            }
+            var tracker = _characterWindow.Find("Upgrade Tracker");
+            string points = tracker != null ? UI.Describe.TextContaining(tracker, "POINT") : null;
+            SpeechService.Say("Character window open." + (points != null ? " " + points + "." : ""),
+                Priority.Immediate, "nav");
+        }
+
+        private string _cycleState;
+        private bool _cycleStateKnown;
+        private float _cycleLeftIdleAt = -1f;
+
+        /// <summary>Track the Cycle Controller's trip through the end-cycle pipeline. While it
+        /// is away from Idle, FocusPatch silences game-driven focus (the station-wide reset
+        /// sweep — triage report 3). On return to Idle, speak a summary from rendered-backed
+        /// sources: the new dice and the HUD meters. Guarded so the save-load path (which also
+        /// ends in Idle) never triggers it — only an observed Idle departure arms the summary.</summary>
+        private void CheckCycleTransition()
+        {
+            var fsm = GameQueries.CycleControllerFsm();
+            if (fsm == null) return;
+            string state = fsm.ActiveStateName;
+            if (!_cycleStateKnown)
+            {
+                _cycleStateKnown = true;
+                _cycleState = state;
+                return;
+            }
+            if (state == _cycleState) return;
+            string previous = _cycleState;
+            _cycleState = state;
+
+            if (previous == "Idle")
+            {
+                _cycleLeftIdleAt = Time.unscaledTime;
+                Plugin.Log.LogInfo("[Cycle] transition started: " + state);
+            }
+            else if (state == "Idle" && _cycleLeftIdleAt >= 0f)
+            {
+                _cycleLeftIdleAt = -1f;
+                string dice = GameQueries.DescribeDice();
+                string meters = GameQueries.MetersBrief();
+                SpeechService.Say("Cycle complete. " + (dice ?? "") + (meters != null ? " " + meters : ""),
+                    Priority.Queued, "cycle");
+            }
+        }
+
+        /// <summary>Rendered outcome content of a resolved action card: the visible tier's
+        /// effect lines (leading +/- glyphs transcoded to words, counts not interpreted),
+        /// then the completion narrative from the Description element.</summary>
+        private static string DescribeOutcomeCard(Transform actionRoot)
+        {
+            if (actionRoot == null) return null;
+            var parts = new List<string>();
+            var outcomes = actionRoot.Find("OUTCOMES");
+            if (outcomes != null)
+            {
+                foreach (var tmp in outcomes.GetComponentsInChildren<TMP_Text>(false))
+                {
+                    if (!tmp.gameObject.name.StartsWith("Effect")) continue;
+                    if (AlphaUpTo(tmp.transform, actionRoot) < 0.5f) continue;
+                    string txt = tmp.text?.Trim();
+                    if (string.IsNullOrEmpty(txt)) continue;
+                    txt = TranscribeEffect(txt);
+                    if (!parts.Contains(txt)) parts.Add(txt);
+                }
+            }
+            string narrative = UI.Describe.TextUnder(actionRoot, "Description");
+            if (narrative != null) parts.Add(narrative);
+            return parts.Count > 0 ? string.Join(". ", parts) : null;
+        }
+
+        private static string TranscribeEffect(string txt)
+        {
+            if (txt.StartsWith("++")) return "plus plus " + txt.Substring(2).Trim();
+            if (txt.StartsWith("--")) return "minus minus " + txt.Substring(2).Trim();
+            if (txt.StartsWith("+")) return "plus " + txt.Substring(1).Trim();
+            if (txt.StartsWith("-")) return "minus " + txt.Substring(1).Trim();
+            return txt;
+        }
+
+        /// <summary>Effective CanvasGroup visibility of t, multiplying alphas up to (not
+        /// including) stopAt.</summary>
+        private static float AlphaUpTo(Transform t, Transform stopAt)
+        {
+            float alpha = 1f;
+            for (var cur = t; cur != null && cur != stopAt; cur = cur.parent)
+            {
+                var g = cur.GetComponent<CanvasGroup>();
+                if (g != null) alpha *= g.alpha;
+            }
+            return alpha;
         }
 
         private static void AnnouncePanelTexts(Transform panel, string source, string prefix, string suffix)

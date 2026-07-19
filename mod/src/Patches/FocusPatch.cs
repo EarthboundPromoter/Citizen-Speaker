@@ -46,6 +46,15 @@ namespace CSAccess.Patches
 
             bool userInitiated = Time.unscaledTime < _userMoveExpires;
 
+            // The end-cycle pipeline walks focus across every location's slots station-wide
+            // (the reset sweep, triage report 3) — machinery, not information. Only the user's
+            // own navigation speaks while the Cycle Controller is away from Idle.
+            if (!userInitiated && Game.GameQueries.CycleTransitionActive())
+            {
+                Plugin.Log.LogInfo("[Focus] suppressed (cycle transition): " + selected.name);
+                return;
+            }
+
             int id = selected.GetInstanceID();
             float now = Time.unscaledTime;
             // The cooldown exists to de-chatter game-driven reselection ping-pong;
