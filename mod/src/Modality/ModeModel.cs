@@ -129,10 +129,15 @@ namespace CSAccess.Modality
             return root != null && root.activeInHierarchy;
         }
 
-        /// <summary>Autoplay flags — corpus-verified writers (brief F MODE MACHINERY),
-        /// both present in the live globals dump.</summary>
+        /// <summary>Autoplay Waiting ONLY (live finding 2026-07-19): Scenes Active? is
+        /// scenery-engaged, not input-held — the Intro Sequence raises it across
+        /// INTERACTIVE tutorial beats (brief F: Action Tutorial / Dice + Energy
+        /// Tutorial 3 write True), which stuck the station in a listening mode after
+        /// the intro handoff. Autoplay Waiting is the designed hold signal: the scene
+        /// templates set it true exactly in their Autoplay Wait states and false on
+        /// completion.</summary>
         private static bool AutoplayActive()
-            => GlobalBool("Scenes Active?") || GlobalBool("Autoplay Waiting");
+            => GlobalBool("Autoplay Waiting");
 
         /// <summary>A visible tutorial panel: an active Tutorial System child that isn't
         /// the continue Button or the always-active Input Pauser, and that carries
