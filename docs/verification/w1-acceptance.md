@@ -5,21 +5,31 @@
 All four predictions checked; substrate CONFIRMED. Details:
 
 1. **CONFIRMED.** `FsmSignals hook alive: 11 state entries observed` at title.
-2. **CONFIRMED with a save-identity surprise.** Snapshot fired during station
-   load: `cycle=4 energy=0 condition=40 bits=80 upgradePoints=0 drivePoints=?
-   class=OPERATOR skills=-1/0/0/1/0 introComplete=True`. These disagree with the
-   session-3 save description (cycle ~7, INTUIT upgraded) — but bridge `/texts`
-   cross-check against rendered truth on the same launch matched the Lua values
-   exactly on every value the game renders as text: Class Name "OPERATOR",
-   Cryo Slot Amount "80", Points Av "0", condition band "DECLINING" with the
-   energy UI's STARVING label active (energy 0). Verdict: the adapter is right;
-   this launch loaded a different playthrough (early-game drive tracker state,
-   no upgrades spent) than the one the state log describes. Both saves
-   presumably exist; which is current is the owner's to say. Numeric
-   energy/condition cross-check CLOSED same session: the owner's C query
-   (HUD-FSM read) spoke "Energy 0. Condition 40, declining" — exact agreement
-   with the Lua snapshot. The single-store verdict (brief F) holds numerically;
-   W4's C-query migration to Lua is cleared.
+2. **CONFIRMED; the disagreement was in our records, not the reads.** Snapshot
+   fired during station load: `cycle=4 energy=0 condition=40 bits=80
+   upgradePoints=0 drivePoints=? class=OPERATOR skills=-1/0/0/1/0
+   introComplete=True`. Bridge `/texts` cross-check against rendered truth on
+   the same launch matched the Lua values exactly on every value the game
+   renders as text: Class Name "OPERATOR", Cryo Slot Amount "80", Points Av
+   "0", condition band "DECLINING" with the energy UI's STARVING label active
+   (energy 0). This session's first verdict ("a different playthrough was
+   loaded") was WRONG — owner correction: the save has not changed. The stale
+   data was the state log's save description: its "cycle ~7" (and session 2's
+   "~5") were session-close estimates never read from ground truth — no
+   readable cycle source existed before this adapter (which is why they carried
+   a tilde) — and its "condition 30" was a mid-session moment reading, not the
+   save's final state. Three independent game mechanisms agree on today's
+   values: the Lua `Cycle` variable (4), the rendered save-slot label the mod
+   spoke at the load menu ("cycle four" — separate save-descriptor mechanism),
+   and the C query's HUD-FSM read ("Energy 0. Condition 40, declining" — exact
+   numeric agreement with the Lua snapshot, closing the single-store verdict;
+   W4's C-query migration to Lua is cleared). The INTUIT-upgrade record stays
+   consistent if OPERATOR's INTUIT base is -1 (upgrade -1 → 0, points now 0) —
+   base spread unverified, low stakes. Open note, dev-forensic only: how the
+   estimates over-counted (intro beats vs real ticks) is unresolved; the
+   counter's single write site is Cycle Controller state `Tick Cycle`.
+   `drivePoints=?` = `Player_DrivePoints` unset in this save — presence-aware
+   nil, working as designed.
    `drivePoints=?` = `Player_DrivePoints` unset in this save — presence-aware
    nil, working as designed.
 3. **PARTIALLY FALSIFIED, benign.** At the mid-load snapshot moment only
