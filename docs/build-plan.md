@@ -148,17 +148,53 @@ it.
 - Leave paths per mode via the shared window template's close event; cloud exit
   scoped to the S toggle.
 
-**W3 — Focus models per the E verdicts:**
-- Most contexts are NATIVE (ride the graph): station roam, action slots, dice
-  picker (station+cloud identical), dialogue continue, end-cycle, inventory.
-  Response menu is native-but-C#-mediated. Cycle transition is READOUT.
+**W3 — Focus models per the E verdicts (grounding docs: E + H focus assessment;
+amended 2026-07-19 after the session-5 incident cascade):**
+- Governing principle (H): the game runs one coherent focus protocol — claiming
+  (Checker variants), anchoring (designed per-context anchors), hand-off (RefocusUI /
+  UI selector Reset / Confirm backstop, always event-marked). The mod JOINS this
+  protocol; it does not shadow it with polled reconstructions.
+- **FocusModel table** (data, not prose — same discipline as KeyScope): one row per
+  surface with designed anchor, Checker variant (fights / relinquishes / passive),
+  channel policy (NATIVE / NATIVE+INDEX / RERENDERED / READOUT), recovery idiom, and
+  the affordance signal that gives the surface key-precedence. Rows cite E/corpus or
+  are flagged for live confirmation. docs/focus-model.md is the design artifact
+  (owner-reviewed per surface before code).
+- **Channel law** (binding): a mod-constructed index or review view (N tree, K index,
+  skill/drive tables) never holds or moves EventSystem selection while browsing —
+  browsing is mod-owned cursor state over rendered/data truth; commit = exactly one
+  designed native activation, then authority returns to the native channel. Native
+  navigation (incl. station Automatic-spatial movement) is preserved as-is alongside
+  every index.
+- **Universal mode-aware re-anchor**: the empty-Enter Confirm-backstop mirror extends
+  to every mode using that mode's designed recovery from its FocusModel row
+  (dialogue → reselect Continue Button; picker → its own anchor machinery; windows →
+  their delayed anchors; station → UI selector Reset, shipped).
+- **Resync discipline**: subscribe to RefocusUI + UI selector Reset via FsmSignals as
+  focus-settling cues; never set selection in the same frame (E practical rule,
+  enforced in code).
+- **W2 revision folded in** (corrections to shipped internals; KeyScope interface
+  stands): mode derived from the game's own events first (window lifecycles via
+  FsmSignals on the button FSMs' states; conversation/cycle/tutorial already
+  event-driven), flag/alpha polls demoted to boot initialization + divergence
+  diagnostics; precedence derived from rendered/held input affordance (selection
+  identity is a sanctioned signal — the game's own idiom) instead of a hand-ordered
+  list. The three session-5 fixes (drive-log open signal, inventory designed
+  toggle + Up/Down = designed Swap, S-key native camera-scroll collision) land as
+  instances of this model, not spot patches.
+- Sequencing: the W2 live-verification remainder re-runs AFTER this lands (its
+  blockers were mode-authority bugs — H incident ledger 7–9).
 - The Checker-variant table (watchdog / one-shot / state-entry-only) defines what
   the mod may select freely vs must never fight — consult before any focus feature.
 - Logical-cursor rebuilds only where nav is Automatic-spatial soup: character
   window (shipped) and any future context that fails the same test.
 - Inventory constraint (E): focus leaving `Item Cursor`-named objects auto-closes
-  the strip — any inventory review must stay inside them.
+  the strip — any inventory review must stay inside them (a RERENDERED browse that
+  never moves real selection satisfies this by construction).
 - Correction: retract D's Drive Log Button attribution (string-extraction artifact).
+- Correction (H, from level0 Rewired dump): the game's shipped keyboard map is five
+  binds — W/S camera scroll, A/D rotate, Tab DEBUG MENU. Our S key collides with a
+  native camera bind; Tab's kill is vindicated. input-contract.md updated in W3.
 
 **W4 — Features re-derived on the new substrate:**
 - C query → Lua (cycle/energy/condition; condition band word from HUD or bucket).
