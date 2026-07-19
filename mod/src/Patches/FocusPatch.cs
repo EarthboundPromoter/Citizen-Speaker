@@ -42,6 +42,7 @@ namespace CSAccess.Patches
 
         private static float _lastStripReanchor = -10f;
         private static float _reanchorAt = -1f;
+        private static Modality.Mode _reanchorMode = Modality.Mode.ActionView;
 
         // BL-10 freshness deferral: the Inventory Display populates a beat after the
         // cursor moves — announcing immediately would read the PREVIOUS item's name.
@@ -57,7 +58,7 @@ namespace CSAccess.Patches
             if (_reanchorAt >= 0 && Time.unscaledTime >= _reanchorAt)
             {
                 _reanchorAt = -1f;
-                Modality.FocusModel.ReAnchor(Modality.Mode.ActionView);
+                Modality.FocusModel.ReAnchor(_reanchorMode);
             }
 
             if (_pendingItem != null && Time.unscaledTime >= _pendingItemAt)
@@ -128,18 +129,25 @@ namespace CSAccess.Patches
             // designed recovery — the same RefocusUI hand-off the game uses. Never
             // the same frame (resync discipline); rate-limited so a recovery that
             // itself lands on the strip cannot loop.
+            // Extended to Station (build-queue Q5): the same artifact parked an L
+            // query on "DATA button" at the station map — recovery there is the
+            // UI-selector Reset, the station's designed re-anchor.
             if (!userInitiated
                 && !Modality.WindowState.InventoryOpen
                 && Describe.HasAncestor(selected, "Bottom UI")
                 && Describe.HasAncestor(selected, "Inventory")
-                && Time.unscaledTime - _lastStripReanchor > 1.5f
-                && Modality.ModeModel.Current() == Modality.Mode.ActionView)
+                && Time.unscaledTime - _lastStripReanchor > 1.5f)
             {
-                _lastStripReanchor = Time.unscaledTime;
-                _reanchorAt = Time.unscaledTime + 0.1f;
-                Plugin.Log.LogInfo("[Focus] strip steal suppressed (" + selected.name
-                    + "): ActionView re-anchor scheduled.");
-                return;
+                var mode = Modality.ModeModel.Current();
+                if (mode == Modality.Mode.ActionView || mode == Modality.Mode.Station)
+                {
+                    _lastStripReanchor = Time.unscaledTime;
+                    _reanchorAt = Time.unscaledTime + 0.1f;
+                    _reanchorMode = mode;
+                    Plugin.Log.LogInfo("[Focus] strip steal suppressed (" + selected.name
+                        + "): " + mode + " re-anchor scheduled.");
+                    return;
+                }
             }
 
             int id = selected.GetInstanceID();

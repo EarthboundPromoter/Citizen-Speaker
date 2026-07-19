@@ -316,13 +316,31 @@ namespace CSAccess.UI
             return null;
         }
 
+        /// <summary>First rendered text under go, skipping gamepad-prompt glyph children
+        /// (BL-2: the Scan Button's first text is its glyph child, which spoke as
+        /// "Y button" — a glyph is never an element's label; full glyph transcode is
+        /// the separate W4 item).</summary>
         public static string FirstText(GameObject go)
         {
-            var tmp = go.GetComponentInChildren<TMP_Text>(false);
-            if (tmp != null && !string.IsNullOrWhiteSpace(tmp.text)) return tmp.text.Trim();
-            var legacy = go.GetComponentInChildren<Text>(false);
-            if (legacy != null && !string.IsNullOrWhiteSpace(legacy.text)) return legacy.text.Trim();
+            foreach (var tmp in go.GetComponentsInChildren<TMP_Text>(false))
+            {
+                if (UnderPromptGlyph(tmp.transform, go.transform)) continue;
+                if (!string.IsNullOrWhiteSpace(tmp.text)) return tmp.text.Trim();
+            }
+            foreach (var legacy in go.GetComponentsInChildren<Text>(false))
+            {
+                if (UnderPromptGlyph(legacy.transform, go.transform)) continue;
+                if (!string.IsNullOrWhiteSpace(legacy.text)) return legacy.text.Trim();
+            }
             return null;
+        }
+
+        private static bool UnderPromptGlyph(Transform t, Transform stopAt)
+        {
+            for (var cur = t; cur != null && cur != stopAt; cur = cur.parent)
+                if (cur.name.Contains("Gamepad Prompt") || cur.name.StartsWith("Gamepad Glyph"))
+                    return true;
+            return false;
         }
 
         public static string TextUnder(Transform root, string childName)

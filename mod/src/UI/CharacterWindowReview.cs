@@ -175,14 +175,69 @@ namespace CSAccess.UI
                         if (b.gameObject.name == "Upgrade Button Perk " + _perkIndex)
                         { perkButton = b; break; }
                 if (perkButton != null)
+                {
+                    ArmPurchaseCheck(skill, _perkIndex);
                     Navigator.Click(perkButton.gameObject);
+                }
                 else
                     SpeechService.Say("Not activatable.", Priority.Immediate, "nav");
                 return true;
             }
 
+            if (SkillRowOf(targets[_index]) != null)
+                ArmPurchaseCheck(null, 0);
             Navigator.Click(targets[_index]);
             return true;
+        }
+
+        // ---------- BL-9: purchases and refusals were silent ----------
+        // A skill-row activation either buys a rung (points drop, and a perk buy
+        // renders its FG marker) or is game-refused with no rendered change at all
+        // (live: two Enters on zero points, dead silent). Truth = the rendered
+        // Points Av line + the FG marker, read a beat after the click.
+
+        private static string _pointsBefore;
+        private static Transform _fgWatch;
+        private static bool _fgWasActive;
+        private static float _checkAt = -1f;
+
+        private static string PointsLine()
+        {
+            var w = Window();
+            var pointsAv = w != null ? w.Find("Upgrade Tracker/Top Line/Points UI/Points Av") : null;
+            return pointsAv != null ? Describe.JoinTexts(pointsAv.gameObject, 2) : null;
+        }
+
+        private static void ArmPurchaseCheck(Transform skillRow, int perkIndex)
+        {
+            _pointsBefore = PointsLine();
+            _fgWatch = null;
+            _fgWasActive = false;
+            if (skillRow != null && perkIndex > 0)
+            {
+                var fg = skillRow.Find("FG Markers /Perk " + perkIndex);
+                if (fg == null) fg = skillRow.Find("FG Markers/Perk " + perkIndex);
+                _fgWatch = fg;
+                _fgWasActive = fg != null && fg.gameObject.activeInHierarchy;
+            }
+            _checkAt = Time.unscaledTime + 0.3f;
+        }
+
+        /// <summary>From Plugin.Update: the deferred post-activation read.</summary>
+        public static void Tick()
+        {
+            if (_checkAt < 0 || Time.unscaledTime < _checkAt) return;
+            _checkAt = -1f;
+            if (!IsActive()) return;
+            string after = PointsLine();
+            bool fgAppeared = _fgWatch != null && !_fgWasActive
+                && _fgWatch.gameObject.activeInHierarchy;
+            bool pointsChanged = after != null && _pointsBefore != null && after != _pointsBefore;
+            string tail = after != null ? " " + after + "." : "";
+            // Wording provisional (owner calibration).
+            SpeechService.Say((fgAppeared || pointsChanged ? "Purchased." : "No change.") + tail,
+                Priority.Queued, "nav");
+            _fgWatch = null;
         }
     }
 }
