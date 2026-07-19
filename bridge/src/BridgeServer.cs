@@ -218,6 +218,9 @@ namespace CSAccessBridge
                 case "/broadcast":
                     result = MainThread.Run(() => UiQuery.Broadcast(q["event"]));
                     break;
+                case "/modstate":
+                    result = MainThread.Run(() => ModState.Read());
+                    break;
                 case "/watch":
                 {
                     long since = q.TryGetValue("since", out var s) ? long.Parse(s) : 0;

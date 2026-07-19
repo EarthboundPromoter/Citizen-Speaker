@@ -21,6 +21,9 @@ namespace CSAccessBridge
                 ["text"] = text,
                 ["path"] = path,
                 ["t"] = Time.realtimeSinceStartup,
+                // Shared clock with the mod's stamped log lines ([mode fN tN]):
+                // frame number is the join key across both event records.
+                ["frame"] = Time.frameCount,
             };
             lock (Lock)
             {

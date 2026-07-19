@@ -66,6 +66,33 @@ namespace CSAccessBridge
         }
     }
 
+    /// <summary>Every Button activation — game-, mouse- or mod-initiated — lands in
+    /// /watch as ui.press. Button.Press is private and version-sensitive, so the
+    /// patch skips itself (Prepare) rather than failing the whole PatchAll if the
+    /// method is absent in this uGUI build.</summary>
+    [HarmonyPatch]
+    internal static class ButtonPressPatch
+    {
+        private static System.Reflection.MethodBase TargetMethod()
+            => AccessTools.Method(typeof(UnityEngine.UI.Button), "Press");
+
+        private static bool Prepare()
+        {
+            bool found = AccessTools.Method(typeof(UnityEngine.UI.Button), "Press") != null;
+            if (!found) Plugin.Log.LogWarning("Button.Press not found — ui.press watch events disabled.");
+            return found;
+        }
+
+        private static void Postfix(UnityEngine.UI.Button __instance)
+        {
+            try
+            {
+                WatchLog.Add("ui.press", __instance.name, UiQuery.PathOf(__instance.gameObject));
+            }
+            catch { }
+        }
+    }
+
     [HarmonyPatch(typeof(EventSystem), nameof(EventSystem.SetSelectedGameObject),
         typeof(GameObject), typeof(BaseEventData))]
     internal static class SelectionPatch
