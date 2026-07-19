@@ -340,6 +340,16 @@ truth), READOUT (announcement stream, no focus).
 
 ## Cross-surface commitments (from W3, restated for the walk)
 
+- **Focus fence (owner-approved, built 2026-07-19):** the game has no nav
+  boundaries — Automatic adjacency spans every active selectable scene-wide, and
+  lighter overlays (drive log: deactivates only Inventory on open) leave the
+  world selectable underneath. The game never walks this graph on controller
+  (stick-scroll + parked selection); mod arrows are the only traverser. Bounded
+  surfaces therefore compute the native destination BEFORE dispatch and suppress
+  moves that exit their container (drive log / character window / pause = rooted
+  fences; inventory = the stricter Item Cursor rule). Dead-end = bare repeat.
+  Unbounded surfaces (station, action view, cloud) keep free native movement.
+
 - Universal re-anchor key behavior: empty-Enter (or explicit re-anchor) targets
   the current surface's anchor row above — one idiom everywhere.
 - Mode changes ride FsmSignals/DS events; polls become boot init + divergence
