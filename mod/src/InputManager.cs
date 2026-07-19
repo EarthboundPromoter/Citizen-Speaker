@@ -118,9 +118,31 @@ namespace CSAccess
 
             // --- Inventory: Up/Down = the designed panel Swap (the Swapper's own
             //     vertical-axis idiom, focus-model row 11); Left/Right stay native
-            //     moves between Item Cursors. ---
+            //     moves between Item Cursors, CONFINED to the cursor family — an
+            //     edge move would escape it and trip the game's auto-close watchdog
+            //     (session-5 live bug: Left closed the strip). Dead-end = bare repeat. ---
             if (mode == Mode.Inventory)
             {
+                if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow))
+                {
+                    bool right = Input.GetKeyDown(KeyCode.RightArrow);
+                    var cur = Navigator.Current();
+                    var curSel = cur != null ? cur.GetComponent<Selectable>() : null;
+                    if (curSel != null && cur.name == "Item Cursor")
+                    {
+                        var target = right ? curSel.FindSelectableOnRight() : curSel.FindSelectableOnLeft();
+                        if (target == null || target.gameObject.name != "Item Cursor")
+                        {
+                            SpeechService.Say(Describe.Element(cur, detailed: false) ?? "Item Cursor",
+                                Priority.Immediate, "focus");
+                            return;
+                        }
+                    }
+                    Navigator.Move(right
+                        ? UnityEngine.EventSystems.MoveDirection.Right
+                        : UnityEngine.EventSystems.MoveDirection.Left);
+                    return;
+                }
                 if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
                 {
                     var strip = GameQueries.FindFsm("Inventory", "Bottom UI");
