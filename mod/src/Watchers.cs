@@ -30,6 +30,7 @@ namespace CSAccess
                 _tutorialRoot = null;
                 _notificationRoot = null;
                 _seenPanels.Clear();
+                Patches.FocusPatch.OnSceneChanged();
                 if (scene.Contains("MAIN TITLE"))
                     SpeechService.Say("Main menu.", Priority.Queued, "scene");
                 else if (scene.Contains("MAIN"))

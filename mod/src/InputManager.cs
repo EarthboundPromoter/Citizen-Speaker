@@ -33,6 +33,10 @@ namespace CSAccess
                     GameQueries.EnsureGamepadMode();
             }
 
+            // Any player input releases the post-scene-load focus silence.
+            if (Input.anyKeyDown || Input.GetMouseButtonDown(0))
+                FocusPatch.MarkSettled();
+
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             var mode = ModeModel.Current();
 

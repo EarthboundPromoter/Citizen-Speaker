@@ -24,6 +24,22 @@ namespace CSAccess.Patches
         /// game-driven reselection must never interrupt the active text block.</summary>
         public static void NoteUserNavigation() => _userMoveExpires = Time.unscaledTime + 0.25f;
 
+        // --- Boot-sweep silence (W2 hardening, owner design): after a Unity scene load,
+        //     the game walks focus across controls the player can't touch yet. Game-driven
+        //     focus stays silent until the player's first input; user navigation always
+        //     speaks. Orientation comes from the designed channels (scene line, dialogue
+        //     auto-read, L on demand). ---
+        private static bool _sceneSettled;
+
+        public static void OnSceneChanged() => _sceneSettled = false;
+
+        public static void MarkSettled()
+        {
+            if (_sceneSettled) return;
+            _sceneSettled = true;
+            Plugin.Log.LogInfo("[Focus] scene settled (first user input).");
+        }
+
         /// <summary>Called by Navigator before user-initiated selection so it always announces.</summary>
         public static void ClearCooldown(GameObject go)
         {
@@ -45,6 +61,12 @@ namespace CSAccess.Patches
             if (selected.name == "Continue Button") return;
 
             bool userInitiated = Time.unscaledTime < _userMoveExpires;
+
+            if (!userInitiated && !_sceneSettled)
+            {
+                Plugin.Log.LogInfo("[Focus] suppressed (boot sweep): " + selected.name);
+                return;
+            }
 
             // The end-cycle pipeline walks focus across every location's slots station-wide
             // (the reset sweep, triage report 3) — machinery, not information. Only the user's
