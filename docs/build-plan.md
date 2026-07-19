@@ -100,6 +100,67 @@ migrate into it rather than accumulating as special cases.
 Phases B and C interleave in practice — each C item lands as a modality-layer
 client, which keeps B honest. D and E stay strictly later.
 
+## 4b. Concrete work plan (corpus synthesis, 2026-07-18 — briefs E/F/G)
+
+Derived from the full FSM corpus weighed against the mod source. Supersedes guesswork
+ordering; each item cites its brief. Workstreams in dependency order:
+
+**W1 — Substrate rebuild (first; everything else rides on it):**
+- Lua adapter: read Dialogue System Lua directly (DialogueLua) for Player_* stats,
+  skill values (the rendered modifier bucket -1/0/+1/+2), Cycle, IntroComplete,
+  breakdowns. Corrects a two-doc error: these were never PlayMaker globals (F).
+  Kills the modifier color heuristic (G#2) and gives C-query O(1) truth incl. the
+  cycle number (G#3, F).
+- FSM state-entry signal: one Harmony hook on PlayMaker state entry feeding a
+  (template, state) event bus. Replaces most 0.4s polling (G#4): outcomes
+  (*_Outcome entry), dice commit (real states: `Slot Item` / `Select Dice 2` — the
+  "Slotted" state never existed, G#1), window lifecycles (the shared button-FSM
+  template behind Character UI and Drive Log buttons, F), cycle transition states.
+- Anchor adapter: GameObject-typed globals incl. `$ActiveAction` (written by cloud
+  location buttons — the cloud's designed anchor, G#5); retire hardcoded Find paths
+  where an anchor exists.
+- The input contract: the game listens for exactly 22 Rewired actions (F) — the
+  complete sanctioned input surface. Document keyboard→action mapping; every mod
+  key must correspond to one action's designed effect (or a pure-read query).
+  Note: cloud view has NO bound input action — it is uGUI-click-only (F).
+
+**W2 — Modality layer (on W1 signals):**
+- Mode model over the traced flag writers (F) + state-entry signals; entry/exit
+  announcements; per-mode key scoping using the modal-enforcement map (E) — e.g.
+  the character window deactivates the station UI, so Tab answers mode-aware
+  ("Character window open") instead of "No actions here".
+- Leave paths per mode via the shared window template's close event; cloud exit
+  scoped to the S toggle.
+
+**W3 — Focus models per the E verdicts:**
+- Most contexts are NATIVE (ride the graph): station roam, action slots, dice
+  picker (station+cloud identical), dialogue continue, end-cycle, inventory.
+  Response menu is native-but-C#-mediated. Cycle transition is READOUT.
+- The Checker-variant table (watchdog / one-shot / state-entry-only) defines what
+  the mod may select freely vs must never fight — consult before any focus feature.
+- Logical-cursor rebuilds only where nav is Automatic-spatial soup: character
+  window (shipped) and any future context that fails the same test.
+- Inventory constraint (E): focus leaving `Item Cursor`-named objects auto-closes
+  the strip — any inventory review must stay inside them.
+- Correction: retract D's Drive Log Button attribution (string-extraction artifact).
+
+**W4 — Features re-derived on the new substrate:**
+- C query → Lua (cycle/energy/condition; condition band word from HUD or bucket).
+- Dice commit + picker close wording → real state hooks (drop heuristic window).
+- Modifier readout → Lua skill value.
+- Cloud coverage: Tab/K/L scoped by `Hacking?` over `2_Hacking Action Groups` +
+  `$ActiveAction`; die-match target transcode next.
+- Drive log: QuestLog API for entries/tracked state; template lifecycle for tabs.
+- Tutorial prompt transcode (#1) with localization-table key resolution (F).
+- Later: odds (#11), the two unmapped Ending Controllers (G), endgame surfaces.
+
+**W5 — Validation model change (the point of all this):** features ship with
+wiring-predicted acceptance checks written BEFORE the live session; ride-alongs
+confirm predictions instead of discovering failures. Live-only items list (E/F):
+drive-log open-branch sequencing, response-menu default selection, pause
+CanvasGroup behavior, per-tutorial Input Pauser timing, cloud initial anchor,
+Action Controller's RefocusUI purpose.
+
 ## 5. Method hierarchy: static first, corpus second, probe only true dynamics
 
 Architecture questions are answered in this order:
@@ -132,10 +193,12 @@ Architecture questions are answered in this order:
 
 ## 7. Parked design questions
 
-- Cycle number: rendered on save labels, so speakable — live source not yet found
-  (Dialogue System Lua variable is the lead candidate).
-- Inventory open/close signal (probe next session).
+- ~~Cycle number source~~ RESOLVED (F): Lua variable `Cycle`, writer Cycle
+  Controller. (Save-slot labels use a separate save-file mechanism — don't conflate.)
+- ~~Modifier-row emphasis~~ RESOLVED (G): read the Lua skill value; bucket = the
+  rendered row. Color heuristic retired.
+- Inventory open/close signal: the semi-modal Item Cursor name-watch (E) is the
+  lead — verify live.
 - Clock-cycling key idiom (report 14): key choice, position memory.
-- Modifier-row emphasis layer (calibration log will settle; report 12).
-- Skill values/breakdowns readout idiom in the character window.
+- Skill values/breakdowns readout idiom in the character window (data now: Lua).
 - Controller users + mod coexistence; multi-save/save-slot surfaces.
