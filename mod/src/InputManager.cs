@@ -188,6 +188,14 @@ namespace CSAccess
                     GameQueries.DiceSystemFsm()?.SendEvent("Back");
                     return;
                 }
+                // Character window: no close button exists — the FSM's Open state maps the
+                // controller Back action to its own "Open" event (Open -> Close transition;
+                // corpus-verified). Send the designed event; the close-watcher announces.
+                if (CharacterWindowReview.IsActive())
+                {
+                    GameQueries.FindFsm("Character UI Button")?.SendEvent("Open");
+                    return;
+                }
                 ClickFirstActive("Leave or back",
                     "Letterbox Canvas/Top UI/Leave Button",
                     "Back Button", "Close Button", "BACK");
