@@ -132,15 +132,24 @@ namespace CSAccess.Modality
             return root != null && root.activeInHierarchy;
         }
 
-        /// <summary>Autoplay Waiting ONLY (live finding 2026-07-19): Scenes Active? is
-        /// scenery-engaged, not input-held — the Intro Sequence raises it across
-        /// INTERACTIVE tutorial beats (brief F: Action Tutorial / Dice + Energy
-        /// Tutorial 3 write True), which stuck the station in a listening mode after
-        /// the intro handoff. Autoplay Waiting is the designed hold signal: the scene
-        /// templates set it true exactly in their Autoplay Wait states and false on
-        /// completion.</summary>
+        /// <summary>Autoplay Waiting gated by held affordance (session-5 live trap +
+        /// corpus): the flag is a scene-SCHEDULING signal with a designed leak — every
+        /// character canvas sets it true in Autoplay Wait and clears it only via the
+        /// Autoplay state (Scene Complete); the Check Variables -> Off exit strands it
+        /// true. A scheduling flag cannot override a held affordance: if the game
+        /// holds an interactable selection (selection identity — the game's own idiom),
+        /// it is asking for input. Genuine cutscene lockouts remain covered by the
+        /// Input Pauser honor guard in dispatch.</summary>
         private static bool AutoplayActive()
-            => GlobalBool("Autoplay Waiting");
+            => GlobalBool("Autoplay Waiting") && !InteractableSelectionHeld();
+
+        private static bool InteractableSelectionHeld()
+        {
+            var go = Navigator.Current();
+            if (go == null || !go.activeInHierarchy) return false;
+            var sel = go.GetComponent<UnityEngine.UI.Selectable>();
+            return sel != null && sel.interactable;
+        }
 
         /// <summary>A visible tutorial panel: an active Tutorial System child that isn't
         /// the continue Button or the always-active Input Pauser, and that carries
