@@ -111,6 +111,14 @@ ordering; each item cites its brief. Workstreams in dependency order:
   breakdowns. Corrects a two-doc error: these were never PlayMaker globals (F).
   Kills the modifier color heuristic (G#2) and gives C-query O(1) truth incl. the
   cycle number (G#3, F).
+  RENDER-PAIRING ALLOWLIST (binding): the adapter exposes only variables with a
+  documented render pairing — where the game shows the value to the player
+  (rendered = player-reachable in-game, per owner ruling; not necessarily
+  on-screen this instant), verified by one of: (a) corpus render-route trace
+  (GetVariable → SetProperty/animator/localized-text onto a UI object), (b) live
+  bridge check (/texts + effective alpha), (c) screenshot oracle. Feature code
+  cannot read off-list variables. The other ~390 Lua variables are hidden story
+  state and are never spoken.
 - FSM state-entry signal: one Harmony hook on PlayMaker state entry feeding a
   (template, state) event bus. Replaces most 0.4s polling (G#4): outcomes
   (*_Outcome entry), dice commit (real states: `Slot Item` / `Select Dice 2` — the
