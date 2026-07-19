@@ -53,6 +53,29 @@ provisional until owner calibration.
   code against a nonexistent state name (G#1) — remove during W4 migration.
 - N tree, Alt dialogue buffer, wake-readout alignment: unbuilt (W4).
 
+## Hardening batch (post-run, 2026-07-19) — predictions for next launch
+
+Three live findings from the first W2 runs, fixed per owner green-light:
+
+1. **Event-armed cycle gate.** New game / save load: NO "Cycle complete" summary,
+   no focus suppression, no CycleTransition mode during boot (the old build did
+   all three). A real End Cycle press: `[Cycle] pipeline armed` in the log, mode
+   goes CycleTransition, summary speaks on return to Idle. The intro's own
+   cycle-tutorial press counts as real — it should announce.
+2. **Boot-sweep silence.** After "Main menu." / "On station.", NO game-driven
+   focus announcements (no "PRESS TO START button", no "UPGRADE button,
+   disabled", no marker names) until the first keypress or click —
+   `[Focus] scene settled` marks the release. Dialogue auto-read and the
+   "Continue" sole-choice announcement are unaffected (different channels).
+   Intro consequence: Enter now fires on the opening continue (the misdetected
+   listening mode was what swallowed it).
+3. **Conversation events.** `[Dialogue] conversation lifecycle events
+   subscribed` at load; dialogue mode now flips on the framework's own
+   started/ended events — including non-input triggers (the cargo-container
+   on-leave dialogue is the known test case). Any `[Dialogue] DIVERGENCE`
+   warning = event flag and old poll disagree — report it; the poll gets
+   dropped after one clean session.
+
 ## Failure signatures
 
 - A mode misdetected (e.g. refusals firing on the station map) → log
