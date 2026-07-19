@@ -461,8 +461,11 @@ namespace CSAccess
                 SpeechService.Say("Character window closed.", Priority.Immediate, "nav");
                 return;
             }
-            var tracker = _characterWindow.Find("Upgrade Tracker");
-            string points = tracker != null ? UI.Describe.TextContaining(tracker, "POINT") : null;
+            // Points render as value + label in Points Av ("1" / "UPGRADE POINTS"); the
+            // tracker also holds hidden threshold templates ("2 UPGRADE POINTS"), so read
+            // the live container only (live-mapped 2026-07-18).
+            var pointsAv = _characterWindow.Find("Upgrade Tracker/Top Line/Points UI/Points Av");
+            string points = pointsAv != null ? UI.Describe.JoinTexts(pointsAv.gameObject, 2) : null;
             SpeechService.Say("Character window open." + (points != null ? " " + points + "." : ""),
                 Priority.Immediate, "nav");
         }
