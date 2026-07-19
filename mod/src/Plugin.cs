@@ -18,6 +18,7 @@ namespace CSAccess
         internal static ConfigEntry<bool> SpeakSpeakerNames;
         internal static ConfigEntry<bool> AnnounceFocus;
         internal static ConfigEntry<bool> ForceGamepadUI;
+        internal static ConfigEntry<bool> TraceFsmSignals;
 
         private InputManager _input;
         private Watchers _watchers;
@@ -35,6 +36,8 @@ namespace CSAccess
                 "Announce UI elements when they receive focus.");
             ForceGamepadUI = Config.Bind("Input", "ForceGamepadUI", true,
                 "Keep the game's UI in gamepad mode so the keyboard dice flow works.");
+            TraceFsmSignals = Config.Bind("Debug", "TraceFsmSignals", false,
+                "Log every subscribed FSM state-entry dispatch (dev diagnostics).");
 
             SpeechService.Init();
 
@@ -53,6 +56,7 @@ namespace CSAccess
             _input.Tick();
             _watchers.Tick();
             SpeechService.Tick();
+            Substrate.SelfTest.Tick();
         }
 
         private void OnDestroy()
