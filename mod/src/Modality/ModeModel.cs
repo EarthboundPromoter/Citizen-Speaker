@@ -164,6 +164,11 @@ namespace CSAccess.Modality
             {
                 if (!panel.gameObject.activeInHierarchy) continue;
                 if (panel.name == "Button" || panel.name == "Input Pauser") continue;
+                // RENDERED visibility required (session-5: the cloud tutorial panel
+                // stays GameObject-active after dismissal and hides by alpha — the
+                // active+text test never released, trapping Tutorial mode). Same
+                // effective-alpha standard as the notification watcher.
+                if (EffectiveAlpha(panel) < 0.5f) continue;
                 foreach (var tmp in panel.GetComponentsInChildren<TMPro.TMP_Text>(false))
                 {
                     string txt = tmp.text;
@@ -172,6 +177,17 @@ namespace CSAccess.Modality
                 }
             }
             return false;
+        }
+
+        private static float EffectiveAlpha(Transform t)
+        {
+            float a = 1f;
+            for (var cur = t; cur != null; cur = cur.parent)
+            {
+                var g = cur.GetComponent<CanvasGroup>();
+                if (g != null) a *= g.alpha;
+            }
+            return a;
         }
 
         /// <summary>Event-driven: the Dialogue System's own conversationStarted/Ended

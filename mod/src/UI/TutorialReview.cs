@@ -26,6 +26,16 @@ namespace CSAccess.UI
                 // text is a tutorial panel — without this check IsActive() is always
                 // true and eats Up/Down everywhere (the silent pause-menu arrows bug).
                 if (child.GetComponentInChildren<TMP_Text>(false) == null) continue;
+                // Rendered visibility required (session-5): the cloud tutorial panel
+                // stays GameObject-active after dismissal and hides by CanvasGroup
+                // alpha — the active+text test alone never releases.
+                float a = 1f;
+                for (var cur = child; cur != null; cur = cur.parent)
+                {
+                    var g = cur.GetComponent<CanvasGroup>();
+                    if (g != null) a *= g.alpha;
+                }
+                if (a < 0.5f) continue;
                 return child;
             }
             return null;

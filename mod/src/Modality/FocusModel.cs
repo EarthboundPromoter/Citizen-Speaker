@@ -29,14 +29,25 @@ namespace CSAccess.Modality
             switch (mode)
             {
                 case Mode.Station:
-                case Mode.ActionView:
                 {
                     // The game's own Confirm backstop: UI Reselector -> UI selector Reset
                     // re-anchors to the nearest marker (E, live-verified W2).
                     var selector = GameQueries.FindFsm("UI selector");
                     if (selector == null) return false;
                     selector.SendEvent("Reset");
-                    Plugin.Log.LogInfo("[Focus] ReAnchor(" + mode + "): UI selector Reset.");
+                    Plugin.Log.LogInfo("[Focus] ReAnchor(Station): UI selector Reset.");
+                    return true;
+                }
+
+                case Mode.ActionView:
+                {
+                    // Inside an action view the designed recovery is the RefocusUI
+                    // broadcast — the exact signal the picker fires on Back; slots'
+                    // Idle states re-enter Focus on it (E). The UI selector Reset
+                    // (previous mapping) anchors MARKERS — the wrong surface here
+                    // (session-5 owner-caught).
+                    PlayMakerFSM.BroadcastEvent("RefocusUI");
+                    Plugin.Log.LogInfo("[Focus] ReAnchor(ActionView): RefocusUI broadcast.");
                     return true;
                 }
 

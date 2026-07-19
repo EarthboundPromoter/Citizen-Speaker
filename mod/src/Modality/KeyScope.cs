@@ -60,7 +60,12 @@ namespace CSAccess.Modality
 
             // Pause: ReviewArrows added for the options-menu review (focus-model row 16).
             t[Mode.Pause] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.ReviewArrows);
-            t[Mode.Tutorial] = S(ModKey.Navigate, ModKey.Activate, ModKey.ReviewArrows, ModKey.TutorialContinue);
+            // Tutorial: ScanToggle stays live — the cloud tutorial's continue sits
+            // DISABLED while its panel is up; performing the taught action (the scan
+            // toggle) is its designed dismissal. Refusing S was a mod trap
+            // (session-5, third of the taught-action trap class).
+            t[Mode.Tutorial] = S(ModKey.Navigate, ModKey.Activate, ModKey.ReviewArrows, ModKey.TutorialContinue,
+                ModKey.ScanToggle);
             t[Mode.ResponseMenu] = S(ModKey.Navigate, ModKey.Activate, ModKey.NumberChoices);
             t[Mode.Dialogue] = S(ModKey.Navigate, ModKey.Activate);
             t[Mode.DiceAllocation] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Reroll,

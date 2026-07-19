@@ -101,8 +101,10 @@ namespace CSAccess
                 _warningWasOpen.TryGetValue(name, out bool was);
                 if (open && !was)
                 {
+                    // The joined body already includes the QUIT/CANCEL button labels —
+                    // no appended tail (run 3 spoke "QUIT QUIT or CANCEL").
                     string body = UI.Describe.JoinTexts(menu.gameObject, 2);
-                    SpeechService.Say((body ?? "Are you sure?") + " QUIT or CANCEL.",
+                    SpeechService.Say(body ?? "Are you sure? QUIT or CANCEL.",
                         Priority.Queued, "nav");
                 }
                 _warningWasOpen[name] = open;
