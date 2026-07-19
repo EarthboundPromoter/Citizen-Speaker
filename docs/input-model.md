@@ -44,8 +44,13 @@ owner calibration (standing rule). W2 implements against this document.
 - **L — where-am-I report.** The location/mode query: current zone and marker
   on the station map, current window or mode elsewhere. (Owner assignment,
   correcting an earlier draft that had L on the tree.)
-- **OPEN SLOT: speech control survivors** — grave (stop), brackets (speech
-  history), F2 (freed). Z + Alt-buffer may obsolete some; owner decides.
+- **Speech control: Z only.** Grave (stop), brackets (speech history), and F2
+  are killed (owner ruling) — the screen reader's own interrupt covers
+  stopping, and Z + the Alt dialogue buffer cover recall.
+- **F1 — contextual help.** Speaks only the keys active on the current screen,
+  the console glyph-guide idiom — the modality layer's key scoping feeds it
+  directly. Full-keymap listing retired with it. Later grace feature: surface
+  it through the game's own UI if a sanctioned render path exists.
 
 ## Mode-scoped keys
 
