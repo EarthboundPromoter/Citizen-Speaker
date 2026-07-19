@@ -68,7 +68,11 @@ owner calibration (standing rule). W2 implements against this document.
   refusals mode-aware ("Character window open") instead of generic.
 - **Dice allocation:** fully native picker; per-die focus string "Die 2,
   value 5" / "Die 4, spent". Shift+R reroll (retained; reroll render
-  semantics await first live sighting — owner defers).
+  semantics await first live sighting — owner defers). Backspace is two-stage
+  by the game's own graph (corpus-verified): from Slotted it RETRACTS the
+  uncommitted die back to the picker (slot FSMs DragReset); from Active it
+  cancels allocation. The retract case gets its own announcement — it must
+  not sound like a cancel.
 - **Dialogue:** continue on Enter (native); number keys pick responses;
   auto-read ambient.
 - **Tutorial:** T re-engages continue (retained); per-context review cursor.
@@ -87,6 +91,9 @@ owner calibration (standing rule). W2 implements against this document.
 - TBD-1: if an upgrade-available badge renders on the character button, it
   becomes a standing notification.
 - Input-mode switches, scan toggle: retained ambient announcements.
+- Force-unslot: the game can yank a slotted die itself (ForceUnslotDice →
+  Off, e.g. a window opening mid-allocation). Announce it via the state-entry
+  signal so the player's mental model never goes stale silently.
 
 ## Open items ledger
 
