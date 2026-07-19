@@ -378,7 +378,6 @@ namespace CSAccess
         private float _lastSlottedTime = -10f;
         private float _slottedGlobalAtOpen;
         private float _lastControllerLeftIdle = -10f;
-        private readonly Dictionary<int, string> _diceSlotStates = new Dictionary<int, string>();
 
         /// <summary>Announce dice-allocation mode transitions. The Dice Gamepad System FSM is
         /// Off outside the picker and Active inside it; the game selects the cursor Buttons
@@ -424,26 +423,11 @@ namespace CSAccess
                 }
             }
 
-            // A slot FSM reaching Slotted is the commit signal; the outcome watcher speaks next.
-            foreach (var fsm in PlayMakerFSM.FsmList)
-            {
-                if (fsm == null || fsm.gameObject == null) continue;
-                if (fsm.gameObject.name != "Gamepad Dice Slot" || !fsm.gameObject.activeInHierarchy) continue;
-                int id = fsm.GetInstanceID();
-                string slotState = fsm.ActiveStateName;
-                if (_diceSlotStates.TryGetValue(id, out string prev) && prev == slotState) continue;
-                bool known = _diceSlotStates.ContainsKey(id);
-                _diceSlotStates[id] = slotState;
-                if (!known || slotState != "Slotted") continue;
-
-                _lastSlottedTime = Time.unscaledTime;
-                var root = UI.Describe.FindActionRoot(fsm.transform);
-                string actionName = root != null
-                    ? (UI.Describe.TextUnder(root, "Action Name") ?? root.name)
-                    : "action";
-                SpeechService.Say("Die slotted. " + actionName + ".", Priority.Queued, "dice");
-            }
-            if (_diceSlotStates.Count > 300) _diceSlotStates.Clear();
+            // Commit vs cancel is decided above from durable signals; the real commit
+            // states are Slot Item / Select Dice 2 (brief G#1 — a "Slotted" state never
+            // existed; the poll that watched for it here was dead code and is removed).
+            // Migrating this window to FsmSignals on the real states is the W4 wording
+            // item, held with the "Die slotted." calibration family (BL-11/BL-12).
         }
 
         private Transform _driveLog;

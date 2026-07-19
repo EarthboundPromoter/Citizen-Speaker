@@ -194,6 +194,10 @@ namespace CSAccess.UI
 
         private static readonly string[] SkillNames = { "ENGINEER", "INTERFACE", "ENDURE", "INTUIT", "ENGAGE" };
 
+        /// <summary>Skill word from the card's rendered texts; the modifier bucket comes from
+        /// the Lua skill variable — the same value whose bucket the row highlights (brief
+        /// G#2, BL-1). The row renders all four labels and marks one graphically, so the
+        /// rendered texts alone can't say which; Lua is the render-paired source.</summary>
         private static string CollectSkillLine(Transform root)
         {
             foreach (var tmp in root.GetComponentsInChildren<TMP_Text>(false))
@@ -204,90 +208,12 @@ namespace CSAccess.UI
                 {
                     if (txt == skill)
                     {
-                        string modifier = SiblingModifier(tmp.transform);
+                        string modifier = Substrate.LuaStore.SkillModifierForWord(skill);
                         return modifier != null ? skill + " " + modifier : skill;
                     }
                 }
             }
             return null;
-        }
-
-        private static readonly string[] ModifierLabels = { "-1", "0", "+1", "+2" };
-
-        /// <summary>The modifier row renders ALL FOUR labels (-1, 0, +1, +2) as separate texts;
-        /// the applied one is distinguished graphically (triage report 12). Pick the single
-        /// color outlier; if emphasis can't be resolved, speak no modifier rather than a wrong
-        /// one, and log the row once for live calibration.</summary>
-        private static string SiblingModifier(Transform skillText)
-        {
-            var parent = skillText.parent;
-            if (parent == null) return null;
-            var candidates = new System.Collections.Generic.List<TMP_Text>();
-            foreach (var tmp in parent.GetComponentsInChildren<TMP_Text>(false))
-            {
-                string txt = tmp.text?.Trim();
-                if (System.Array.IndexOf(ModifierLabels, txt) >= 0)
-                    candidates.Add(tmp);
-            }
-            if (candidates.Count == 0) return null;
-            if (candidates.Count == 1) return candidates[0].text.Trim();
-
-            var outlier = SingleColorOutlier(candidates);
-
-            // Calibration (throttled): the applied emphasis may be the "<N> Modifier"
-            // container's highlight Image/CanvasGroup rather than text color — dump both
-            // layers plus the current pick so the live log can settle it (report 12).
-            if (Time.unscaledTime - _lastRowLog > 5f)
-            {
-                _lastRowLog = Time.unscaledTime;
-                var dump = new StringBuilder("[Describe] modifier row (picked ")
-                    .Append(outlier != null ? outlier.text.Trim() : "none").Append("):");
-                foreach (var c in candidates)
-                {
-                    dump.Append(' ').Append(c.text.Trim()).Append(" txt=").Append(c.color)
-                        .Append(" a=").Append(c.alpha.ToString("0.00"));
-                    var container = c.transform.parent;
-                    if (container != null)
-                    {
-                        var cg = container.GetComponent<CanvasGroup>();
-                        if (cg != null) dump.Append(" cg=").Append(cg.alpha.ToString("0.00"));
-                        var img = container.GetComponent<UnityEngine.UI.Image>();
-                        if (img != null) dump.Append(" img=").Append(img.enabled ? img.color.ToString() : "off");
-                    }
-                }
-                Plugin.Log.LogInfo(dump.ToString());
-            }
-
-            if (outlier != null) return outlier.text.Trim();
-            return null;
-        }
-
-        private static float _lastRowLog = -10f;
-
-        /// <summary>The one text whose rendered color (incl. alpha) differs from all others,
-        /// or null if the row doesn't split cleanly into one-vs-rest.</summary>
-        private static TMP_Text SingleColorOutlier(System.Collections.Generic.List<TMP_Text> texts)
-        {
-            TMP_Text outlier = null;
-            for (int i = 0; i < texts.Count; i++)
-            {
-                bool matchesAnother = false;
-                for (int j = 0; j < texts.Count; j++)
-                {
-                    if (i == j) continue;
-                    if (ColorsClose(texts[i].color, texts[j].color)) { matchesAnother = true; break; }
-                }
-                if (matchesAnother) continue;
-                if (outlier != null) return null;
-                outlier = texts[i];
-            }
-            return outlier;
-        }
-
-        private static bool ColorsClose(Color a, Color b)
-        {
-            return Mathf.Abs(a.r - b.r) < 0.05f && Mathf.Abs(a.g - b.g) < 0.05f
-                && Mathf.Abs(a.b - b.b) < 0.05f && Mathf.Abs(a.a - b.a) < 0.05f;
         }
 
         /// <summary>Name of the ancestor of go that is a direct child of containerName,

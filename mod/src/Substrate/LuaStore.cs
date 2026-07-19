@@ -66,6 +66,39 @@ namespace CSAccess.Substrate
         /// this read retires the modifier color heuristic).</summary>
         public static int? SkillValue(Skill skill) => Num(SkillVars[(int)skill]);
 
+        /// <summary>The rendered modifier bucket (-1/0/+1/+2) for a skill, using the game's
+        /// own Get Skill Rating mapping: FloatSwitch lessThan [0,1,2,3] → [-1,0,+1,+2]
+        /// (character_window_fsm.jsonl, brief G#2). Render pairing: the highlighted cell of
+        /// the action-card modifier row and the character window's skill row both render
+        /// this bucket. Null when the variable is unavailable — or ≥3, where the game's
+        /// FloatSwitch fires no event and the row would not highlight (mirrored, logged).</summary>
+        public static string SkillModifier(Skill skill)
+        {
+            string var = SkillVars[(int)skill];
+            try
+            {
+                var r = DialogueLua.GetVariable(var);
+                if (!r.hasReturnValue || !r.isNumber) return null;
+                float v = r.asFloat;
+                if (v < 0f) return "-1";
+                if (v < 1f) return "0";
+                if (v < 2f) return "+1";
+                if (v < 3f) return "+2";
+                Plugin.Log.LogWarning("[Substrate] " + var + "=" + v
+                    + " is outside the game's FloatSwitch range; no bucket spoken.");
+                return null;
+            }
+            catch (System.Exception e) { LogFaultOnce(var, e); return null; }
+        }
+
+        /// <summary>Bucket lookup by the rendered skill word (action cards render the exact
+        /// Lua variable names); null for a non-skill word.</summary>
+        public static string SkillModifierForWord(string skillWord)
+        {
+            int idx = System.Array.IndexOf(SkillVars, skillWord);
+            return idx >= 0 ? SkillModifier((Skill)idx) : null;
+        }
+
         // ---------- Plumbing ----------
 
         private static bool _faultLogged;
