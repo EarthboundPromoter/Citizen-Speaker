@@ -31,6 +31,8 @@ namespace CSAccess
                 _notificationRoot = null;
                 _seenPanels.Clear();
                 Patches.FocusPatch.OnSceneChanged();
+                Modality.WindowState.OnSceneChanged();
+                Game.NodeCensus.OnSceneChanged();
                 if (scene.Contains("MAIN TITLE"))
                     SpeechService.Say("Main menu.", Priority.Queued, "scene");
                 else if (scene.Contains("MAIN"))
@@ -48,8 +50,11 @@ namespace CSAccess
             CheckSoleContinue();
             CheckResponseFocus();
             CheckPauseMenu();
+            CheckWarningMenus();
+            CheckQrCanvas();
             CheckDriveLog();
             CheckCharacterWindow();
+            Modality.WindowState.DivergenceTick();
             // Cycle transition arming + completion summary moved to CycleGate
             // (event-armed on the designed EndCycle entry; W2 hardening).
             // Mode switching is last-input-wins in InputManager.Tick now — the old 3s
@@ -79,6 +84,46 @@ namespace CSAccess
                     Priority.Queued, "nav");
             }
             _pauseWasOpen = open;
+        }
+
+        private readonly Dictionary<string, bool> _warningWasOpen = new Dictionary<string, bool>();
+
+        /// <summary>Pause warning menus speak their rendered warning body on open
+        /// (focus-model row 12, W3 addition).</summary>
+        private void CheckWarningMenus()
+        {
+            if (_pauseCanvas == null) return;
+            foreach (var name in new[] { "Warning Menu Quit Game", "Warning Menu Quit Menu" })
+            {
+                var menu = _pauseCanvas.Find(name);
+                if (menu == null) continue;
+                bool open = menu.gameObject.activeInHierarchy;
+                _warningWasOpen.TryGetValue(name, out bool was);
+                if (open && !was)
+                {
+                    string body = UI.Describe.JoinTexts(menu.gameObject, 2);
+                    SpeechService.Say((body ?? "Are you sure?") + " QUIT or CANCEL.",
+                        Priority.Queued, "nav");
+                }
+                _warningWasOpen[name] = open;
+            }
+        }
+
+        private bool _qrWasOpen;
+
+        /// <summary>Title QR canvas (Update News): announce its rendered text + CLOSE on
+        /// open (focus-model row 1 — previously silent).</summary>
+        private void CheckQrCanvas()
+        {
+            if (!_lastScene.Contains("MAIN TITLE")) return;
+            var canvas = GameObject.Find("MAIN MENU/Demo Menu/QR Code Canvas");
+            bool open = canvas != null && canvas.activeInHierarchy;
+            if (open && !_qrWasOpen)
+            {
+                string body = UI.Describe.JoinTexts(canvas, 6);
+                SpeechService.Say((body ?? "QR code.") + " CLOSE button.", Priority.Queued, "nav");
+            }
+            _qrWasOpen = open;
         }
 
         /// <summary>One-time diagnostic: log all PlayMaker global variables so we can learn

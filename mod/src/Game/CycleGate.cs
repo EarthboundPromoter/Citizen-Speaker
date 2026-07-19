@@ -24,10 +24,16 @@ namespace CSAccess.Game
             {
                 if (!Active) return; // startup and load walks end at Idle unarmed
                 Active = false;
+                // Composed cycle-end string (owner design, focus-model row 13):
+                // ABSOLUTE TOTALS only, no deltas — degradation is presumed. REVEAL
+                // DICE! runs immediately before Idle (corpus), so dice are rendered.
+                string vitals = GameQueries.DescribeVitals();
                 string dice = GameQueries.DescribeDice();
-                string meters = GameQueries.MetersBrief();
-                SpeechService.Say("Cycle complete. " + (dice ?? "") + (meters != null ? " " + meters : ""),
+                SpeechService.Say("Cycle ended. " + (vitals ?? "") + (dice != null ? " " + dice : ""),
                     Priority.Queued, "cycle");
+                // Node additions/removals speak at the first full-control station
+                // moment (after any leading scene-beat dialogue), not here.
+                NodeCensus.MarkCycleBoundary();
             });
         }
     }

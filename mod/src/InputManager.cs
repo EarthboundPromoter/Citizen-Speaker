@@ -40,6 +40,10 @@ namespace CSAccess
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             var mode = ModeModel.Current();
 
+            // Node census: announces additions/removals at the first full-control
+            // station moment per cycle (focus-model row 3; cheap no-op otherwise).
+            Game.NodeCensus.Tick(mode);
+
             // --- Speech and queries (near-universal; KeyScope gates the title scene) ---
             if (Input.GetKeyDown(KeyCode.Z) && Allowed(mode, ModKey.Respeak))
             { SpeechService.RepeatLast(); return; }
@@ -80,6 +84,16 @@ namespace CSAccess
             //     which remain the authority — the mode gate adds scoping consistency) ---
             if (Allowed(mode, ModKey.ReviewArrows))
             {
+                if (OptionsReview.IsActive())
+                {
+                    if (Input.GetKeyDown(KeyCode.DownArrow)) { OptionsReview.Review(1); return; }
+                    if (Input.GetKeyDown(KeyCode.UpArrow)) { OptionsReview.Review(-1); return; }
+                    if (Input.GetKeyDown(KeyCode.RightArrow)) { OptionsReview.Adjust(1); return; }
+                    if (Input.GetKeyDown(KeyCode.LeftArrow)) { OptionsReview.Adjust(-1); return; }
+                    if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+                        && OptionsReview.Activate())
+                        return;
+                }
                 if (TutorialReview.IsActive())
                 {
                     if (Input.GetKeyDown(KeyCode.DownArrow)) { TutorialReview.Review(1); return; }
@@ -99,6 +113,30 @@ namespace CSAccess
                     if (Input.GetKeyDown(KeyCode.UpArrow)) { CharacterSelect.Review(-1); return; }
                     if (Input.GetKeyDown(KeyCode.LeftArrow)) { CharacterSelect.ChangeClass(right: false); return; }
                     if (Input.GetKeyDown(KeyCode.RightArrow)) { CharacterSelect.ChangeClass(right: true); return; }
+                }
+            }
+
+            // --- Inventory: Up/Down = the designed panel Swap (the Swapper's own
+            //     vertical-axis idiom, focus-model row 11); Left/Right stay native
+            //     moves between Item Cursors. ---
+            if (mode == Mode.Inventory)
+            {
+                if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
+                {
+                    var strip = GameQueries.FindFsm("Inventory", "Bottom UI");
+                    if (strip != null)
+                    {
+                        // Speak the rendered label of the panel we're switching TO.
+                        bool toData = !GameQueries.GlobalBoolValue("Data?");
+                        var panelBtn = GameObject.Find("Letterbox Canvas/Bottom UI/Inventory/" +
+                                                       (toData ? "DATA Button" : "ITEM Button"));
+                        var tmp = panelBtn != null ? panelBtn.GetComponentInChildren<TMPro.TMP_Text>(true) : null;
+                        string label = tmp != null ? tmp.text?.Trim() : null;
+                        strip.SendEvent("Swap");
+                        SpeechService.Say(string.IsNullOrEmpty(label)
+                            ? (toData ? "Data." : "Items.") : label + ".", Priority.Immediate, "nav");
+                    }
+                    return;
                 }
             }
 
@@ -127,9 +165,15 @@ namespace CSAccess
             if (Input.GetKeyDown(KeyCode.I))
             {
                 if (!Allowed(mode, ModKey.InventoryToggle)) { Refuse(mode, "Inventory"); return; }
-                ClickFirstActive("Inventory toggle",
-                    "Letterbox Canvas/Bottom UI/Inventory/ITEM Button",
-                    "Letterbox Canvas/Bottom UI/Inventory/DATA Button");
+                // The strip FSM's own designed toggle (focus-model row 11): its states
+                // watch the Inventory Toggle action and fire Activate (closed) or
+                // Deactivate (open) — we send the event the action would produce.
+                // Replaces the off-contract ITEM/DATA button clicks.
+                var strip = GameQueries.FindFsm("Inventory", "Bottom UI");
+                if (strip != null)
+                    strip.SendEvent(WindowState.InventoryOpen ? "Deactivate" : "Activate");
+                else
+                    SpeechService.Say("Inventory not available.", Priority.Immediate, "nav");
                 return;
             }
             if (Input.GetKeyDown(KeyCode.U))
@@ -182,18 +226,11 @@ namespace CSAccess
             if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
                 && Allowed(mode, ModKey.Activate))
             {
-                // Empty-Enter mirrors the game's own Confirm backstop (UI Reselector):
-                // nothing selected -> ask UI selector to re-anchor to the nearest marker.
-                if (Navigator.Current() == null && (mode == Mode.Station || mode == Mode.ActionView))
-                {
-                    var selector = GameQueries.FindFsm("UI selector");
-                    if (selector != null)
-                    {
-                        selector.SendEvent("Reset");
-                        Plugin.Log.LogInfo("[Input] Empty Enter: sent UI selector Reset (Confirm-backstop mirror).");
-                        return;
-                    }
-                }
+                // Empty-Enter = the universal mode-aware re-anchor (W3, H commitment 4):
+                // put focus back where the game intends it for this mode — extends the
+                // station Confirm-backstop mirror to every mode with a designed anchor.
+                if (Navigator.Current() == null && FocusModel.ReAnchor(mode))
+                    return;
                 Navigator.ActivateCurrent();
                 return;
             }
