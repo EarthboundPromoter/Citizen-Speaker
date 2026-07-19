@@ -58,6 +58,7 @@ namespace CSAccess
             _watchers.Tick();
             SpeechService.Tick();
             Substrate.SelfTest.Tick();
+            Patches.ConversationEvents.Tick();
         }
 
         private void OnDestroy()

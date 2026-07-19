@@ -154,13 +154,9 @@ namespace CSAccess.Modality
             return false;
         }
 
-        /// <summary>Conversation state non-null — the same Dialogue System API the shipped
-        /// sole-continue watcher reads.</summary>
-        private static bool ConversationActive()
-        {
-            try { return PixelCrushers.DialogueSystem.DialogueManager.currentConversationState != null; }
-            catch { return false; }
-        }
+        /// <summary>Event-driven: the Dialogue System's own conversationStarted/Ended
+        /// (ConversationEvents) — reliable by construction, covers every trigger route.</summary>
+        private static bool ConversationActive() => ConversationEvents.ConversationActive;
 
         /// <summary>Dice Gamepad System resting in Slotted (die placed, awaiting activate
         /// or retract — corpus-verified resting state) counts as allocation too.</summary>
