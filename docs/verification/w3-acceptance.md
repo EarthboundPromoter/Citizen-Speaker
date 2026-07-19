@@ -58,6 +58,20 @@ map-parity clock/drive detail on Space.
    event truth disagree — report, don't panic; alpha is no longer consulted for
    mode. `[NodeCensus] baseline` logs on each station load.
 
+## Live fix during run 3 (deployed `f29b73e`) — prediction for next launch
+
+**Container-exit trap dead.** Run 3 finding: `Autoplay Waiting` is a scheduling
+flag with a designed leak (every character canvas's `Autoplay Wait` state sets it
+true; the `Check Variables -> Off` exit never clears it) — it stranded the mode
+in "Scene playing" while the game held the container's interactable slots and
+waited for the player to LEAVE (our refusal blocked the exact Leave being waited
+for). Autoplay listening now yields whenever the game holds an interactable
+selection (selection identity, the game's own idiom); genuine cutscene lockouts
+remain covered by the Input Pauser honor guard. Predicted: in the container
+post-cycle beat, L says "At a location...", arrows walk slots, Backspace fires
+the Leave Button. Watch for the reverse failure: keys acting during a true
+cinematic that holds a stale selection — if seen, capture what was selected.
+
 ## Failure signatures
 
 - Mode stuck in a window mode after closing it → a close-state name we didn't
