@@ -68,16 +68,19 @@ owner calibration (standing rule). W2 implements against this document.
   refusals mode-aware ("Character window open") instead of generic.
 - **Dice allocation:** fully native picker; per-die focus string "Die 2,
   value 5" / "Die 4, spent". Shift+R reroll (retained; reroll render
-  semantics await first live sighting — owner defers). Die commitment is
-  INSTANT on the button path: cursor Enter runs Select Dice → Jump to Slot →
-  Slot Die → slot's Slot Item (the commit state) with no dormant
-  applied-not-activated resting point — application is activation.
-  Retract machinery exists but belongs to the pointer path (DragReset →
-  Unslot = mouse drag-cancel). Whether the button path exposes any real
-  retract window (system FSM's Slotted → Back → Active) is LIVE-OPEN: slot a
-  die and press Backspace immediately; if the die returns, retraction gets
-  its own announcement distinct from cancel — if the outcome already fired,
-  no button-path retract exists and none is invented.
+  semantics await first live sighting — owner defers). Placement and
+  activation are SEPARATE designed inputs (settled after two wrong readings;
+  the evidence, in order of weight: the cursor's Slot Die state has NO
+  FINISHED exit — its only transition is DragReset → Unslot, so a placed die
+  RESTS in the slot; the system FSM likewise rests in Slotted with
+  Back → Active; and the deleted session-1 numeric implementation had to
+  synthesize START ACTION as its own third event — native flow gets it from
+  a distinct player press). Flow: Enter applies the die (rests, "Die
+  slotted."), Enter again activates (START ACTION), Backspace retracts
+  (DragReset → Unslot, die returns to tray). Retraction gets its own
+  announcement — it must not sound like a cancel. Wiring detail for W3: the
+  exact native target of the activation press; live-confirm both
+  announcements' timing.
 - **Dialogue:** continue on Enter (native); number keys pick responses;
   auto-read ambient.
 - **Tutorial:** T re-engages continue (retained); per-context review cursor.
