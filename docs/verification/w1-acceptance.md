@@ -1,5 +1,36 @@
 # W1 substrate — acceptance predictions (written pre-launch, 2026-07-18)
 
+## RESULTS — live run, 2026-07-18 night (same day)
+
+All four predictions checked; substrate CONFIRMED. Details:
+
+1. **CONFIRMED.** `FsmSignals hook alive: 11 state entries observed` at title.
+2. **CONFIRMED with a save-identity surprise.** Snapshot fired during station
+   load: `cycle=4 energy=0 condition=40 bits=80 upgradePoints=0 drivePoints=?
+   class=OPERATOR skills=-1/0/0/1/0 introComplete=True`. These disagree with the
+   session-3 save description (cycle ~7, INTUIT upgraded) — but bridge `/texts`
+   cross-check against rendered truth on the same launch matched the Lua values
+   exactly on every value the game renders as text: Class Name "OPERATOR",
+   Cryo Slot Amount "80", Points Av "0", condition band "DECLINING" with the
+   energy UI's STARVING label active (energy 0). Verdict: the adapter is right;
+   this launch loaded a different playthrough (early-game drive tracker state,
+   no upgrades spent) than the one the state log describes. Both saves
+   presumably exist; which is current is the owner's to say. Numeric
+   energy/condition (bar-rendered, not text) still get their exact-number
+   cross-check via the C query's HUD-FSM read whenever the owner next presses C.
+   `drivePoints=?` = `Player_DrivePoints` unset in this save — presence-aware
+   nil, working as designed.
+3. **PARTIALLY FALSIFIED, benign.** At the mid-load snapshot moment only
+   leaveButton and uiSelector (`UI selector`, lowercase — noted) were set;
+   Dialogue Panel / Response Menu / Saver / ActiveAction were null. The
+   registry is populated lazily as systems spawn — anchors must always be read
+   at use time, never cached at load (the accessors already read live; W2
+   consumers must not add caching). Non-null confirmation for the late four
+   rides the next dialogue/save moment.
+4. **CONFIRMED.** No new speech, no flood, shipped features unaffected.
+
+## Original predictions (pre-launch)
+
 Per the W5 validation model: these are wiring-predicted outcomes for the next
 launch. The live session confirms or falsifies them; a falsified line gets a
 same-session correction here. Everything below is log-only — the substrate speaks
