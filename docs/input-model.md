@@ -141,6 +141,9 @@ Input Pauser per-trigger census; buffer→scroll sync (deferred grace feature).
 
 ## Amendment — keymap reorder (owner ruling, 2026-07-19 session 5)
 
+- **Slash = drive-log tab swap** (clicks the other native Active/Completed tab,
+  announces its rendered label).
+
 Discovered this session (level0 Rewired dump + live confirmation, owner-observed):
 the game's shipped keyboard map is five binds — W/S camera scroll, A/D rotate
 view, Tab DEBUG MENU. The mod works WITH native camera movement, never stomps it.

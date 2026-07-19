@@ -39,6 +39,16 @@ namespace CSAccess.Modality
             }
         }
 
+        /// <summary>Which drive-log tab is showing (framework truth); null if unknown.</summary>
+        public static bool? DriveLogShowingActive
+        {
+            get
+            {
+                var qlw = QuestLog();
+                return qlw != null ? qlw.isShowingActiveQuests : (bool?)null;
+            }
+        }
+
         public static void Init()
         {
             TrackAutoplayStates();

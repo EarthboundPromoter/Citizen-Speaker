@@ -119,6 +119,30 @@ namespace CSAccess
                 }
             }
 
+            // --- Drive log: slash = tab swap (owner ruling) — clicks the OTHER
+            //     native tab button (Active/Completed), announced by rendered label. ---
+            if (mode == Mode.DriveLog && Input.GetKeyDown(KeyCode.Slash))
+            {
+                bool? showingActive = WindowState.DriveLogShowingActive;
+                string target = showingActive == false ? "Active Button" : "Completed Button";
+                var tab = GameObject.Find(
+                    "Letterbox Canvas/Drive System/CS Drive Log/Quest Log Window Main Panel/Vertical Group/Main Button Horizontal Group/"
+                    + target);
+                var tabBtn = tab != null ? tab.GetComponent<Button>() : null;
+                if (tabBtn != null && tabBtn.IsInteractable())
+                {
+                    var tmp = tab.GetComponentInChildren<TMPro.TMP_Text>(true);
+                    string label = tmp != null ? tmp.text?.Trim() : null;
+                    Navigator.Click(tab);
+                    SpeechService.Say(string.IsNullOrEmpty(label)
+                        ? (target == "Active Button" ? "Active." : "Completed.")
+                        : label + ".", Priority.Immediate, "nav");
+                }
+                else
+                    SpeechService.Say("Tab not available.", Priority.Immediate, "nav");
+                return;
+            }
+
             // --- Inventory: Up/Down = the designed panel Swap (the Swapper's own
             //     vertical-axis idiom, focus-model row 11); Left/Right stay native
             //     moves between Item Cursors, CONFINED to the cursor family — an
