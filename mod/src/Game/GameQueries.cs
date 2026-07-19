@@ -364,10 +364,13 @@ namespace CSAccess.Game
             var sb = new StringBuilder();
             int? cycle = Substrate.LuaStore.CycleNumber();
             if (cycle != null) sb.Append("Cycle ").Append(cycle).Append(". ");
+            // Energy is NOT 0-5: a fresh character reads 80 (live finding, W2 run) — the
+            // bar's five segments are visual divisions of a larger scale. Speak the raw
+            // value like condition; box wording returns once the scale is owner-calibrated.
             int? energy = Substrate.LuaStore.Energy();
             if (energy != null)
             {
-                sb.Append("Energy ").Append(energy).Append(" of 5");
+                sb.Append("Energy ").Append(energy);
                 var starving = GameObject.Find("Letterbox Canvas/Top UI/Energy UI/Energy Bar System/Starving");
                 if (starving != null && starving.activeInHierarchy) sb.Append(", starving");
                 sb.Append(". ");
