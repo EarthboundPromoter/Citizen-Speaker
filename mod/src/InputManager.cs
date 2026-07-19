@@ -149,7 +149,10 @@ namespace CSAccess
                     if (strip != null)
                     {
                         // Speak the rendered label of the panel we're switching TO.
-                        bool toData = !GameQueries.GlobalBoolValue("Data?");
+                        // The strip FSM's OWN Data? variable, not the same-named global
+                        // (session-5: the global never updates — always announced DATA).
+                        var dataVar = strip.FsmVariables.GetFsmBool("Data?");
+                        bool toData = dataVar == null || !dataVar.Value;
                         var panelBtn = GameObject.Find("Letterbox Canvas/Bottom UI/Inventory/" +
                                                        (toData ? "DATA Button" : "ITEM Button"));
                         var tmp = panelBtn != null ? panelBtn.GetComponentInChildren<TMPro.TMP_Text>(true) : null;
@@ -208,10 +211,12 @@ namespace CSAccess
             if (Input.GetKeyDown(KeyCode.J))
             {
                 if (!Allowed(mode, ModKey.DriveLogToggle)) { Refuse(mode, "Drive log"); return; }
-                ClickFirstActive("Drive log",
-                    "Letterbox Canvas/Drive System/Drive Log Button",
-                    "Letterbox Canvas/Drive System/Drive Tracker HUD",
-                    "Letterbox Canvas/Drive System");
+                // The button FSM's designed toggle event works BOTH directions (Idle
+                // -Open-> opens, Open -Open-> closes); a raw click never reaches it in
+                // the open state (session-5: J couldn't close the window it opened).
+                var driveBtn = GameQueries.FindFsm("Drive Log Button");
+                if (driveBtn != null) driveBtn.SendEvent("Open");
+                else SpeechService.Say("Drive log not available.", Priority.Immediate, "nav");
                 return;
             }
             if (Input.GetKeyDown(KeyCode.S))

@@ -89,12 +89,14 @@ namespace CSAccess.Modality
             });
         }
 
-        // ---------- Autoplay scene tracking (session-5 trap fix) ----------
+        // ---------- Autoplay scene tracking (session-5, third revision) ----------
         // The Autoplay Waiting global is a scheduling flag with a designed leak
-        // (Autoplay Wait's "Check Variables -> Off" exit never clears it) — it
-        // stranded the mode in listening twice in one session. The scene FSMs'
-        // OWN states cannot strand: a scene is pending exactly while some FSM
-        // sits in Autoplay Wait / Autoplay; leaving by ANY route exits the set.
+        // (stranded listening twice in one session). And "Autoplay Wait" is NOT a
+        // playing scene — for character canvases it means "scene armed, waiting for
+        // the player to CLICK the marker": interactive by design (the third trap:
+        // listening mode refused the navigation that would trigger Dragos's beat).
+        // Listening is owed ONLY while a scene FSM sits in its "Autoplay" state —
+        // the scene actually playing. Any exit leaves the set; nothing can strand.
 
         private static readonly HashSet<PlayMakerFSM> AutoplayFsms = new HashSet<PlayMakerFSM>();
 
@@ -104,7 +106,7 @@ namespace CSAccess.Modality
         {
             FsmSignals.Subscribe(null, null, (fsm, state) =>
             {
-                if (state == "Autoplay Wait" || state == "Autoplay")
+                if (state == "Autoplay")
                     AutoplayFsms.Add(fsm);
                 else if (AutoplayFsms.Count > 0)
                     AutoplayFsms.Remove(fsm);
