@@ -77,7 +77,11 @@ owner calibration (standing rule). W2 implements against this document.
   synthesize START ACTION as its own third event — native flow gets it from
   a distinct player press). Flow: Enter applies the die (rests, "Die
   slotted."), Enter again activates (START ACTION), Backspace retracts
-  (DragReset → Unslot, die returns to tray). Retraction gets its own
+  (DragReset → Unslot, die returns to tray). Retraction is bound to the
+  UNIVERSAL Back action by the game itself (Slot Die state watches
+  RewiredPlayerGetButtonDown "Back" → DragReset, corpus-verified) — so
+  Backspace's layered meaning here follows game convention exactly; a
+  dedicated retract key would deviate from it. Retraction gets its own
   announcement — it must not sound like a cancel. Wiring detail for W3: the
   exact native target of the activation press; live-confirm both
   announcements' timing.
