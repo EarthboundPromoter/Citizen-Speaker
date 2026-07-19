@@ -41,19 +41,23 @@ owner calibration (standing rule). W2 implements against this document.
   scrollbar input exists to ride when we add it).
 - **Esc** — pause (native, untouched).
 - **Space** — describe focused element (retained).
-- **OPEN SLOT: where-am-I query** (Tier 1, key unassigned).
+- **L — where-am-I report.** The location/mode query: current zone and marker
+  on the station map, current window or mode elsewhere. (Owner assignment,
+  correcting an earlier draft that had L on the tree.)
 - **OPEN SLOT: speech control survivors** — grave (stop), brackets (speech
   history), F2 (freed). Z + Alt-buffer may obsolete some; owner decides.
 
 ## Mode-scoped keys
 
-- **Station map: L — navigate tree.** Two levels: region (Rim, Greenway, Hub)
+- **Station map: N — navigate tree.** Two levels: region (Rim, Greenway, Hub)
   → reachable markers only. Down/Up walk; Right expands a region; Left
   collapses. Each cursor move natively selects the marker (game renders its
   own highlight); camera rides the game's machinery if that's free (W3 wiring
   question), no drawn UI ever. Marker items carry clock annotation (licensed:
   markers render their own live clock dials — corpus, 504 instances) and, if
-  TBD-4 lands rendered, drive-relevance. Retires the old L-cycle.
+  TBD-4 lands rendered, drive-relevance. Retires the old L-cycle; outside the
+  tree, plain arrows drive the game's own adjacency navigation exactly as a
+  controller would.
 - **Surface toggles (as-is, owner ruling: placement immaterial):** I inventory,
   U character window, J drive log, S scan/cloud boundary. W2 makes their
   refusals mode-aware ("Character window open") instead of generic.
