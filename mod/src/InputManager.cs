@@ -51,10 +51,13 @@ namespace CSAccess
             if (Input.GetKeyDown(KeyCode.F1) && Allowed(mode, ModKey.Help))
             { SpeechService.Say(KeyScope.HelpFor(mode), Priority.Immediate, "help"); return; }
 
-            if (Input.GetKeyDown(KeyCode.V) && Query(mode, ModKey.Vitals))
+            // Keymap reorder (owner ruling 2026-07-19): C = meter/vitals reads,
+            // V = dice. D is the game's native rotate key and passes through
+            // untouched (same ruling as S/camera-scroll).
+            if (Input.GetKeyDown(KeyCode.C) && Query(mode, ModKey.Vitals))
             { SpeechService.Say(GameQueries.DescribeVitals(), Priority.Immediate, "query"); return; }
 
-            if (Input.GetKeyDown(KeyCode.D) && Query(mode, ModKey.Dice))
+            if (Input.GetKeyDown(KeyCode.V) && Query(mode, ModKey.Dice))
             { SpeechService.Say(GameQueries.DescribeDiceBrief(), Priority.Immediate, "query"); return; }
 
             if (Input.GetKeyDown(KeyCode.K) && Query(mode, ModKey.Clocks))
@@ -219,10 +222,16 @@ namespace CSAccess
                 else SpeechService.Say("Drive log not available.", Priority.Immediate, "nav");
                 return;
             }
-            // S is NOT a mod bind (owner ruling 2026-07-19): it is the game's native
-            // camera-scroll key (level0 Rewired keyboard map) and passes through
-            // untouched. Scan is unbound pending its rehome in the keymap table eval;
-            // ModKey.ScanToggle scope entries stay dormant for that day.
+            // S and D are NOT mod binds (owner ruling 2026-07-19): native camera
+            // scroll and rotate keys — they pass through untouched. Scan lives on O
+            // (U/I/O = the state-changing panel toggles, owner keymap reorder).
+            if (Input.GetKeyDown(KeyCode.O))
+            {
+                if (!Allowed(mode, ModKey.ScanToggle)) { Refuse(mode, "Scan"); return; }
+                ClickFirstActive("Scan",
+                    "Letterbox Canvas/Top UI/Scan Button");
+                return;
+            }
             if (Input.GetKeyDown(KeyCode.R) && shift)
             {
                 if (!Allowed(mode, ModKey.Reroll)) { Refuse(mode, "Reroll"); return; }

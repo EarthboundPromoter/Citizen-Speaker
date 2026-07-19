@@ -138,3 +138,22 @@ wording-only).
 Wiring (W2/W3): camera-follow on native marker select; cloud scan-mode
 controller-nav check; drive-log open branch; response-menu default selection;
 Input Pauser per-trigger census; buffer→scroll sync (deferred grace feature).
+
+## Amendment — keymap reorder (owner ruling, 2026-07-19 session 5)
+
+Discovered this session (level0 Rewired dump + live confirmation, owner-observed):
+the game's shipped keyboard map is five binds — W/S camera scroll, A/D rotate
+view, Tab DEBUG MENU. The mod works WITH native camera movement, never stomps it.
+
+- **S and D are not mod binds** — native camera keys, pass through untouched.
+- **State-changing panel toggles sit adjacent: U = character/upgrade,
+  I = inventory (incl. the data panel via Up/Down swap), O = scan.** These are
+  the queries that change state and lead to further action.
+- **Value queries: C = meter reads (vitals — cycle/energy/condition/cryo),
+  V = dice.**
+- **K = clocks stays provisional** until a respectable clock query model exists,
+  combining asked-for data and offered hover data (see focus-model.md rows 3
+  and the K-index W4 design).
+- TBD-4 (drive→node linkage) RESOLVED by observation: drive pips render per
+  drive on marker billboards; drive objective speaks on hover always (owner
+  ruling, focus-model row 3).
