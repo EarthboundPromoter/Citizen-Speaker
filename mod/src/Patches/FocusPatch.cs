@@ -40,6 +40,41 @@ namespace CSAccess.Patches
             Plugin.Log.LogInfo("[Focus] scene settled (first user input).");
         }
 
+        private static float _lastStripReanchor = -10f;
+        private static float _reanchorAt = -1f;
+
+        // BL-10 freshness deferral: the Inventory Display populates a beat after the
+        // cursor moves — announcing immediately would read the PREVIOUS item's name.
+        // Rapid arrowing collapses to the last cursor (natural debounce).
+        private static GameObject _pendingItem;
+        private static float _pendingItemAt;
+        private static bool _pendingItemUser;
+
+        /// <summary>From Plugin.Update: scheduled strip-steal recovery + deferred
+        /// inventory-item announcements.</summary>
+        public static void Tick()
+        {
+            if (_reanchorAt >= 0 && Time.unscaledTime >= _reanchorAt)
+            {
+                _reanchorAt = -1f;
+                Modality.FocusModel.ReAnchor(Modality.Mode.ActionView);
+            }
+
+            if (_pendingItem != null && Time.unscaledTime >= _pendingItemAt)
+            {
+                var go = _pendingItem;
+                _pendingItem = null;
+                if (go != null && go.activeInHierarchy && EventSystem.current != null
+                    && EventSystem.current.currentSelectedGameObject == go)
+                {
+                    string description = Describe.Element(go, detailed: false);
+                    if (!string.IsNullOrEmpty(description))
+                        SpeechService.Say(description,
+                            _pendingItemUser ? Priority.Immediate : Priority.Queued, "focus");
+                }
+            }
+        }
+
         /// <summary>Called by Navigator before user-initiated selection so it always announces.</summary>
         public static void ClearCooldown(GameObject go)
         {
@@ -77,6 +112,36 @@ namespace CSAccess.Patches
                 return;
             }
 
+            // Cloud camera flight: the spatial selector re-claims disabled markers
+            // mid-flight — machinery, not information (owner-approved mute; the
+            // settled selection is announced once by CloudFlight.Tick).
+            if (!userInitiated && Modality.CloudFlight.Suppressing())
+            {
+                Plugin.Log.LogInfo("[Focus] suppressed (cloud flight): " + selected.name);
+                return;
+            }
+
+            // Strip steal (owner-approved 2026-07-19): game-driven selection landing
+            // on the CLOSED inventory strip in the action view is the spatial
+            // selector's closest-button artifact (live: die-picker cancel handed
+            // focus to DATA Button). Suppress the announcement and fire the view's
+            // designed recovery — the same RefocusUI hand-off the game uses. Never
+            // the same frame (resync discipline); rate-limited so a recovery that
+            // itself lands on the strip cannot loop.
+            if (!userInitiated
+                && !Modality.WindowState.InventoryOpen
+                && Describe.HasAncestor(selected, "Bottom UI")
+                && Describe.HasAncestor(selected, "Inventory")
+                && Time.unscaledTime - _lastStripReanchor > 1.5f
+                && Modality.ModeModel.Current() == Modality.Mode.ActionView)
+            {
+                _lastStripReanchor = Time.unscaledTime;
+                _reanchorAt = Time.unscaledTime + 0.1f;
+                Plugin.Log.LogInfo("[Focus] strip steal suppressed (" + selected.name
+                    + "): ActionView re-anchor scheduled.");
+                return;
+            }
+
             int id = selected.GetInstanceID();
             float now = Time.unscaledTime;
             // The cooldown exists to de-chatter game-driven reselection ping-pong;
@@ -86,6 +151,16 @@ namespace CSAccess.Patches
                 return;
             LastAnnounced[id] = now;
             if (LastAnnounced.Count > 200) LastAnnounced.Clear();
+
+            // Inventory cursors defer ~0.15s so the Inventory Display has written the
+            // NEW item's name before we read it (BL-10; spoken by Tick).
+            if (selected.name == "Item Cursor")
+            {
+                _pendingItem = selected;
+                _pendingItemAt = Time.unscaledTime + 0.15f;
+                _pendingItemUser = userInitiated;
+                return;
+            }
 
             string description = Describe.Element(selected, detailed: false);
             if (string.IsNullOrEmpty(description)) return;

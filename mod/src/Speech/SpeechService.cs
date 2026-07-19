@@ -103,8 +103,18 @@ namespace CSAccess.Speech
                 }
                 _lastQueued = text;
                 Queue.Enqueue(new Pending { Text = text, Source = source });
-                Plugin.Log.LogInfo($"[Speech:{source}] (queued) {text}");
+                Plugin.Log.LogInfo($"[Speech:{source}] [{Diag.ModeNow()} {Diag.Stamp()}] (queued) {text}");
             }
+        }
+
+        /// <summary>Pending queued announcements (Diag state reads).</summary>
+        public static int QueueDepth => Queue.Count;
+
+        /// <summary>Tail of the spoken history, oldest first (Diag incident dump / /modstate).</summary>
+        public static List<string> RecentHistory(int max)
+        {
+            int start = Mathf.Max(0, History.Count - max);
+            return History.GetRange(start, History.Count - start);
         }
 
         /// <summary>Drop pending queued announcements (used when the user navigates away).</summary>
@@ -140,7 +150,9 @@ namespace CSAccess.Speech
                 History.RemoveRange(0, History.Count - HistoryCapacity);
             _historyCursor = History.Count - 1;
 
-            Plugin.Log.LogInfo($"[Speech:{source}] {text}");
+            // The [mode fN tN] context block joins each utterance to the input ring,
+            // FSM signals, and the bridge's /watch stream (shared frame clock).
+            Plugin.Log.LogInfo($"[Speech:{source}] [{Diag.ModeNow()} {Diag.Stamp()}] {text}");
             try
             {
                 if (_loaded) Tolk.Tolk_Output(text, interrupt);

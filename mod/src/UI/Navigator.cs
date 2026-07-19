@@ -12,6 +12,7 @@ namespace CSAccess.UI
     {
         public static void Select(GameObject go)
         {
+            Diag.Note("Nav", "select " + (go != null ? go.name : "(null)"));
             SpeechService.FlushQueue();
             Patches.FocusPatch.NoteUserNavigation();
             Patches.FocusPatch.ClearCooldown(go);
@@ -67,6 +68,9 @@ namespace CSAccess.UI
                 },
             };
             ExecuteEvents.Execute(current, move, ExecuteEvents.moveHandler);
+            var landed = es.currentSelectedGameObject;
+            Diag.Note("Nav", "move " + direction + " from " + current.name
+                + (landed == current ? " (dead end)" : " to " + (landed != null ? landed.name : "(none)")));
 
             // Dead end (or sole focusable element): repeat the element bare — the repeat
             // itself is the dead-end signal, and an arrow press must never be silent.
@@ -96,6 +100,7 @@ namespace CSAccess.UI
 
         public static void Click(GameObject go)
         {
+            Diag.Note("Nav", "click " + (go != null ? go.name : "(null)"));
             // A disabled Selectable swallows clicks silently — say so instead
             // (the game gates buttons this way, e.g. End Cycle during the intro).
             var selectable = go.GetComponent<Selectable>();

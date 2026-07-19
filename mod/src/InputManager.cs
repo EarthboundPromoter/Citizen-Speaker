@@ -40,6 +40,10 @@ namespace CSAccess
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             var mode = ModeModel.Current();
 
+            // Cause recording: every mod-relevant key is ringed BEFORE any dispatch
+            // decision, so a swallowed or misrouted key still leaves a trace (Diag).
+            Diag.CaptureKeys(shift);
+
             // Node census: announces additions/removals at the first full-control
             // station moment per cycle (focus-model row 3; cheap no-op otherwise).
             Game.NodeCensus.Tick(mode);
@@ -50,6 +54,15 @@ namespace CSAccess
 
             if (Input.GetKeyDown(KeyCode.F1) && Allowed(mode, ModKey.Help))
             { SpeechService.Say(KeyScope.HelpFor(mode), Priority.Immediate, "help"); return; }
+
+            // F3 incident marker: ungated (works in every mode, even input-paused) —
+            // dumps recent causes, FSM entries, speech and believed state to the log.
+            if (Input.GetKeyDown(KeyCode.F3))
+            {
+                Diag.IncidentDump("F3");
+                SpeechService.Say("Snapshot logged.", Priority.Immediate, "diag");
+                return;
+            }
 
             // Keymap reorder (owner ruling 2026-07-19): C = meter/vitals reads,
             // V = dice. D is the game's native rotate key and passes through
@@ -106,6 +119,12 @@ namespace CSAccess
                 {
                     if (Input.GetKeyDown(KeyCode.DownArrow)) { CharacterWindowReview.Review(1); return; }
                     if (Input.GetKeyDown(KeyCode.UpArrow)) { CharacterWindowReview.Review(-1); return; }
+                    // Right/Left = the perk axis (owner ruling 2026-07-19). Capturing
+                    // them here also closes the blind-purchase hole: they previously
+                    // fell through to native spatial moves that landed on unlabeled
+                    // perk buttons (BL-9 incident).
+                    if (Input.GetKeyDown(KeyCode.RightArrow)) { CharacterWindowReview.Adjust(1); return; }
+                    if (Input.GetKeyDown(KeyCode.LeftArrow)) { CharacterWindowReview.Adjust(-1); return; }
                     if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
                         && CharacterWindowReview.Activate())
                         return;
@@ -326,6 +345,17 @@ namespace CSAccess
         {
             switch (mode)
             {
+                case Mode.Cloud:
+                    // One level back per press (owner ruling 2026-07-19): node open →
+                    // the universal Leave (its Leave Action sends CloseAction to
+                    // $ActiveAction; cloud markers answer with the camera pull-back).
+                    // Field level (Leave Button inactive) → the Scan toggle itself,
+                    // the same designed control O clicks.
+                    ClickFirstActive("Leave or back",
+                        "Letterbox Canvas/Top UI/Leave Button",
+                        "Letterbox Canvas/Top UI/Scan Button");
+                    return;
+
                 case Mode.DiceAllocation:
                     // Designed Back: retracts a resting die (Slotted -> Active) or
                     // cancels the picker (Active -> teardown) — the FSM resolves depth.

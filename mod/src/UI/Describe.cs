@@ -49,6 +49,15 @@ namespace CSAccess.UI
             if (name == "Continue Button")
                 return "Continue";
 
+            if (name == "Item Cursor")
+            {
+                // BL-10: cursors carry no text; the hovered item's identity renders in
+                // the Inventory Display (both panels share it), the count in the slot's
+                // Amount. Falls through to the bare name when the display is empty.
+                string item = InventoryItem(go, detailed);
+                if (item != null) return item;
+            }
+
             if (name == "Dice Slot Button")
                 return DescribeAction(go, detailed);
 
@@ -87,6 +96,31 @@ namespace CSAccess.UI
             }
             string skillOwner = AncestorDirectlyUnder(go, "SKILL List");
             return skillOwner != null ? skillOwner + ": " + name : name;
+        }
+
+        /// <summary>Inventory item under the cursor: Inventory Display's rendered Item
+        /// Name + the slot's rendered Amount; detailed adds the Item Description.
+        /// Null when the display holds no name (caller falls back).</summary>
+        public static string InventoryItem(GameObject cursor, bool detailed)
+        {
+            var display = GameObject.Find("Letterbox Canvas/Bottom UI/Inventory/Inventory Display");
+            if (display == null) return null;
+            string itemName = TextUnder(display.transform, "Item Name");
+            if (string.IsNullOrEmpty(itemName)) return null;
+
+            var sb = new StringBuilder(itemName);
+            // Slot = cursor's grandparent (…/<X> Slot/<item family>/Item Cursor).
+            var slot = cursor.transform.parent != null ? cursor.transform.parent.parent : null;
+            var amountT = slot != null ? slot.Find("Amount") : null;
+            var amount = amountT != null ? amountT.GetComponent<TMP_Text>() : null;
+            if (amount != null && !string.IsNullOrWhiteSpace(amount.text))
+                sb.Append(", amount ").Append(amount.text.Trim());
+            if (detailed)
+            {
+                string desc = TextUnder(display.transform, "Item Description");
+                if (desc != null) sb.Append(". ").Append(desc);
+            }
+            return sb.ToString();
         }
 
         /// <summary>Compose an action panel description from its texts:

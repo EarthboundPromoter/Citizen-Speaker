@@ -19,6 +19,7 @@ namespace CSAccess
         internal static ConfigEntry<bool> AnnounceFocus;
         internal static ConfigEntry<bool> ForceGamepadUI;
         internal static ConfigEntry<bool> TraceFsmSignals;
+        internal static ConfigEntry<bool> TraceInput;
 
         private InputManager _input;
         private Watchers _watchers;
@@ -38,6 +39,9 @@ namespace CSAccess
                 "Keep the game's UI in gamepad mode so the keyboard dice flow works.");
             TraceFsmSignals = Config.Bind("Debug", "TraceFsmSignals", false,
                 "Log every subscribed FSM state-entry dispatch (dev diagnostics).");
+            TraceInput = Config.Bind("Debug", "TraceInput", false,
+                "Log every mod-relevant key press and synthetic nav event live "
+                + "(always recorded in memory for the F3 incident dump regardless).");
 
             SpeechService.Init();
 
@@ -48,6 +52,7 @@ namespace CSAccess
             _watchers = new Watchers();
             Game.CycleGate.Init();
             Modality.WindowState.Init();
+            Modality.CloudFlight.Init();
 
             Log.LogInfo("Citizen Sleeper Access 0.1.0 loaded. Press F1 in game for commands.");
             SpeechService.Say("Citizen Sleeper Access loaded. Press F1 for commands.", Priority.Queued, "init");
@@ -57,6 +62,8 @@ namespace CSAccess
         {
             _input.Tick();
             _watchers.Tick();
+            Modality.CloudFlight.Tick();
+            Patches.FocusPatch.Tick();
             SpeechService.Tick();
             Substrate.SelfTest.Tick();
             Patches.ConversationEvents.Tick();

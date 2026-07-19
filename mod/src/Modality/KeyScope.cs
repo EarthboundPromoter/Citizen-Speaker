@@ -80,7 +80,14 @@ namespace CSAccess.Modality
             // S stays out pending the scan-from-strip check.
             t[Mode.Inventory] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.InventoryToggle,
                 ModKey.CharacterToggle, ModKey.DriveLogToggle);
-            t[Mode.Cloud] = S(ModKey.Navigate, ModKey.Activate, ModKey.Clocks, ModKey.Reroll, ModKey.ScanToggle);
+            // Cancel in scope (owner-approved 2026-07-19): the universal Leave Button
+            // click IS the designed cloud-node exit — its Leave Action sends
+            // CloseAction to $ActiveAction, which cloud markers answer with the
+            // camera pull-back (corpus: Havenage Agent 2 Canvas 2 Location Button,
+            // Active -> Camera Transition 2). Without it, an open node is a trap:
+            // the game disables the Scan toggle while a node is open.
+            t[Mode.Cloud] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks, ModKey.Reroll,
+                ModKey.ScanToggle);
             t[Mode.ActionView] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks, ModKey.Reroll,
                 ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle);
             t[Mode.Station] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks,

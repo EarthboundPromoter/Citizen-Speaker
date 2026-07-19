@@ -210,36 +210,49 @@ namespace CSAccess.Modality
             return selected != null && selected.name == "Item Cursor";
         }
 
-        /// <summary>Cloud: the Hacking? global (corpus-verified writers) or the Scan Button
-        /// dial sitting on its scan side (named states, brief F). An unrecognized Scan
-        /// Button state is logged once rather than guessed at (graceful silence).</summary>
-        private static string _unknownScanStateLogged;
+        /// <summary>Cloud: the Scan Button dial FIRST (named states, live-proven),
+        /// the Hacking? global demoted to tiebreaker for transitional dial states
+        /// (owner-approved 2026-07-19). The flag leaks — it stayed true after a
+        /// cloud exit and stranded Cloud mode at the station (this session's live
+        /// incident, the scheduling-flag trap class). State sides read from the
+        /// live FSM decode: Disable re-enables to Scan Idle (cloud gate); Holding /
+        /// Disable 2 / Disable 3 / Off 2 all resolve to Normal Idle (station side).</summary>
+        private static string _cloudDivergenceLogged;
 
         private static bool CloudActive()
         {
-            if (GlobalBool("Hacking?")) return true;
+            bool flag = GlobalBool("Hacking?");
             var scan = GameQueries.FindFsm("Scan Button", "Top UI");
-            if (scan == null) return false;
-            string state = scan.ActiveStateName;
+            string state = scan != null ? scan.ActiveStateName : null;
             switch (state)
             {
                 case "Scan Idle":
                 case "Scan Mode Transition":
+                case "Disable":
+                    LogCloudDivergence(state, flag, dial: true);
                     return true;
                 case "Normal Idle":
                 case "Normal Transition":
                 case "Holding":
-                case null:
-                case "":
+                case "Disable 2":
+                case "Disable 3":
+                case "Off 2":
+                    LogCloudDivergence(state, flag, dial: false);
                     return false;
                 default:
-                    if (_unknownScanStateLogged != state)
-                    {
-                        _unknownScanStateLogged = state;
-                        Plugin.Log.LogInfo("[Mode] Scan Button in unmapped state '" + state + "' — treated as not-cloud.");
-                    }
-                    return false;
+                    // Transitional (Sound*/Animation/Off/Holding Scan Mode*) or
+                    // dial unavailable: the flag breaks the tie.
+                    return flag;
             }
+        }
+
+        private static void LogCloudDivergence(string state, bool flag, bool dial)
+        {
+            if (flag == dial) { _cloudDivergenceLogged = null; return; }
+            if (_cloudDivergenceLogged == state) return;
+            _cloudDivergenceLogged = state;
+            Plugin.Log.LogInfo("[Mode] DIVERGENCE: Hacking?=" + flag + " vs Scan dial '"
+                + state + "' — dial wins.");
         }
 
         /// <summary>Zone from the Location Controller dial (corpus: Filter branches into
