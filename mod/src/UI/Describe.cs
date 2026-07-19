@@ -199,21 +199,36 @@ namespace CSAccess.UI
             if (candidates.Count == 1) return candidates[0].text.Trim();
 
             var outlier = SingleColorOutlier(candidates);
-            if (outlier != null) return outlier.text.Trim();
 
-            if (!_modifierRowLogged)
+            // Calibration (throttled): the applied emphasis may be the "<N> Modifier"
+            // container's highlight Image/CanvasGroup rather than text color — dump both
+            // layers plus the current pick so the live log can settle it (report 12).
+            if (Time.unscaledTime - _lastRowLog > 5f)
             {
-                _modifierRowLogged = true;
-                var dump = new StringBuilder("[Describe] modifier row emphasis unresolved:");
+                _lastRowLog = Time.unscaledTime;
+                var dump = new StringBuilder("[Describe] modifier row (picked ")
+                    .Append(outlier != null ? outlier.text.Trim() : "none").Append("):");
                 foreach (var c in candidates)
-                    dump.Append(' ').Append(c.text.Trim()).Append('=').Append(c.color)
-                        .Append("/a").Append(c.alpha.ToString("0.00"));
+                {
+                    dump.Append(' ').Append(c.text.Trim()).Append(" txt=").Append(c.color)
+                        .Append(" a=").Append(c.alpha.ToString("0.00"));
+                    var container = c.transform.parent;
+                    if (container != null)
+                    {
+                        var cg = container.GetComponent<CanvasGroup>();
+                        if (cg != null) dump.Append(" cg=").Append(cg.alpha.ToString("0.00"));
+                        var img = container.GetComponent<UnityEngine.UI.Image>();
+                        if (img != null) dump.Append(" img=").Append(img.enabled ? img.color.ToString() : "off");
+                    }
+                }
                 Plugin.Log.LogInfo(dump.ToString());
             }
+
+            if (outlier != null) return outlier.text.Trim();
             return null;
         }
 
-        private static bool _modifierRowLogged;
+        private static float _lastRowLog = -10f;
 
         /// <summary>The one text whose rendered color (incl. alpha) differs from all others,
         /// or null if the row doesn't split cleanly into one-vs-rest.</summary>
