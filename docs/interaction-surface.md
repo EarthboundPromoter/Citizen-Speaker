@@ -228,3 +228,65 @@ DIAL = named FSM state/variable (verified); UNBUILT = no mod support yet.
 ### L. Tutorial
 
 - Panel text blocks (TEXT, review cursor). VERIFIED. Prompt glyphs UNBUILT.
+
+## Part 3 — Channel classification (owner frame, 2026-07-18 session 4)
+
+The input model hangs off channels, not domains. Channels:
+
+- **FOCUS** — spoken free on highlight/selection; needs no key.
+- **AMBIENT** — announced when the game renders it (events, notifications).
+- **QUERY** — stable rendered backing; answerable on demand at any moment.
+- **CONTEXT** — meaningful only inside its mode; any key for it lives there.
+- **TBD** — render source or timing unknown; evidence item before channeling.
+
+### Classification
+
+- Energy, condition + band: QUERY (HUD always rendered) + AMBIENT via outcome
+  effect lines (shipped).
+- Cycle number: QUERY (Lua, verified).
+- Class, cryo: QUERY.
+- Upgrade points: AMBIENT at earn ("+ 1 UPGRADE POINT" notification template
+  exists) + CONTEXT in character window. TBD-1: the Character UI Button keeps
+  an UpgradeAvailable flag it clears on open — does an upgrade-available badge
+  render on the button, and when? Determines whether points-available is also
+  QUERY outside the window.
+- Skill values: CONTEXT (character window rows; Lua backing exists). TBD-2:
+  all moments skill values/changes render outside the window (level-up
+  notifications confirmed as templates; anything else?).
+- Dice pool: QUERY during a cycle; per-die detail FOCUS in the picker
+  (shipped).
+- Reroll availability: CONTEXT (dice UI). TBD-3: its rendered signal
+  (REROLL DICE On-states are the dial; what does the player see?).
+- Location name/description: FOCUS (shipped).
+- Action card (name, affordance, status, cost, skill/modifier): FOCUS
+  (shipped) + CONTEXT re-read.
+- Odds bands: FOCUS enrich once built (W4).
+- Clocks at location: QUERY scoped to location (shipped K) + AMBIENT via
+  outcome lines when they tick.
+- Tracked drive: QUERY (drive tracker HUD always rendered). Drive
+  events (new/complete/fail): AMBIENT (notification templates confirmed).
+- Drive log detail: CONTEXT (drive log window).
+- TBD-4 (owner-named): does the game render which locations/nodes serve a
+  drive's next step (marker highlight, label, anything)? If rendered,
+  it transcodes into FOCUS + master-list annotation; if not rendered,
+  it does not exist for the mod (render-honesty).
+- World master list: nav surface, not a query; marker glyph semantics enrich
+  its items and FOCUS (W4).
+- Inventory contents: FOCUS inside the strip + CONTEXT detail.
+- Dialogue last line / speaker: QUERY (shipped repeat). History: QUERY
+  (shipped).
+- Where-am-I (mode): QUERY once the W2 mode model exists.
+- Focused-element detail: QUERY (shipped Space).
+- Input mode switch: AMBIENT (shipped).
+- Autosave timer: CONTEXT (pause) (shipped).
+- Cloud node status / die-match: FOCUS + CONTEXT once built (W4).
+- Scan-mode toggle: AMBIENT (shipped announcement path).
+- Outcome effects + completion narrative: AMBIENT (shipped); history via
+  speech history QUERY.
+- Tutorial blocks: CONTEXT (review cursor, shipped).
+
+### Evidence items opened by this pass
+
+TBD-1 upgrade-badge render/timing; TBD-2 skill render moments outside window;
+TBD-3 reroll's rendered signal; TBD-4 drive→location/node linkage rendering.
+All four are desk-first (corpus render-route trace), live-confirm second.
