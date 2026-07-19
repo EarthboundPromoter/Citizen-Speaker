@@ -49,12 +49,15 @@ namespace CSAccess.Modality
             // --- Full-screen interrupts, strongest first ---
             if (PauseOpen()) return Mode.Pause;
             if (GameQueries.CycleTransitionActive()) return Mode.CycleTransition;
-            if (AutoplayActive()) return Mode.Autoplay;
             if (TutorialPanelActive()) return Mode.Tutorial;
 
-            // --- Conversation layer ---
+            // --- Conversation layer OUTRANKS the scene flag (live finding 2026-07-19):
+            //     the wake-up sequence runs dialogue inside a scripted scene, and a live
+            //     conversation is interactive by definition — the game is rendering an
+            //     input affordance. Scenes Active? describes the wrapper, not the ask. ---
             if (DialogueState.MenuOpen) return Mode.ResponseMenu;
             if (ConversationActive()) return Mode.Dialogue;
+            if (AutoplayActive()) return Mode.Autoplay;
 
             // --- Allocation rides on top of action/cloud views ---
             if (GameQueries.DiceAllocationActive() || DiceSlottedResting()) return Mode.DiceAllocation;
