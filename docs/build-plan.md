@@ -132,6 +132,14 @@ ordering; each item cites its brief. Workstreams in dependency order:
   key must correspond to one action's designed effect (or a pure-read query).
   Note: cloud view has NO bound input action — it is uGUI-click-only (F).
 
+**W1→W2 checkpoint — keymap design session (owner-present, blocking):** with the
+input contract and the verified mode list in hand, owner and mod design the keymap
+together before any W2 scoping code: global keys, per-mode keys, leave idiom per
+mode, and which current binds survive, move, or die. Every key maps to one
+action's designed effect or a pure-read query — no invented input schema. All
+currently shipped binds are provisional input to this session, not constraints on
+it.
+
 **W2 — Modality layer (on W1 signals):**
 - Mode model over the traced flag writers (F) + state-entry signals; entry/exit
   announcements; per-mode key scoping using the modal-enforcement map (E) — e.g.
