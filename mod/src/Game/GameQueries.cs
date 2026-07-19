@@ -54,6 +54,13 @@ namespace CSAccess.Game
             return v != null ? v.Value : 0f;
         }
 
+        /// <summary>Read a PlayMaker global bool (dial read, invariant 4).</summary>
+        public static bool GlobalBoolValue(string name)
+        {
+            var v = HutongGames.PlayMaker.FsmVariables.GlobalVariables.GetFsmBool(name);
+            return v != null && v.Value;
+        }
+
         // ---------- Scripted input pauses ----------
 
         /// <summary>The Tutorial System's Input Pauser FSM pauses player input during scripted

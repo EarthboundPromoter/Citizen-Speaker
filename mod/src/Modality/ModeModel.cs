@@ -46,25 +46,24 @@ namespace CSAccess.Modality
             if (scene.Contains("MAIN TITLE"))
                 return CharacterSelect.IsActive() ? Mode.CharacterSelect : Mode.Title;
 
-            // --- Full-screen interrupts, strongest first ---
+            // --- Pause outranks everything ---
             if (PauseOpen()) return Mode.Pause;
-            if (GameQueries.CycleTransitionActive()) return Mode.CycleTransition;
-            if (TutorialPanelActive()) return Mode.Tutorial;
 
-            // --- Conversation layer OUTRANKS the scene flag (live finding 2026-07-19):
-            //     the wake-up sequence runs dialogue inside a scripted scene, and a live
-            //     conversation is interactive by definition — the game is rendering an
-            //     input affordance. Scenes Active? describes the wrapper, not the ask. ---
+            // --- AFFORDANCE PRECEDENCE (W3, brief H): the mode that owns the keys is
+            //     the mode whose input affordance the game is rendering or holding.
+            //     Interactive affordances outrank ambient wrappers, whatever flag the
+            //     wrapper flies — incidents 5 (dialogue vs Scenes Active?), 6 (autoplay)
+            //     and 9 (wake dialogue inside the cycle transition) were all this one
+            //     rule missing. The wrappers only own keys between affordances. ---
+            if (TutorialPanelActive()) return Mode.Tutorial;
             if (DialogueState.MenuOpen) return Mode.ResponseMenu;
             if (ConversationActive()) return Mode.Dialogue;
-            if (AutoplayActive()) return Mode.Autoplay;
-
-            // --- Allocation rides on top of action/cloud views ---
             if (GameQueries.DiceAllocationActive() || DiceSlottedResting()) return Mode.DiceAllocation;
 
-            // --- Windows (one-directional exclusion only; see class doc) ---
-            bool charWin = CharacterWindowOpen();
-            bool driveLog = DriveLogOpen();
+            // --- Windows: event-driven truth (WindowState; incident 7 killed the
+            //     alpha polls). One-directional exclusion only; see class doc. ---
+            bool charWin = WindowState.CharacterWindowOpen;
+            bool driveLog = WindowState.DriveLogOpen;
             if (charWin && driveLog && Time.unscaledTime - _bothWindowsLogged > 30f)
             {
                 _bothWindowsLogged = Time.unscaledTime;
@@ -72,7 +71,11 @@ namespace CSAccess.Modality
             }
             if (charWin) return Mode.CharacterWindow;
             if (driveLog) return Mode.DriveLog;
-            if (InventoryCursorFocused()) return Mode.Inventory;
+            if (WindowState.InventoryOpen || InventoryCursorFocused()) return Mode.Inventory;
+
+            // --- Ambient wrappers (listening modes) ---
+            if (GameQueries.CycleTransitionActive()) return Mode.CycleTransition;
+            if (AutoplayActive()) return Mode.Autoplay;
 
             // --- Camera-level modes ---
             if (CloudActive()) return Mode.Cloud;
@@ -172,18 +175,6 @@ namespace CSAccess.Modality
         {
             var fsm = GameQueries.DiceSystemFsm();
             return fsm != null && fsm.ActiveStateName == "Slotted";
-        }
-
-        /// <summary>CanvasGroup-alpha open checks — live-proven pattern (window watchers).</summary>
-        private static bool CharacterWindowOpen() => AlphaOpen("Letterbox Canvas/Character Window");
-        private static bool DriveLogOpen() => AlphaOpen("Letterbox Canvas/Drive System/CS Drive Log");
-
-        private static bool AlphaOpen(string path)
-        {
-            var go = GameObject.Find(path);
-            if (go == null || !go.activeInHierarchy) return false;
-            var group = go.GetComponent<CanvasGroup>();
-            return group == null || group.alpha > 0.5f;
         }
 
         /// <summary>Selection inside an Item Cursor — the game's own semi-modal watch uses

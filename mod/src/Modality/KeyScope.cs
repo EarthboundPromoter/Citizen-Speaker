@@ -58,7 +58,8 @@ namespace CSAccess.Modality
             t[Mode.CycleTransition] = S();
             t[Mode.Autoplay] = S();
 
-            t[Mode.Pause] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel);
+            // Pause: ReviewArrows added for the options-menu review (focus-model row 16).
+            t[Mode.Pause] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.ReviewArrows);
             t[Mode.Tutorial] = S(ModKey.Navigate, ModKey.Activate, ModKey.ReviewArrows, ModKey.TutorialContinue);
             t[Mode.ResponseMenu] = S(ModKey.Navigate, ModKey.Activate, ModKey.NumberChoices);
             t[Mode.Dialogue] = S(ModKey.Navigate, ModKey.Activate);
@@ -67,7 +68,13 @@ namespace CSAccess.Modality
             t[Mode.CharacterWindow] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.ReviewArrows,
                 ModKey.CharacterToggle);
             t[Mode.DriveLog] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.DriveLogToggle);
-            t[Mode.Inventory] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.InventoryToggle);
+            // Inventory: U/J stay live — the designed controller idiom is dedicated
+            // buttons (R1/L1) and the opening panel itself closes the strip (corpus:
+            // Character UI Button and Drive Log Button Open states both send Inventory
+            // Deactivate); refusing them was stricter than the game (focus-model row 11).
+            // S stays out pending the scan-from-strip check.
+            t[Mode.Inventory] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.InventoryToggle,
+                ModKey.CharacterToggle, ModKey.DriveLogToggle);
             t[Mode.Cloud] = S(ModKey.Navigate, ModKey.Activate, ModKey.Clocks, ModKey.Reroll, ModKey.ScanToggle);
             t[Mode.ActionView] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks, ModKey.Reroll,
                 ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle);
