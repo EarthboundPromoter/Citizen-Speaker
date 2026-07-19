@@ -146,6 +146,10 @@ namespace CSAccess.UI
             // "Dice Slot Button" itself is present on ALL actions (docs/verification/C).
             sb.Append(TakesDie(root) ? ". Takes a die" : ". Enter to activate");
 
+            // Cloud node die demand (BL-12): the gating fact, graphics-only on the card.
+            string demand = HackingDemand(root);
+            if (demand != null) sb.Append(". ").Append(demand);
+
             string buttonLabel = TextUnder(root, "Dice Slot Button");
             if (buttonLabel != null && !buttonLabel.Equals(spokenName, System.StringComparison.OrdinalIgnoreCase))
                 sb.Append(". ").Append(buttonLabel);
@@ -156,8 +160,50 @@ namespace CSAccess.UI
                 if (desc != null) sb.Append(". ").Append(desc);
                 string perCycle = TextContaining(root, "PER CYCLE");
                 if (perCycle != null) sb.Append(". ").Append(perCycle);
+                // Cloud sequence steps (BL-13): rendered step name + lock state per
+                // Elements Slot ("ACCESS PROTOCOLS, LOCKED").
+                foreach (Transform child in root)
+                {
+                    if (!child.name.StartsWith("Elements Slot")) continue;
+                    if (!child.gameObject.activeInHierarchy) continue;
+                    string step = TextUnder(child, "Outline (1)");
+                    string state = TextUnder(child, "Outline (2)");
+                    if (step == null) continue;
+                    sb.Append(". ").Append(step);
+                    if (state != null) sb.Append(", ").Append(state);
+                }
             }
             return sb.ToString();
+        }
+
+        /// <summary>Cloud node die demand (BL-12): the card renders 1–3 die glyphs whose
+        /// values live in the Hacking Dice Slot FSM — Required Roll (+1/+2 with skill
+        /// bucket) drives the rendered glyph via FloatSwitch → Dice Value states, and
+        /// Slotted 1–3 accept exactly these values (corpus render-route trace,
+        /// Potential Dice = rendered glyph count). Null on non-cloud actions or an
+        /// unset slot (graceful silence).</summary>
+        private static string HackingDemand(Transform actionRoot)
+        {
+            var slotT = actionRoot.Find("Hacking Dice Slot 1");
+            if (slotT == null) return null;
+            var fsm = slotT.GetComponent<PlayMakerFSM>();
+            if (fsm == null) return null;
+            var vars = fsm.FsmVariables;
+            int count = Mathf.RoundToInt(vars.GetFsmFloat("Potential Dice")?.Value ?? 0f);
+            if (count < 1) return null;
+
+            var names = new[] { "Required Roll", "Required Roll +1", "Required Roll +2" };
+            var values = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < count && i < names.Length; i++)
+            {
+                int v = Mathf.RoundToInt(vars.GetFsmFloat(names[i])?.Value ?? 0f);
+                if (v < 1 || v > 6) continue;
+                values.Add(v.ToString());
+            }
+            if (values.Count == 0) return null;
+            if (values.Count == 1) return "Matches die " + values[0];
+            return "Matches die " + string.Join(", ", values.GetRange(0, values.Count - 1))
+                + " or " + values[values.Count - 1];
         }
 
         /// <summary>Die-taking actions carry a "Gamepad Dice Slot" descendant (inactive while
@@ -169,11 +215,19 @@ namespace CSAccess.UI
             return false;
         }
 
+        /// <summary>Cloud action roots break the " Action" suffix convention freely
+        /// ("Yatagan Agent 1 Action " trailing space, "ConSec X3 Hack Action (2)",
+        /// "Hardin Agent Action 1 slot" — corpus). The durable convention both sides
+        /// honor: action cards are the direct children of a "* Actions" group.</summary>
         public static Transform FindActionRoot(Transform t)
         {
             for (var cur = t; cur != null; cur = cur.parent)
-                if (cur.name.EndsWith(" Action"))
+            {
+                if (cur.name.TrimEnd().EndsWith(" Action"))
                     return cur;
+                if (cur.parent != null && cur.parent.name.TrimEnd().EndsWith(" Actions"))
+                    return cur;
+            }
             return null;
         }
 

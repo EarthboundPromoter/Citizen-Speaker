@@ -505,8 +505,9 @@ namespace CSAccess
 
         /// <summary>Rendered outcome content of a resolved action card: the visible tier's
         /// effect lines (leading +/- glyphs transcoded to words, counts not interpreted),
-        /// then the completion narrative from the Description element.</summary>
-        private static string DescribeOutcomeCard(Transform actionRoot)
+        /// then the completion narrative from the Description element. Cloud node cards
+        /// carry the same OUTCOMES template, so CloudOutcomes reuses this reader.</summary>
+        internal static string DescribeOutcomeCard(Transform actionRoot)
         {
             if (actionRoot == null) return null;
             var parts = new List<string>();
@@ -539,7 +540,7 @@ namespace CSAccess
 
         /// <summary>Effective CanvasGroup visibility of t, multiplying alphas up to (not
         /// including) stopAt.</summary>
-        private static float AlphaUpTo(Transform t, Transform stopAt)
+        internal static float AlphaUpTo(Transform t, Transform stopAt)
         {
             float alpha = 1f;
             for (var cur = t; cur != null && cur != stopAt; cur = cur.parent)
