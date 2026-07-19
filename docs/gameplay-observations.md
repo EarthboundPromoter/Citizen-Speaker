@@ -90,3 +90,48 @@ architecture (build-plan.md / verification briefs). Append per session.
   captured (picker prompt re-announce — wording deferred to W4 real-state
   hooks); K clock reads correct at two locations; autosave activated on tutorial
   completion (both pause-line branches heard on one save).
+
+## Session 7 (2026-07-19 evening, real save cycles 8–11; owner intends a fresh
+## restart next session)
+
+### Game mechanics observed
+
+- **Station map is a one-axis corridor** (owner observation): W/S scroll walks
+  it linearly; A/D rotate. The game enables only the current zone's markers
+  (bug-ledger BL-16) — camera browse + closest-claim is the designed traversal;
+  arrows are local-hop only. Locations traversed this run spanned Rim through
+  Hub (Bright Market, Rotunda, Kompressor Club, docks, gates, Shipyard).
+- Gated locations render as markers with disabled state ("Dock B-2, disabled",
+  "Kompressor Club, disabled") — the disabled suffix carries real affordance
+  information at the station level.
+- **Key nodes vs agent nodes (cloud)**: key nodes grant their reward directly in
+  the outcome (no Sequence Complete press exists — CloudOutcomes' graceful
+  silence is correct there); agent nodes run multi-step sequences (Havenage:
+  ACCESS PROTOCOLS step went LOCKED→UNLOCKED on the first hack; second rendered
+  element "BYPASS" is the node's button verb, START ACTION's cloud sibling).
+- Cloud node demands track the skill bucket live: every INTERFACE node card
+  rendered two acceptable dice (bucket +1), values varying per node.
+- A die can rest SLOTTED through a cycle end (f44674 slot → f45746 cycle end,
+  no resolution) — the die was not consumed; next-cycle tray was full. No
+  announcement marks the auto-retraction; wording question for the pile.
+- The Scan toggle has station-side disabled states ("Scan is disabled." refusal
+  heard while inside a location view) — matches the dial's Disable-family
+  states.
+- Value-check/item station actions (DELIVER DATA family) run their own silent
+  controller template — see BL-14, the biggest coverage gap found this run.
+- Hacking? global stayed FALSE through an entire multi-visit cloud session (108
+  divergence ticks, dial correct every time) — the flag is effectively dead as
+  a truth source; dial-first is load-bearing, not a hedge.
+
+### Mod behavior confirmed
+
+- CloudOutcomes: 4 node outcomes announced correctly (tier + effects +
+  narrative, deduped across the double clock); collect-press path still
+  unexercised.
+- Cycle-end totals string with bare dice tail fired correctly ×3.
+- Perk review: all ten perks across five skills read, owned markers correct on
+  both owned perks; dead-end bare repeats at edges; round-trips clean.
+- BL-10 item readout: names, amounts (live increments 1→3), Space descriptions,
+  across both panels.
+- Station ActionOutcomes and BL-9 purchase feedback got ZERO exercise (all die
+  commits were cloud; owner at 0 upgrade points) — top of next run's checklist.

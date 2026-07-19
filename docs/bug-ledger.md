@@ -62,10 +62,15 @@ bug. Evidence: run 1 f1998/f2089 (both bounced, empty DATA); real-save run
 f4207/f4672/f4723/f4778 (bounces) + f4789 (success). Mod fix still owed either
 way: announce from the settled state's rendered tab label (FsmSignals clock)
 instead of pre-announcing intent — awaiting owner ruling.
+s7 evidence: the swap label channel spoke only "DATA." (×4) across the whole run
+while BOTH panels were demonstrably browsed (ITEM items and DATA items both
+read) — the label under-fires exactly as the announce-on-settle package
+predicts.
 
 **BL-5 — Save-slot label token scramble (minor).** Slot labels read in layout
 order: "Save slot 2, CLASS, CYCLE, 3, MACHINIST" (run 2 f724). Wording/order
-composition fix; owner calibration.
+composition fix; owner calibration. s7 boot sample: "Save slot 1, CYCLE, CLASS,
+OPERATOR, 8" — labels and values fully separated in layout order.
 
 **BL-6 — Die-picker open stacks die readouts (minor).** Picker open queues
 "Die 1, value 5 / Die 2, value 4 / Die 3, value 1" focus lines before the picker
@@ -181,7 +186,83 @@ station effect/narrative reader); collect button announced from rendered label,
 post-press re-render spoken via scoped label watch; sequence steps in Space
 describe. Awaiting live verification.
 
+**BL-14 — Item/value-check station actions entirely silent (commit + outcome).**
+Live (s7 run, f4054–f4305): DELIVER DATA at Feng's Bay consumed SOLHEIM DATA and
+resolved with zero announcements — no commit (no picker opens in the item flow,
+so the die-commit heuristic never fires) and no outcome. The completion narrative
+("Feng's eyes light up...") was heard only by accident of a focus re-announce
+picking up the re-rendered card. Root cause (corpus, Solheim Data Action
+controller): this family's "Action Controller" runs a THIRD template — states
+`Idle / Slotted / Outcome / Value Check / Working / Outcome Setup / Text Setup /
+Action Completed / Not Repeatable` — one bare `Outcome` state, no tier states, so
+neither the old poll nor ActionOutcomes ever matched (always silent, not a
+regression). Also covers merchant purchases (cryo 115→55 at the freighter,
+unspoken; owner C-queried twice to confirm the spend manually). Fix specced:
+subscribe ("Action Controller", "Outcome") as a fourth clock, announce name +
+card content with NO tier word (game renders none); item-commit announcement is
+the separate W4 real-state-hook item (slot FSM `Slot Item` family), promoted by
+this evidence.
+
+**BL-15 — Character window toggle transiently refused (~25s), self-recovered.**
+s7 run f48332–f48765: six U presses over ~25s all refused "Character window not
+available." while I and J toggles worked; opened normally at f48910. ~100s after
+a cycle end. The handler ran and found the game's button unavailable — cause
+uncaptured (moment passed before a bridge read landed). Next occurrence: F3
+during the refusal + bridge /fsm on Character UI Button to decide game-honest
+(then maybe better wording) vs stale check.
+
+**BL-16 — Station marker enabled-set is ZONE/CAMERA-LOCAL; census + reachability
+instruments unsound as designed (major, design-level).** Owner discovery (s7):
+WASD camera movement reached far more station nodes than arrow navigation ever
+surfaced. Bridge evidence: enabled marker set was 5 at boot, 3 mid-run, 7 after
+rotating toward the Hub — while 10+ distinct locations were traversed over the
+run (Bright Market, Rotunda, Dock B-2/C-4, Kompressor Club, Lowend Gate,
+Shipyard, Feng's Bay, Empty Container, Merchant Freighter). The game only
+enables the markers of the camera's current zone (consistent with the Location
+Controller Rim/Greenway/Hub dial). Consequences: (a) the s7 census diff
+"1 location added. 3 nodes removed." is RETRACTED as verification — it conflates
+story changes with camera position at sample moments; the enabled-Selectable-set
+instrument cannot back a station-wide census; (b) the N-tree
+"reachability-filtered" ruling (session 4) predates this fact — zone-scoped vs
+full-station listing needs an owner decision; (c) arrow navigation fails for two
+stacked reasons: uGUI Automatic spatial scoring can't propose far/off-axis
+markers AND out-of-zone markers don't exist as selectables. WASD browse +
+closest-claim is the game's designed traversal (brief E/H), now owner-adopted.
+Session-5 census experiment conclusion ("reachability = enabled set") holds only
+per-zone. Owner note: current map reads as a one-axis corridor; full-map
+geometry is extractable offline from serialized statics (positions only,
+spoiler-safe) when the design session wants it.
+
+**BL-17 — Field-level cloud Backspace refused (first exercise of the unverified
+half).** s7 f53598: "Leave or back is disabled." at cloud field level — Leave
+Button inactive AND the Scan Button fallback read disabled. Owner wasn't
+trapped (ended cycle seconds later) but the field-exit path remains unproven;
+capture Scan Button state at the next refusal before touching the check.
+
 ## DEPLOYED, AWAITING LIVE VERIFICATION (2026-07-19 batch)
+
+**s7 verification run results (2026-07-19 evening, logs/LogOutput_s7run1; owner
+to confirm closures):** LIVE-VERIFIED — BL-1 (INTERFACE +1 spoken on the exact
+cards that misread; MACHINIST case untested), BL-12 (demand lines on every node,
+values tracking skill bucket, e.g. "Matches die 5 or 3"), BL-13 core (4 node
+outcomes announced: 3 key nodes + Havenage agent step; sequence steps spoke
+LOCKED and UNLOCKED; collect-press "DATA EXTRACTED" path UNEXERCISED — no
+sequence fully completed; key nodes have no collect press at all — reward lands
+in the outcome, graceful silence correct), BL-10 (extensive: names + amounts
+incrementing live, Space descriptions, new items discoverable), cycle string
+bare dice tail ×3, perk review full coverage + both owned markers, camera-flight
+mute (90 flights, all settled), dial-first cloud mode (108 divergences, dial
+right every time — Hacking? stuck false the whole session). ZERO warnings/errors
+in 2,378 lines. UNEXERCISED: station ActionOutcomes (all 5 die commits were
+cloud nodes — PRIORITY next run, it replaced the working poll announcer), BL-9
+purchase feedback (owner at 0 points), strip-steal recovery (never triggered),
+BL-2 glyph guard (no Scan Button focus event). Census fired once — see BL-16
+retraction. Polish queue from the run: TakesDie must prefix-match numbered
+"Gamepad Dice Slot 1" children (cloud cards said "Enter to activate" though they
+take dice); punctuation guard in composed reads (".." ×33 when appended rendered
+text already ends with a period); "never came up" log line duplicated per clock
+and fires on every mid-sequence hack (log-only); "Sunbathe'" leading-quote
+cleaning artifact in perk description.
 
 - Cloud node exit: Backspace in Cloud clicks Leave Button (verified live run 2) →
   extended to field level (Leave inactive → Scan Button click). Field half unverified.
