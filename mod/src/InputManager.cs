@@ -150,26 +150,8 @@ namespace CSAccess
             //     (session-5 live bug: Left closed the strip). Dead-end = bare repeat. ---
             if (mode == Mode.Inventory)
             {
-                if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow))
-                {
-                    bool right = Input.GetKeyDown(KeyCode.RightArrow);
-                    var cur = Navigator.Current();
-                    var curSel = cur != null ? cur.GetComponent<Selectable>() : null;
-                    if (curSel != null && cur.name == "Item Cursor")
-                    {
-                        var target = right ? curSel.FindSelectableOnRight() : curSel.FindSelectableOnLeft();
-                        if (target == null || target.gameObject.name != "Item Cursor")
-                        {
-                            SpeechService.Say(Describe.Element(cur, detailed: false) ?? "Item Cursor",
-                                Priority.Immediate, "focus");
-                            return;
-                        }
-                    }
-                    Navigator.Move(right
-                        ? UnityEngine.EventSystems.MoveDirection.Right
-                        : UnityEngine.EventSystems.MoveDirection.Left);
-                    return;
-                }
+                // Left/Right fall through to the generic Navigate block, where the
+                // focus fence enforces the Item Cursor confinement (FocusModel).
                 if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
                 {
                     var strip = GameQueries.FindFsm("Inventory", "Bottom UI");
@@ -272,13 +254,40 @@ namespace CSAccess
                 return;
             }
 
-            // --- Native navigation and activation ---
+            // --- Native navigation and activation (fence-guarded) ---
             if (Allowed(mode, ModKey.Navigate))
             {
-                if (Input.GetKeyDown(KeyCode.DownArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Down); return; }
-                if (Input.GetKeyDown(KeyCode.UpArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Up); return; }
-                if (Input.GetKeyDown(KeyCode.LeftArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Left); return; }
-                if (Input.GetKeyDown(KeyCode.RightArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Right); return; }
+                UnityEngine.EventSystems.MoveDirection? dir = null;
+                if (Input.GetKeyDown(KeyCode.DownArrow)) dir = UnityEngine.EventSystems.MoveDirection.Down;
+                else if (Input.GetKeyDown(KeyCode.UpArrow)) dir = UnityEngine.EventSystems.MoveDirection.Up;
+                else if (Input.GetKeyDown(KeyCode.LeftArrow)) dir = UnityEngine.EventSystems.MoveDirection.Left;
+                else if (Input.GetKeyDown(KeyCode.RightArrow)) dir = UnityEngine.EventSystems.MoveDirection.Right;
+                if (dir != null)
+                {
+                    // Focus fence: compute the native destination ourselves and refuse
+                    // to dispatch a move that would exit a bounded surface (FocusModel;
+                    // the game has no nav boundaries of its own). Dead-end = bare repeat.
+                    var cur = Navigator.Current();
+                    var curSel = cur != null ? cur.GetComponent<Selectable>() : null;
+                    if (curSel != null)
+                    {
+                        Selectable target = dir switch
+                        {
+                            UnityEngine.EventSystems.MoveDirection.Down => curSel.FindSelectableOnDown(),
+                            UnityEngine.EventSystems.MoveDirection.Up => curSel.FindSelectableOnUp(),
+                            UnityEngine.EventSystems.MoveDirection.Left => curSel.FindSelectableOnLeft(),
+                            _ => curSel.FindSelectableOnRight(),
+                        };
+                        if (!FocusModel.MoveAllowed(mode, target != null ? target.gameObject : null))
+                        {
+                            SpeechService.Say(Describe.Element(cur, detailed: false) ?? cur.name,
+                                Priority.Immediate, "focus");
+                            return;
+                        }
+                    }
+                    Navigator.Move(dir.Value);
+                    return;
+                }
             }
             if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
                 && Allowed(mode, ModKey.Activate))

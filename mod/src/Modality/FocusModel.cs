@@ -22,6 +22,40 @@ namespace CSAccess.Modality
     /// </summary>
     internal static class FocusModel
     {
+        /// <summary>Focus fence (W3, owner-approved 2026-07-19): the game has NO nav
+        /// boundaries — Automatic adjacency spans every active selectable scene-wide,
+        /// and lighter overlays (drive log) leave the world selectable underneath.
+        /// The game itself never walks this graph on controller (stick-scroll +
+        /// parked selection); our arrows are the only traverser, so bounded surfaces
+        /// suppress any native move whose computed destination exits their container
+        /// BEFORE dispatch. Dead-end = bare repeat (established idiom).</summary>
+        public static bool MoveAllowed(Mode mode, GameObject target)
+        {
+            switch (mode)
+            {
+                case Mode.Inventory:
+                    // Stricter than a root fence by necessity: the strip's own
+                    // watchdog auto-closes on ANY non-Item-Cursor selection (row 11).
+                    return target != null && target.name == "Item Cursor";
+                case Mode.DriveLog:
+                    return UnderRoot(target, "CS Drive Log");
+                case Mode.CharacterWindow:
+                    return UnderRoot(target, "Character Window");
+                case Mode.Pause:
+                    return UnderRoot(target, "Pause Canvas");
+                default:
+                    return true; // unbounded surfaces keep free native movement
+            }
+        }
+
+        private static bool UnderRoot(GameObject go, string rootName)
+        {
+            if (go == null) return false;
+            for (var t = go.transform; t != null; t = t.parent)
+                if (t.name == rootName) return true;
+            return false;
+        }
+
         /// <summary>Put focus back where the game intends it for this mode. Returns
         /// true if a designed recovery was performed (speech/logging included).</summary>
         public static bool ReAnchor(Mode mode)
