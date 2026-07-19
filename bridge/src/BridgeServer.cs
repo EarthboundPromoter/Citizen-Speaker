@@ -225,6 +225,12 @@ namespace CSAccessBridge
                     result = WatchLog.Query(since, max);
                     break;
                 }
+                case "/fsmcensus":
+                {
+                    string file = q.TryGetValue("file", out var cf) ? cf : null;
+                    result = MainThread.Run(() => FsmCensus.Run(file));
+                    break;
+                }
                 case "/screenshot":
                     result = MainThread.Run(() => UiQuery.Screenshot(_shotDir));
                     break;
