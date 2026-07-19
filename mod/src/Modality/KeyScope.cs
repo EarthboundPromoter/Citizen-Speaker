@@ -105,7 +105,8 @@ namespace CSAccess.Modality
             (ModKey.InventoryToggle, "I: inventory"),
             (ModKey.CharacterToggle, "U: character window"),
             (ModKey.DriveLogToggle, "J: drive log"),
-            (ModKey.ScanToggle, "S: scan"),
+            // ScanToggle: unbound (owner ruling — S is the native camera key);
+            // omitted from F1 until the keymap table eval rehomes it.
             (ModKey.Vitals, "V: vitals"),
             (ModKey.Dice, "D: dice"),
             (ModKey.Clocks, "K: clocks"),

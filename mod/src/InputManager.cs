@@ -219,13 +219,10 @@ namespace CSAccess
                 else SpeechService.Say("Drive log not available.", Priority.Immediate, "nav");
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.S))
-            {
-                if (!Allowed(mode, ModKey.ScanToggle)) { Refuse(mode, "Scan"); return; }
-                ClickFirstActive("Scan",
-                    "Letterbox Canvas/Top UI/Scan Button");
-                return;
-            }
+            // S is NOT a mod bind (owner ruling 2026-07-19): it is the game's native
+            // camera-scroll key (level0 Rewired keyboard map) and passes through
+            // untouched. Scan is unbound pending its rehome in the keymap table eval;
+            // ModKey.ScanToggle scope entries stay dormant for that day.
             if (Input.GetKeyDown(KeyCode.R) && shift)
             {
                 if (!Allowed(mode, ModKey.Reroll)) { Refuse(mode, "Reroll"); return; }
