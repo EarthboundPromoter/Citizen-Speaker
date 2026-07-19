@@ -76,6 +76,17 @@ owner calibration (standing rule). W2 implements against this document.
   the location marker's dial on the map, and display-only outside the nav
   graph (no selection machinery, corpus) — so per owner ruling they get
   independent browsing and no action attachment in utterances.
+  **K opens a navigable clock index** (owner-blessed shape): a mod-owned
+  cursor over the location's rendered clock cards — safe because the cards
+  are display-only, outside the nav graph, nothing to fight. Arrows are
+  stolen while the index is open: Up/Down walks clocks, each item speaking
+  name + dial state + index ("3 of 8 segments, negative clock, 2 of 3");
+  **Right reads the current clock's narrative description** (independent
+  information, own gesture); Left returns terse; K or Backspace closes.
+  Same gesture grammar as the N tree — vertical is what's-here, horizontal
+  is tell-me-more. Scope mirrors the game's rendering: full index where the
+  cards render (action view); map-level clock awareness belongs to the N
+  tree's dial annotations.
 - **Dice allocation:** fully native picker; per-die focus string "Die 2,
   value 5" / "Die 4, spent". Shift+R reroll (retained; reroll render
   semantics await first live sighting — owner defers). Placement and
