@@ -27,8 +27,10 @@ namespace CSAccess.Game
                 // Composed cycle-end string (owner design, focus-model row 13):
                 // ABSOLUTE TOTALS only, no deltas — degradation is presumed. REVEAL
                 // DICE! runs immediately before Idle (corpus), so dice are rendered.
+                // Dice tail = the bare-values D string per owner spec (session-5
+                // wording gap: the verbose per-die form was never the design).
                 string vitals = GameQueries.DescribeVitals();
-                string dice = GameQueries.DescribeDice();
+                string dice = GameQueries.DescribeDiceBrief();
                 SpeechService.Say("Cycle ended. " + (vitals ?? "") + (dice != null ? " " + dice : ""),
                     Priority.Queued, "cycle");
                 // Node additions/removals speak at the first full-control station

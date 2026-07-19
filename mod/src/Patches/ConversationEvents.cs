@@ -13,7 +13,6 @@ namespace CSAccess.Patches
         public static bool ConversationActive { get; private set; }
 
         private static DialogueSystemController _subscribed;
-        private static float _nextDivergenceCheck;
 
         public static void Tick()
         {
@@ -30,17 +29,8 @@ namespace CSAccess.Patches
                 _subscribed = controller;
                 ConversationActive = false;
             }
-
-            // Diagnostic, one clean session then remove: event flag vs the old poll.
-            if (Time.unscaledTime >= _nextDivergenceCheck)
-            {
-                _nextDivergenceCheck = Time.unscaledTime + 30f;
-                bool polled = false;
-                try { polled = DialogueManager.isConversationActive; } catch { }
-                if (polled != ConversationActive)
-                    Plugin.Log.LogWarning("[Dialogue] DIVERGENCE: event flag=" + ConversationActive
-                        + " poll=" + polled + " — investigate before dropping the poll.");
-            }
+            // The event-vs-poll divergence diagnostic ran clean across the six session-6
+            // run snapshots (zero warnings) and was removed per its retirement condition.
         }
 
         private static void OnStarted(Transform actor) => ConversationActive = true;
