@@ -28,12 +28,20 @@ namespace CSAccessBridge
             string path = string.IsNullOrEmpty(file)
                 ? Path.Combine(BepInEx.Paths.GameRootPath, "fsm-census.jsonl")
                 : file;
-            int count = 0, errors = 0;
+            // FsmList only holds awakened FSMs; objects inactive since scene load (dice
+            // cursors, locked locations, unopened surfaces) never register there. Sweep ALL
+            // loaded scene FSMs instead — reading FsmStates forces PlayMaker's lazy
+            // deserialization without running the machine.
+            int count = 0, errors = 0, inactive = 0;
+            var seen = new HashSet<int>();
             using (var w = new StreamWriter(path, false, new UTF8Encoding(false)))
             {
-                foreach (var fsm in PlayMakerFSM.FsmList)
+                foreach (var fsm in Resources.FindObjectsOfTypeAll<PlayMakerFSM>())
                 {
                     if (fsm == null || fsm.gameObject == null) continue;
+                    if (!fsm.gameObject.scene.IsValid()) continue; // skip prefabs/assets
+                    if (!seen.Add(fsm.GetInstanceID())) continue;
+                    if (!fsm.gameObject.activeInHierarchy) inactive++;
                     try
                     {
                         w.WriteLine(Json.Serialize(Describe(fsm)));
@@ -49,6 +57,7 @@ namespace CSAccessBridge
             {
                 ["file"] = path,
                 ["fsms"] = count,
+                ["inactiveIncluded"] = inactive,
                 ["errors"] = errors,
             };
         }
@@ -93,6 +102,7 @@ namespace CSAccessBridge
             return new Dictionary<string, object>
             {
                 ["path"] = UiQuery.PathOf(fsm.gameObject),
+                ["active"] = fsm.gameObject.activeInHierarchy,
                 ["fsm"] = fsm.FsmName,
                 ["startState"] = fsm.Fsm != null ? fsm.Fsm.StartState : null,
                 ["states"] = states,
