@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using CSAccess.Substrate;
 using PixelCrushers.DialogueSystem;
 using UnityEngine;
@@ -40,6 +41,8 @@ namespace CSAccess.Modality
 
         public static void Init()
         {
+            TrackAutoplayStates();
+
             // Character UI Button: state "Open" opens; close route runs "Reset" then
             // conditionally "Gamepad UI" (brief E, character-window verdict).
             FsmSignals.Subscribe("Character UI Button", null, (fsm, state) =>
@@ -86,6 +89,28 @@ namespace CSAccess.Modality
             });
         }
 
+        // ---------- Autoplay scene tracking (session-5 trap fix) ----------
+        // The Autoplay Waiting global is a scheduling flag with a designed leak
+        // (Autoplay Wait's "Check Variables -> Off" exit never clears it) — it
+        // stranded the mode in listening twice in one session. The scene FSMs'
+        // OWN states cannot strand: a scene is pending exactly while some FSM
+        // sits in Autoplay Wait / Autoplay; leaving by ANY route exits the set.
+
+        private static readonly HashSet<PlayMakerFSM> AutoplayFsms = new HashSet<PlayMakerFSM>();
+
+        public static bool AutoplayScenePending => AutoplayFsms.Count > 0;
+
+        private static void TrackAutoplayStates()
+        {
+            FsmSignals.Subscribe(null, null, (fsm, state) =>
+            {
+                if (state == "Autoplay Wait" || state == "Autoplay")
+                    AutoplayFsms.Add(fsm);
+                else if (AutoplayFsms.Count > 0)
+                    AutoplayFsms.Remove(fsm);
+            });
+        }
+
         /// <summary>Windows cannot be open across a scene load; flags reset with it.</summary>
         public static void OnSceneChanged()
         {
@@ -93,6 +118,7 @@ namespace CSAccess.Modality
             InventoryOpen = false;
             _driveLogEventOpen = false;
             _questLog = null;
+            AutoplayFsms.Clear();
         }
 
         private static QuestLogWindow QuestLog()

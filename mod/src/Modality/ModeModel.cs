@@ -132,16 +132,16 @@ namespace CSAccess.Modality
             return root != null && root.activeInHierarchy;
         }
 
-        /// <summary>Autoplay Waiting gated by held affordance (session-5 live trap +
-        /// corpus): the flag is a scene-SCHEDULING signal with a designed leak — every
-        /// character canvas sets it true in Autoplay Wait and clears it only via the
-        /// Autoplay state (Scene Complete); the Check Variables -> Off exit strands it
-        /// true. A scheduling flag cannot override a held affordance: if the game
-        /// holds an interactable selection (selection identity — the game's own idiom),
-        /// it is asking for input. Genuine cutscene lockouts remain covered by the
-        /// Input Pauser honor guard in dispatch.</summary>
+        /// <summary>Event-derived autoplay (session-5, second trap): the Autoplay
+        /// Waiting global is a scheduling flag with a designed leak (Autoplay Wait's
+        /// Check Variables -> Off exit never clears it) — it stranded listening mode
+        /// twice in one session, once refusing the very Leave the scene waited for.
+        /// Truth now comes from the scene FSMs' own states via FsmSignals (a scene is
+        /// pending exactly while some FSM sits in Autoplay Wait/Autoplay — no route
+        /// can strand it), still yielding to a held interactable affordance. Genuine
+        /// cutscene lockouts remain covered by the Input Pauser honor guard.</summary>
         private static bool AutoplayActive()
-            => GlobalBool("Autoplay Waiting") && !InteractableSelectionHeld();
+            => WindowState.AutoplayScenePending && !InteractableSelectionHeld();
 
         private static bool InteractableSelectionHeld()
         {
