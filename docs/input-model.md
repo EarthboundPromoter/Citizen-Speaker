@@ -66,6 +66,16 @@ owner calibration (standing rule). W2 implements against this document.
 - **Surface toggles (as-is, owner ruling: placement immaterial):** I inventory,
   U character window, J drive log, S scan/cloud boundary. W2 makes their
   refusals mode-aware ("Character window open") instead of generic.
+- **Location action view: arrows, no Tab.** Action cards are walked
+  forward/backward with plain arrows — the game's own native adjacency
+  (variant-C checkers, brief E); Tab is dead as a browsing idiom (owner
+  ruling: it broke the game's nav mold). The mod adds indexed framing to the
+  utterance ("2 of 4", wording at calibration). **K browses clocks
+  separately:** clocks are location-tied by the game's own structure —
+  rendered as their own cards sibling to actions (never children of one), as
+  the location marker's dial on the map, and display-only outside the nav
+  graph (no selection machinery, corpus) — so per owner ruling they get
+  independent browsing and no action attachment in utterances.
 - **Dice allocation:** fully native picker; per-die focus string "Die 2,
   value 5" / "Die 4, spent". Shift+R reroll (retained; reroll render
   semantics await first live sighting — owner defers). Placement and
