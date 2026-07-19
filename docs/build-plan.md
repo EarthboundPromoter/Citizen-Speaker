@@ -78,7 +78,9 @@ migrate into it rather than accumulating as special cases.
   briefs A-D), mechanical fixes, outcome pipeline v1, flurry gate + cycle summary,
   character window v1 (announcements, review cursor), commit signal. All
   live-validated except the items staged for next launch.
-- **B. Modality layer.** Formalize the mode model over the verified anchors; migrate
+- **B. Modality layer.** First item: the FSM corpus dump (section 5) — one
+  observation-only launch produces the full FSM structure corpus that grounds
+  everything after. Then: formalize the mode model over the verified anchors; migrate
   existing gates/watchers/cursors into it; per-mode key scoping (kills the
   Tab-answers-through-windows class of bugs); mode entry/exit announcements; leave
   paths per mode (Backspace = S-exit in cloud, etc.).
@@ -98,7 +100,27 @@ migrate into it rather than accumulating as special cases.
 Phases B and C interleave in practice — each C item lands as a modality-layer
 client, which keeps B honest. D and E stay strictly later.
 
-## 5. Practices that keep it durable
+## 5. Method hierarchy: static first, corpus second, probe only true dynamics
+
+Architecture questions are answered in this order:
+
+1. **Serialized statics** (UnityPy + typetrees): hierarchy, uGUI wiring (onClick,
+   navigation), defaults, sprites. Fully working; always first.
+2. **FSM corpus** (to build, first Phase B item): PlayMakerFSM blobs are
+   structurally unparseable by our offline tools (universal typetree failure —
+   Brief A), and the FSMs are the game's entire logic. Fix: use the game as its own
+   parser — a one-time, observation-only census dump from the running game (station
+   idle) writing every FSM's true structure (states, actions, parameters, event
+   targets, variables) to files. Offline-greppable corpus thereafter; regenerate per
+   game patch. This moves most "live probing" to desk analysis.
+3. **Live probing** — reserved for what is dynamic on principle, not by tooling gap:
+   runtime-computed spatial navigation (no graph exists to read), live variable
+   values (statics carry schema, not state — the Cycle Controller trap), animator/
+   CanvasGroup visibility dynamics, runtime-spawned content (drive entries; location
+   labels are placeholders in static data), and timing. Plus final validation with
+   the owner, which nothing replaces.
+
+## 6. Practices that keep it durable
 
 - Verification docs are ground truth; when live evidence contradicts them, the
   correction is written back the same session (see triage queue live-corrections).
@@ -108,7 +130,7 @@ client, which keeps B honest. D and E stay strictly later.
   provisional until the owner calibrates it.
 - Owner sets ordering and idiom; design commitments get surfaced before code.
 
-## 6. Parked design questions
+## 7. Parked design questions
 
 - Cycle number: rendered on save labels, so speakable — live source not yet found
   (Dialogue System Lua variable is the lead candidate).
