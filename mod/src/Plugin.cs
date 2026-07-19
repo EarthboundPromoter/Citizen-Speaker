@@ -51,6 +51,7 @@ namespace CSAccess
             _input = new InputManager(this);
             _watchers = new Watchers();
             Game.CycleGate.Init();
+            Game.ActionOutcomes.Init();
             Game.CloudOutcomes.Init();
             Modality.WindowState.Init();
             Modality.CloudFlight.Init();
@@ -63,6 +64,7 @@ namespace CSAccess
         {
             _input.Tick();
             _watchers.Tick();
+            Game.ActionOutcomes.Tick();
             Game.CloudOutcomes.Tick();
             Modality.CloudFlight.Tick();
             Patches.FocusPatch.Tick();

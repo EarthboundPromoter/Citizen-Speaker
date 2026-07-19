@@ -328,8 +328,10 @@ namespace CSAccess
 
         private readonly Dictionary<int, string> _controllerStates = new Dictionary<int, string>();
 
-        /// <summary>Announce action results by watching Action Controller FSM state transitions,
-        /// regardless of how the action was started (mouse, Enter, or dice keys).</summary>
+        /// <summary>Track Action Controller Idle exits for the dice-commit heuristic.
+        /// Outcome ANNOUNCEMENTS moved to Game.ActionOutcomes (FsmSignals clock — the
+        /// poll here missed clock-completing outcomes whose variant swap deactivated
+        /// the controller between polls, BL-8).</summary>
         private void CheckActionOutcomes()
         {
             foreach (var fsm in PlayMakerFSM.FsmList)
@@ -346,29 +348,6 @@ namespace CSAccess
 
                 if (previous == "Idle")
                     _lastControllerLeftIdle = Time.unscaledTime;
-
-                string outcome = state switch
-                {
-                    "Positive Outcome" => "positive outcome",
-                    "Neutral Outcome" => "neutral outcome",
-                    "Negative Outcome" => "negative outcome",
-                    _ => null,
-                };
-                if (outcome == null) continue;
-
-                var actionRoot = UI.Describe.FindActionRoot(fsm.transform);
-                string actionName = actionRoot != null
-                    ? (UI.Describe.TextUnder(actionRoot, "Action Name") ?? actionRoot.name)
-                    : "Action";
-                SpeechService.Say(actionName + ": " + outcome + ".", Priority.Queued, "outcome");
-
-                // Auto-read the card's rendered result (triage 22/23): the visible outcome
-                // tier's effect lines, then the completion narrative the game writes into
-                // the card's Description element. Content is rendered text only; the FSM
-                // transition is just the clock.
-                string extras = DescribeOutcomeCard(actionRoot);
-                if (extras != null)
-                    SpeechService.Say(extras, Priority.Queued, "outcome");
             }
             if (_controllerStates.Count > 300) _controllerStates.Clear();
         }

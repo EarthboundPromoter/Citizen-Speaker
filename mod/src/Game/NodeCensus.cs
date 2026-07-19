@@ -46,6 +46,10 @@ namespace CSAccess.Game
 
             if (!_baselined)
             {
+                // Session-5 tighten: an early tick can see the station before its
+                // location canvases enable (logged a 0-location baseline once) — a
+                // real station always has locations, so wait for them.
+                if (locations == 0) return;
                 _baselined = true;
                 Known.Clear();
                 Known.UnionWith(current);
@@ -107,19 +111,23 @@ namespace CSAccess.Game
                 bool isLoc = name == "Location Button";
                 bool isChar = name == "Character Button";
                 if (!isLoc && !isChar) continue;
-                // Identity = the canvas-level ancestor (direct child of the Locations/
-                // Characters root), normalized so story-state VARIANTS of one location
-                // ("Empty Container Canvas" / "Canvas 2") count as one node
-                // (focus-model row 3: tree dedups variants, live variant wins).
+                // Identity = the location name parsed from the nearest "* Canvas"
+                // ancestor at ANY depth (the same parse Describe uses), normalized so
+                // story-state VARIANTS of one location ("Canvas 2", "(END)") count as
+                // one node. BL-7: the old walk required the canvas to be a DIRECT child
+                // of Locations/Characters; variant canvases that nest differently fell
+                // back to the full object path, which changes on a swap — that fallback
+                // was the false "1 location added. 1 node removed." (fired 3x, all
+                // false, real-save session). Never key on the object or its path.
                 var t = s.transform;
                 string canvas = null;
-                for (var cur = t.parent; cur != null && cur.parent != null; cur = cur.parent)
+                for (var cur = t.parent; cur != null; cur = cur.parent)
                 {
-                    string parentName = cur.parent.name;
-                    if (parentName == "Locations" || parentName == "Characters")
-                    { canvas = Normalize(cur.name); break; }
+                    int idx = cur.name.IndexOf(" Canvas");
+                    if (idx > 0) { canvas = Normalize(cur.name.Substring(0, idx)); break; }
                 }
-                string key = (isLoc ? "L:" : "C:") + (canvas ?? GameQueries.PathOf(s.gameObject));
+                string key = (isLoc ? "L:" : "C:") + (canvas ?? Normalize(s.transform.parent != null
+                    ? s.transform.parent.name : s.gameObject.name));
                 if (set.Add(key))
                 {
                     if (isLoc) locations++; else characters++;
