@@ -92,6 +92,18 @@ namespace CSAccess
                 if (Input.GetKeyDown(KeyCode.UpArrow)) { TutorialReview.Review(-1); return; }
             }
 
+            // --- Character window review cursor: the window is Automatic-nav soup, so
+            //     arrows walk the mod's own index; Enter activates the cursor target
+            //     (see CharacterWindowReview). ---
+            if (CharacterWindowReview.IsActive())
+            {
+                if (Input.GetKeyDown(KeyCode.DownArrow)) { CharacterWindowReview.Review(1); return; }
+                if (Input.GetKeyDown(KeyCode.UpArrow)) { CharacterWindowReview.Review(-1); return; }
+                if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+                    && CharacterWindowReview.Activate())
+                    return;
+            }
+
             // --- Character creation review mode (Enter falls through to global activate) ---
             if (CharacterSelect.IsActive())
             {

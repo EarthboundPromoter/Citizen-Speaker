@@ -85,7 +85,8 @@ namespace CSAccess.UI
                 if (skillRow != null) return skillRow + ": " + label + role;
                 return label + role;
             }
-            return name;
+            string skillOwner = AncestorDirectlyUnder(go, "SKILL List");
+            return skillOwner != null ? skillOwner + ": " + name : name;
         }
 
         /// <summary>Compose an action panel description from its texts:
