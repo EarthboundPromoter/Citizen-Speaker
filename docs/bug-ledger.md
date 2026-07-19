@@ -17,6 +17,9 @@ cell and Lua ground truth agreed (MACHINIST ENGR = +1). Two occurrences, run 2
 cell under some render states — exactly the failure the W4 "modifier readout → Lua
 skill value" migration kills. Lua source is verified and allowlisted; promote that
 W4 item. (Found in passive log readthrough 2026-07-19; owner confirmed.)
+FIX DEPLOYED `6a310b5` (build-queue Q1): bucket read from the Lua skill variable
+via the game's own FloatSwitch mapping; heuristic + calibration dump deleted.
+Awaiting live verification (acceptance: build-queue-acceptance-2026-07-19.md).
 
 **BL-2 — "Y button" label + cloud post-leave anchor.** After a cloud node leave,
 the game parks selection on the Scan Button, whose spoken label resolves to the
@@ -132,6 +135,11 @@ conveys neither fact reliably. Transcode source: the slot's rendered die glyph
 tray dice). Also noted: cipher/gate commits announce as "Die slotted." (BL-11
 wording family), and gate outcomes are structural (node reveal), not outcome
 cards — no narrative is being missed there.
+FIX DEPLOYED `103a2aa` (build-queue Q2): corpus decode found the pairing — the
+Hacking Dice Slot FSM's Required Roll/+1/+2 floats drive the rendered glyphs
+(FloatSwitch → Dice Value states), Potential Dice = glyph count, Slotted 1–3
+accept exactly those values. Describe appends "Matches die ...". Awaiting live
+verification.
 
 **BL-13 — Cloud node outcome pipeline entirely silent.** Cloud nodes run a
 different controller template than station actions (Hacking Slots Controller:
@@ -151,6 +159,11 @@ MATCH/INPUT labels, and "COMPLETE SEQUENCE". Only the demanded die VALUE is
 graphics-only (needs the DiceValue-style FSM pairing — the BL-12 half). Announce
 the Sequence Complete Button's appearance (required press). Companion to BL-12 —
 together they are the W4 cloud-coverage build, now fully specced.
+FIX DEPLOYED `103a2aa` (build-queue Q2): CloudOutcomes subscriber — controller
+Outcome Animation/Complete clocks → rendered OUTCOMES read (tier + shared
+station effect/narrative reader); collect button announced from rendered label,
+post-press re-render spoken via scoped label watch; sequence steps in Space
+describe. Awaiting live verification.
 
 ## DEPLOYED, AWAITING LIVE VERIFICATION (2026-07-19 batch)
 
