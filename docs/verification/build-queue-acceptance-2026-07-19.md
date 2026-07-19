@@ -55,6 +55,34 @@ Per the bug ledger's deployed section; predictions unchanged from that session:
   describe exactly as before; no new "* Actions"-group children mislabeled as
   actions (watch for odd DescribeAction fallbacks in the log).
 
+### Q3 — BL-7/8 variant-swap family (`c817a7a`)
+
+- Zero false "1 location added. 1 node removed." across a session with variant
+  swaps (it fired 3× today, all false); a genuine reveal still announces with
+  correct counts. Baseline log line shows a nonzero location count (the 0-location
+  early baseline is gone).
+- A clock-completing outcome (the WINTER LIGHT case) announces tier AND the
+  completion narrative even though the game swaps the action group mid-flow;
+  non-completing outcomes announce exactly as before (same wording, all tiers).
+- No doubled outcome announcements (the poll's announce path is removed; the
+  FsmSignals clock is the only announcer).
+- Watch: outcome announcements during load/boot walks would be new (the poll's
+  first-seen suppression is gone; state ENTRY should not fire on boot, but this
+  is the prediction to check).
+- Held for owner ruling: on-swap re-read of changed card descriptions.
+
+### Q5 — smaller items (`1b9a1bc`)
+
+- BL-9: buying a perk or rung speaks "Purchased." + the rendered points line;
+  a game-refused click (insufficient points) speaks "No change." + the points
+  line (was fully silent). The main UPGRADE button stays untracked. Wording
+  provisional.
+- Strip-steal at the station map now recovers (suppress + UI-selector Reset);
+  L query never reads "DATA button" after a picker cancel at station.
+- BL-2 narrow: the Scan Button (and anything else with a Gamepad Prompt child)
+  never speaks as "Y button" — its real label or object name is used. Full glyph
+  transcode remains W4.
+
 ### Wording calibration flags (owner, at leisure — not failures)
 
 - "Matches die N, M or K" phrasing — provisional.

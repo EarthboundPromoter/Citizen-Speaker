@@ -27,7 +27,11 @@ gamepad glyph child text "Y button"; arrows dead-end there (Top UI, off the mark
 field). Run 2 t72–77, owner dump f2702. Two parts: (a) Describe needs the
 prompt-glyph transcode (W4 tutorial-glyph item, now with a concrete case) so glyph
 children never become labels; (b) consider whether cloud post-leave needs a
-mod-side re-anchor row (focus-model addition — owner ruling required). Note: the
+mod-side re-anchor row (focus-model addition — owner ruling required).
+PART (a) NARROW FIX DEPLOYED `1b9a1bc` (build-queue Q5): FirstText skips
+"Gamepad Prompt *" children — the label falls through to real text or the
+object name. Part (b) still awaiting owner ruling; full glyph transcode
+still W4. Awaiting live verification. Note: the
 deployed camera-flight mute changes the shape here — if the settle announce lands
 on the Scan Button it will still say "Y button" until (a) lands.
 
@@ -77,6 +81,9 @@ appears to key on the canvas/marker object rather than the deduped location name
 (the session-5 story-variants dedup ruling isn't holding). Fix: dedup census
 identity by rendered location name, not canvas object. False positives also
 erode trust in the census channel generally.
+FIX DEPLOYED `c817a7a` (build-queue Q3): identity = "* Canvas" prefix at any
+depth; the old direct-child walk's full-path fallback was the false positive.
+Awaiting live verification.
 
 **BL-8 — Outcome + completion narrative lost on clock-completing actions.** When
 an action outcome completes a clock, the game swaps the whole action group to its
@@ -88,6 +95,11 @@ machinery as BL-7 — fix them together: identity + announcements keyed on rende
 names/labels across variant swaps, plus an on-swap re-read of changed card
 descriptions (rendered text, so render-honest). Non-completing outcomes on the
 same card announced fine all session (all three tiers verified).
+FIX DEPLOYED `c817a7a` (build-queue Q3): ActionOutcomes — FsmSignals clock on
+the outcome states (name+tier captured at entry, before teardown), deferred
+content read re-finds the same-named card in the active variant group. On-swap
+re-read of changed descriptions held for owner ruling. Awaiting live
+verification.
 
 **BL-9 — Character-window upgrades: purchases and refusals are silent.** Real-save
 run f42724–42829: Enter on "Upgrade Button Perk 2" spent the owner's 1 upgrade
@@ -98,6 +110,10 @@ had said 1). Needed: announce point-count changes (rendered Points Av), speak a
 purchase confirmation from the row's rendered state, and voice refusals when a
 tier button click is game-refused (tier costs render as 1/2/3-point labels on
 the Upgrade Tracker — speakable). All render-paired.
+FIX DEPLOYED `1b9a1bc` (build-queue Q5): deferred rendered-truth read after
+skill-row activations — "Purchased." / "No change." + rendered Points Av line
+(FG-marker watch for perk buys). Cost labels not yet read (hierarchy evidence
+thin) — extend after live look if wanted. Awaiting live verification.
 
 **BL-10 — Inventory slots announce as bare "Item Cursor"; contents undiscoverable.**
 Owner couldn't find a newly acquired item (Stablizer vial) though it rendered in
