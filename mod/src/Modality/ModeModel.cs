@@ -131,15 +131,26 @@ namespace CSAccess.Modality
         private static bool AutoplayActive()
             => GlobalBool("Scenes Active?") || GlobalBool("Autoplay Waiting");
 
-        /// <summary>An active tutorial panel other than the continue Button — same check
-        /// the tutorial watcher uses (live-validated).</summary>
+        /// <summary>A visible tutorial panel: an active Tutorial System child that isn't
+        /// the continue Button or the always-active Input Pauser, and that carries
+        /// readable text — the same standard the tutorial announcer applies. (W2 live
+        /// finding: the naive active-child check read Tutorial permanently, because the
+        /// Input Pauser is a text-less, always-active sibling of the real panels.)</summary>
         private static bool TutorialPanelActive()
         {
             var root = GameObject.Find("Letterbox Canvas/Tutorial System");
             if (root == null) return false;
             foreach (Transform panel in root.transform)
-                if (panel.gameObject.activeInHierarchy && panel.name != "Button")
-                    return true;
+            {
+                if (!panel.gameObject.activeInHierarchy) continue;
+                if (panel.name == "Button" || panel.name == "Input Pauser") continue;
+                foreach (var tmp in panel.GetComponentsInChildren<TMPro.TMP_Text>(false))
+                {
+                    string txt = tmp.text;
+                    if (!string.IsNullOrEmpty(txt) && txt.Trim().Length > 1)
+                        return true;
+                }
+            }
             return false;
         }
 
