@@ -49,7 +49,8 @@ namespace CSAccess
             CheckPauseMenu();
             CheckDriveLog();
             CheckCharacterWindow();
-            CheckCycleTransition();
+            // Cycle transition arming + completion summary moved to CycleGate
+            // (event-armed on the designed EndCycle entry; W2 hardening).
             // Mode switching is last-input-wins in InputManager.Tick now — the old 3s
             // re-assert loop fought sighted co-pilot mouse use (hid the cursor).
         }
@@ -468,45 +469,6 @@ namespace CSAccess
             string points = pointsAv != null ? UI.Describe.JoinTexts(pointsAv.gameObject, 2) : null;
             SpeechService.Say("Character window open." + (points != null ? " " + points + "." : ""),
                 Priority.Immediate, "nav");
-        }
-
-        private string _cycleState;
-        private bool _cycleStateKnown;
-        private float _cycleLeftIdleAt = -1f;
-
-        /// <summary>Track the Cycle Controller's trip through the end-cycle pipeline. While it
-        /// is away from Idle, FocusPatch silences game-driven focus (the station-wide reset
-        /// sweep — triage report 3). On return to Idle, speak a summary from rendered-backed
-        /// sources: the new dice and the HUD meters. Guarded so the save-load path (which also
-        /// ends in Idle) never triggers it — only an observed Idle departure arms the summary.</summary>
-        private void CheckCycleTransition()
-        {
-            var fsm = GameQueries.CycleControllerFsm();
-            if (fsm == null) return;
-            string state = fsm.ActiveStateName;
-            if (!_cycleStateKnown)
-            {
-                _cycleStateKnown = true;
-                _cycleState = state;
-                return;
-            }
-            if (state == _cycleState) return;
-            string previous = _cycleState;
-            _cycleState = state;
-
-            if (previous == "Idle")
-            {
-                _cycleLeftIdleAt = Time.unscaledTime;
-                Plugin.Log.LogInfo("[Cycle] transition started: " + state);
-            }
-            else if (state == "Idle" && _cycleLeftIdleAt >= 0f)
-            {
-                _cycleLeftIdleAt = -1f;
-                string dice = GameQueries.DescribeDice();
-                string meters = GameQueries.MetersBrief();
-                SpeechService.Say("Cycle complete. " + (dice ?? "") + (meters != null ? " " + meters : ""),
-                    Priority.Queued, "cycle");
-            }
         }
 
         /// <summary>Rendered outcome content of a resolved action card: the visible tier's

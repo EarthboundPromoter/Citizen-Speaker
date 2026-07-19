@@ -46,6 +46,7 @@ namespace CSAccess
 
             _input = new InputManager(this);
             _watchers = new Watchers();
+            Game.CycleGate.Init();
 
             Log.LogInfo("Citizen Sleeper Access 0.1.0 loaded. Press F1 in game for commands.");
             SpeechService.Say("Citizen Sleeper Access loaded. Press F1 for commands.", Priority.Queued, "init");

@@ -42,14 +42,10 @@ namespace CSAccess.Game
             return _cycleController;
         }
 
-        /// <summary>The Cycle Controller sits in Idle except while running the end-cycle
-        /// pipeline (live-verified; state list in docs/verification/A). During that pipeline
-        /// the game walks focus across every location's slots — announcements gate on this.</summary>
-        public static bool CycleTransitionActive()
-        {
-            var fsm = CycleControllerFsm();
-            return fsm != null && fsm.ActiveStateName != "Idle";
-        }
+        /// <summary>True only while the real end-cycle pipeline runs. Event-armed by
+        /// CycleGate (Cycle-state entry via the designed EndCycle event) — the old
+        /// "any non-Idle state" poll wrongly included the game's startup walk.</summary>
+        public static bool CycleTransitionActive() => CycleGate.Active;
 
         /// <summary>Durable commit signal: the game writes the slotted die's value here.</summary>
         public static float SlottedDiceValueGlobal()
