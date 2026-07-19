@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using CSAccess.Game;
+using CSAccess.Modality;
 using CSAccess.Patches;
 using CSAccess.Speech;
 using CSAccess.UI;
@@ -8,14 +8,13 @@ using UnityEngine.UI;
 
 namespace CSAccess
 {
-    /// <summary>Keyboard commands. Polled from Plugin.Update via legacy Input.</summary>
+    /// <summary>Keyboard commands, dispatched through the W2 modality layer: every key
+    /// is gated by KeyScope for the current mode; game-touching keys resolve to designed
+    /// effects per mode (input-contract.md); refusals answer mode-aware. Polled from
+    /// Plugin.Update via legacy Input.</summary>
     internal class InputManager
     {
         private readonly MonoBehaviour _host;
-        private List<Transform> _actionPanels = new List<Transform>();
-        private int _actionIndex = -1;
-        private List<GameObject> _worldButtons = new List<GameObject>();
-        private int _worldIndex = -1;
 
         public InputManager(MonoBehaviour host)
         {
@@ -25,8 +24,7 @@ namespace CSAccess
         public void Tick()
         {
             // --- Last-input-wins mode switching: a mouse click claims mouse mode; any
-            //     keyboard key re-asserts gamepad mode (which the mod's navigation needs).
-            //     Both ride the Gamepad Manager's own Mouse/Gamepad events. ---
+            //     keyboard key re-asserts gamepad mode (which the mod's navigation needs). ---
             if (Plugin.ForceGamepadUI.Value)
             {
                 if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) || Input.GetMouseButtonDown(2))
@@ -36,123 +34,95 @@ namespace CSAccess
             }
 
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            var mode = ModeModel.Current();
 
-            // --- Speech control ---
-            if (Input.GetKeyDown(KeyCode.BackQuote)) { SpeechService.Stop(); return; }
-            if (Input.GetKeyDown(KeyCode.R) && !shift) { SpeechService.RepeatLast(); return; }
-            if (Input.GetKeyDown(KeyCode.LeftBracket)) { SpeechService.HistoryBack(); return; }
-            if (Input.GetKeyDown(KeyCode.RightBracket)) { SpeechService.HistoryForward(); return; }
+            // --- Speech and queries (near-universal; KeyScope gates the title scene) ---
+            if (Input.GetKeyDown(KeyCode.Z) && Allowed(mode, ModKey.Respeak))
+            { SpeechService.RepeatLast(); return; }
 
-            // --- Help ---
-            if (Input.GetKeyDown(KeyCode.F1)) { SpeakHelp(); return; }
+            if (Input.GetKeyDown(KeyCode.F1) && Allowed(mode, ModKey.Help))
+            { SpeechService.Say(KeyScope.HelpFor(mode), Priority.Immediate, "help"); return; }
 
-            // --- Scripted input pause: the game is mid-transition and controller input
-            //     would be paused too. Swallow game-facing keys; speech keys above still work.
-            //     Exception: the pauser stays PAUSED while a tutorial panel awaits its
-            //     continue — when the game has selected that button itself, it is asking
-            //     for input, so Enter must pass. ---
+            if (Input.GetKeyDown(KeyCode.V) && Query(mode, ModKey.Vitals))
+            { SpeechService.Say(GameQueries.DescribeVitals(), Priority.Immediate, "query"); return; }
+
+            if (Input.GetKeyDown(KeyCode.D) && Query(mode, ModKey.Dice))
+            { SpeechService.Say(GameQueries.DescribeDiceBrief(), Priority.Immediate, "query"); return; }
+
+            if (Input.GetKeyDown(KeyCode.K) && Query(mode, ModKey.Clocks))
+            { SpeechService.Say(GameQueries.DescribeClocks(), Priority.Immediate, "query"); return; }
+
+            if (Input.GetKeyDown(KeyCode.L) && Query(mode, ModKey.WhereAmI))
+            { SpeechService.Say(ModeModel.WhereAmI(), Priority.Immediate, "query"); return; }
+
+            if (Input.GetKeyDown(KeyCode.R) && !shift && Allowed(mode, ModKey.RereadDialogue))
+            { RereadDialogue(); return; }
+
+            // --- Scripted input pause: swallow game-facing keys; speech keys above still
+            //     work. Exception: a tutorial continue the game itself selected. ---
             if (GameQueries.InputPaused() && !TutorialContinueFocused()) return;
 
-            // --- Repeat dialogue line ---
-            if (Input.GetKeyDown(KeyCode.F2))
-            {
-                if (!string.IsNullOrEmpty(DialogueState.LastSubtitle))
-                {
-                    string speaker = DialogueState.LastSpeaker;
-                    bool sayName = speaker.Length > 0 && Plugin.SpeakSpeakerNames.Value &&
-                                   !speaker.Equals("UNKNOWN", System.StringComparison.OrdinalIgnoreCase);
-                    SpeechService.Say((sayName ? speaker + ": " : "") + DialogueState.LastSubtitle,
-                        Priority.Immediate, "dialogue");
-                }
-                else
-                    SpeechService.Say("No dialogue line.", Priority.Immediate, "dialogue");
-                return;
-            }
-
-            // --- Status queries ---
-            if (Input.GetKeyDown(KeyCode.D) && !shift) { SpeechService.Say(GameQueries.DescribeDice(), Priority.Immediate, "query"); return; }
-            if (Input.GetKeyDown(KeyCode.K)) { SpeechService.Say(GameQueries.DescribeClocks(), Priority.Immediate, "query"); return; }
-            if (Input.GetKeyDown(KeyCode.C)) { SpeechService.Say(GameQueries.DescribeStatus(), Priority.Immediate, "query"); return; }
-
-            // --- Detailed description of focused element ---
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (Input.GetKeyDown(KeyCode.Space) && Allowed(mode, ModKey.Describe))
             {
                 var current = Navigator.Current();
-                if (current != null)
-                    SpeechService.Say(Describe.Element(current, detailed: true), Priority.Immediate, "focus");
-                else
-                    SpeechService.Say("Nothing focused.", Priority.Immediate, "focus");
+                SpeechService.Say(current != null
+                        ? Describe.Element(current, detailed: true)
+                        : "Nothing focused.",
+                    Priority.Immediate, "focus");
                 return;
             }
 
-            // --- Tutorial review mode (T to continue falls through to its handler below) ---
-            if (TutorialReview.IsActive())
+            // --- Review cursors (per-context shapes; gated by their own IsActive checks,
+            //     which remain the authority — the mode gate adds scoping consistency) ---
+            if (Allowed(mode, ModKey.ReviewArrows))
             {
-                if (Input.GetKeyDown(KeyCode.DownArrow)) { TutorialReview.Review(1); return; }
-                if (Input.GetKeyDown(KeyCode.UpArrow)) { TutorialReview.Review(-1); return; }
+                if (TutorialReview.IsActive())
+                {
+                    if (Input.GetKeyDown(KeyCode.DownArrow)) { TutorialReview.Review(1); return; }
+                    if (Input.GetKeyDown(KeyCode.UpArrow)) { TutorialReview.Review(-1); return; }
+                }
+                if (CharacterWindowReview.IsActive())
+                {
+                    if (Input.GetKeyDown(KeyCode.DownArrow)) { CharacterWindowReview.Review(1); return; }
+                    if (Input.GetKeyDown(KeyCode.UpArrow)) { CharacterWindowReview.Review(-1); return; }
+                    if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+                        && CharacterWindowReview.Activate())
+                        return;
+                }
+                if (CharacterSelect.IsActive())
+                {
+                    if (Input.GetKeyDown(KeyCode.DownArrow)) { CharacterSelect.Review(1); return; }
+                    if (Input.GetKeyDown(KeyCode.UpArrow)) { CharacterSelect.Review(-1); return; }
+                    if (Input.GetKeyDown(KeyCode.LeftArrow)) { CharacterSelect.ChangeClass(right: false); return; }
+                    if (Input.GetKeyDown(KeyCode.RightArrow)) { CharacterSelect.ChangeClass(right: true); return; }
+                }
             }
 
-            // --- Character window review cursor: the window is Automatic-nav soup, so
-            //     arrows walk the mod's own index; Enter activates the cursor target
-            //     (see CharacterWindowReview). ---
-            if (CharacterWindowReview.IsActive())
-            {
-                if (Input.GetKeyDown(KeyCode.DownArrow)) { CharacterWindowReview.Review(1); return; }
-                if (Input.GetKeyDown(KeyCode.UpArrow)) { CharacterWindowReview.Review(-1); return; }
-                if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-                    && CharacterWindowReview.Activate())
-                    return;
-            }
-
-            // --- Character creation review mode (Enter falls through to global activate) ---
-            if (CharacterSelect.IsActive())
-            {
-                if (Input.GetKeyDown(KeyCode.DownArrow)) { CharacterSelect.Review(1); return; }
-                if (Input.GetKeyDown(KeyCode.UpArrow)) { CharacterSelect.Review(-1); return; }
-                if (Input.GetKeyDown(KeyCode.LeftArrow)) { CharacterSelect.ChangeClass(right: false); return; }
-                if (Input.GetKeyDown(KeyCode.RightArrow)) { CharacterSelect.ChangeClass(right: true); return; }
-            }
-
-            // --- Response menus render vertically but their navigation graph is horizontal:
-            //     remap Up/Down to the graph's own axis so keys match what's rendered.
-            //     The moves themselves stay native. ---
-            if (DialogueState.MenuOpen)
+            // --- Response menu: vertical remap over the horizontal graph + number picks ---
+            if (mode == Mode.ResponseMenu)
             {
                 if (Input.GetKeyDown(KeyCode.DownArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Right); return; }
                 if (Input.GetKeyDown(KeyCode.UpArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Left); return; }
-            }
-
-            // --- Choice number keys (when a response menu is open) ---
-            if (DialogueState.MenuOpen)
-            {
                 for (int i = 0; i < 9 && i < DialogueState.CurrentResponses.Count; i++)
                 {
-                    if (Input.GetKeyDown(KeyCode.Alpha1 + i))
-                    {
-                        PickResponse(i);
-                        return;
-                    }
+                    if (Input.GetKeyDown(KeyCode.Alpha1 + i)) { PickResponse(i); return; }
                 }
             }
 
-            // --- Action cycling at a location ---
-            if (Input.GetKeyDown(KeyCode.Tab))
+            // --- Tutorial continue (mode-scoped; Enter fires it through native submit) ---
+            if (Input.GetKeyDown(KeyCode.T))
             {
-                CycleActions(shift ? -1 : 1);
+                if (!Allowed(mode, ModKey.TutorialContinue)) { Refuse(mode, "Tutorial continue"); return; }
+                var button = GameObject.Find("Letterbox Canvas/Tutorial System/Button");
+                if (button != null && button.activeInHierarchy) Navigator.Select(button);
+                else SpeechService.Say("No tutorial open.", Priority.Immediate, "nav");
                 return;
             }
 
-            // --- World map cycling ---
-            if (Input.GetKeyDown(KeyCode.L))
-            {
-                CycleWorldButtons(shift ? -1 : 1);
-                return;
-            }
-
-            // --- Button-bound UI the navigation graph can't reach (game binds these to
-            //     controller shoulder buttons; we bind keys) ---
+            // --- Surface toggles (designed actions; refusals answer mode-aware) ---
             if (Input.GetKeyDown(KeyCode.I))
             {
+                if (!Allowed(mode, ModKey.InventoryToggle)) { Refuse(mode, "Inventory"); return; }
                 ClickFirstActive("Inventory toggle",
                     "Letterbox Canvas/Bottom UI/Inventory/ITEM Button",
                     "Letterbox Canvas/Bottom UI/Inventory/DATA Button");
@@ -160,14 +130,14 @@ namespace CSAccess
             }
             if (Input.GetKeyDown(KeyCode.U))
             {
+                if (!Allowed(mode, ModKey.CharacterToggle)) { Refuse(mode, "Character window"); return; }
                 ClickFirstActive("Character window",
                     "Letterbox Canvas/Character UI/Character UI Button");
                 return;
             }
             if (Input.GetKeyDown(KeyCode.J))
             {
-                // The Drive Log Button is the real open/close control; the tracker HUD
-                // is a passive display (old target — J appeared to do nothing).
+                if (!Allowed(mode, ModKey.DriveLogToggle)) { Refuse(mode, "Drive log"); return; }
                 ClickFirstActive("Drive log",
                     "Letterbox Canvas/Drive System/Drive Log Button",
                     "Letterbox Canvas/Drive System/Drive Tracker HUD",
@@ -176,62 +146,132 @@ namespace CSAccess
             }
             if (Input.GetKeyDown(KeyCode.S))
             {
+                if (!Allowed(mode, ModKey.ScanToggle)) { Refuse(mode, "Scan"); return; }
                 ClickFirstActive("Scan",
                     "Letterbox Canvas/Top UI/Scan Button");
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.Backspace))
-            {
-                // In the die picker, cancel through the picker's own Back event.
-                if (GameQueries.DiceAllocationActive())
-                {
-                    GameQueries.DiceSystemFsm()?.SendEvent("Back");
-                    return;
-                }
-                // Character window: no close button exists — the FSM's Open state maps the
-                // controller Back action to its own "Open" event (Open -> Close transition;
-                // corpus-verified). Send the designed event; the close-watcher announces.
-                if (CharacterWindowReview.IsActive())
-                {
-                    GameQueries.FindFsm("Character UI Button")?.SendEvent("Open");
-                    return;
-                }
-                ClickFirstActive("Leave or back",
-                    "Letterbox Canvas/Top UI/Leave Button",
-                    "Back Button", "Close Button", "BACK");
-                return;
-            }
             if (Input.GetKeyDown(KeyCode.R) && shift)
             {
+                if (!Allowed(mode, ModKey.Reroll)) { Refuse(mode, "Reroll"); return; }
                 ClickFirstActive("Reroll dice",
                     "Letterbox Canvas/Top UI/Dice UI/REROLL DICE");
                 return;
             }
 
-            // --- Tutorial: T re-engages the game's own continue button (the game selects it
-            //     itself when a tutorial opens; Enter fires it through the native submit path).
-            //     Never click it directly — a click outside the tutorial FSM's awaiting state
-            //     closes the panel without dispatching its event and hangs the intro script. ---
-            if (Input.GetKeyDown(KeyCode.T))
+            // --- Backspace: the designed cancel, resolved per mode ---
+            if (Input.GetKeyDown(KeyCode.Backspace))
             {
-                var button = GameObject.Find("Letterbox Canvas/Tutorial System/Button");
-                if (button != null && button.activeInHierarchy) Navigator.Select(button);
-                else SpeechService.Say("No tutorial open.", Priority.Immediate, "nav");
+                if (!Allowed(mode, ModKey.Cancel)) { Refuse(mode, "Back"); return; }
+                ResolveCancel(mode);
                 return;
             }
 
-            // --- Navigation and activation: the game has NO keyboard UI input of its own.
-            //     Arrows emulate dpad moves through the game's navigation graph;
-            //     Enter submits the current selection. ---
-            if (Input.GetKeyDown(KeyCode.DownArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Down); return; }
-            if (Input.GetKeyDown(KeyCode.UpArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Up); return; }
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Left); return; }
-            if (Input.GetKeyDown(KeyCode.RightArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Right); return; }
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            // --- Native navigation and activation ---
+            if (Allowed(mode, ModKey.Navigate))
             {
+                if (Input.GetKeyDown(KeyCode.DownArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Down); return; }
+                if (Input.GetKeyDown(KeyCode.UpArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Up); return; }
+                if (Input.GetKeyDown(KeyCode.LeftArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Left); return; }
+                if (Input.GetKeyDown(KeyCode.RightArrow)) { Navigator.Move(UnityEngine.EventSystems.MoveDirection.Right); return; }
+            }
+            if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+                && Allowed(mode, ModKey.Activate))
+            {
+                // Empty-Enter mirrors the game's own Confirm backstop (UI Reselector):
+                // nothing selected -> ask UI selector to re-anchor to the nearest marker.
+                if (Navigator.Current() == null && (mode == Mode.Station || mode == Mode.ActionView))
+                {
+                    var selector = GameQueries.FindFsm("UI selector");
+                    if (selector != null)
+                    {
+                        selector.SendEvent("Reset");
+                        Plugin.Log.LogInfo("[Input] Empty Enter: sent UI selector Reset (Confirm-backstop mirror).");
+                        return;
+                    }
+                }
                 Navigator.ActivateCurrent();
                 return;
             }
+        }
+
+        // ---------- Helpers ----------
+
+        private static bool Allowed(Mode mode, ModKey key) => KeyScope.Allows(mode, key);
+
+        /// <summary>Queries speak a mode-aware refusal instead of stale data when scoped out.</summary>
+        private static bool Query(Mode mode, ModKey key)
+        {
+            if (KeyScope.Allows(mode, key)) return true;
+            SpeechService.Say(ModeModel.Name(mode) + ".", Priority.Immediate, "nav");
+            return false;
+        }
+
+        private static void Refuse(Mode mode, string label)
+        {
+            SpeechService.Say(ModeModel.Name(mode) + ". " + label + " not available here.",
+                Priority.Immediate, "nav");
+        }
+
+        /// <summary>The designed cancel per mode. Each branch sends a corpus-verified
+        /// designed event or clicks the designed control; nothing here invents a path.</summary>
+        private static void ResolveCancel(Mode mode)
+        {
+            switch (mode)
+            {
+                case Mode.DiceAllocation:
+                    // Designed Back: retracts a resting die (Slotted -> Active) or
+                    // cancels the picker (Active -> teardown) — the FSM resolves depth.
+                    GameQueries.DiceSystemFsm()?.SendEvent("Back");
+                    return;
+
+                case Mode.CharacterWindow:
+                    // The FSM's designed toggle event closes it (Open -> Close, corpus).
+                    GameQueries.FindFsm("Character UI Button")?.SendEvent("Open");
+                    return;
+
+                case Mode.DriveLog:
+                    // Same button template as the character window — same designed toggle.
+                    GameQueries.FindFsm("Drive Log Button")?.SendEvent("Open");
+                    return;
+
+                case Mode.Inventory:
+                    // The item cursor's designed Back effect is its own Deactivate (brief F).
+                    var cursor = Navigator.Current();
+                    var cursorFsm = cursor != null ? cursor.GetComponent<PlayMakerFSM>() : null;
+                    if (cursorFsm != null) { cursorFsm.SendEvent("Deactivate"); return; }
+                    break; // fall through to generic leave if the cursor wasn't found
+
+                case Mode.Pause:
+                    // Emulate the designed Pause Back mapping: the PAUSE FSM maps that
+                    // action per state — Pause/Pause 3 -> Unpause, Sure?/OPTIONS -> Back (F).
+                    var pause = GameQueries.FindFsm("PAUSE");
+                    string state = pause != null ? pause.ActiveStateName : null;
+                    if (state != null && state.StartsWith("Pause")) { pause.SendEvent("Unpause"); return; }
+                    if (state != null && (state.StartsWith("Sure?") || state.StartsWith("OPTIONS")))
+                    { pause.SendEvent("Back"); return; }
+                    Plugin.Log.LogInfo("[Input] Pause cancel: unmapped PAUSE state '" + state + "' — no event sent.");
+                    return;
+            }
+
+            // Station/action view: the Leave Button is the designed leave.
+            ClickFirstActive("Leave or back",
+                "Letterbox Canvas/Top UI/Leave Button",
+                "Back Button", "Close Button", "BACK");
+        }
+
+        private void RereadDialogue()
+        {
+            if (!string.IsNullOrEmpty(DialogueState.LastSubtitle))
+            {
+                string speaker = DialogueState.LastSpeaker;
+                bool sayName = speaker.Length > 0 && Plugin.SpeakSpeakerNames.Value &&
+                               !speaker.Equals("UNKNOWN", System.StringComparison.OrdinalIgnoreCase);
+                SpeechService.Say((sayName ? speaker + ": " : "") + DialogueState.LastSubtitle,
+                    Priority.Immediate, "dialogue");
+            }
+            else
+                SpeechService.Say("No dialogue line.", Priority.Immediate, "dialogue");
         }
 
         /// <summary>True when the game has put selection on the Tutorial System's continue
@@ -291,54 +331,6 @@ namespace CSAccess
                 }
             }
             SpeechService.Say("Choice not found.", Priority.Immediate, "choices");
-        }
-
-        private void CycleActions(int delta)
-        {
-            _actionPanels = GameQueries.GetActionPanels();
-            if (_actionPanels.Count == 0)
-            {
-                SpeechService.Say("No actions here.", Priority.Immediate, "nav");
-                return;
-            }
-            _actionIndex = ((_actionIndex + delta) % _actionPanels.Count + _actionPanels.Count) % _actionPanels.Count;
-            var panel = _actionPanels[_actionIndex];
-
-            // Focus the action's button so Enter and dice keys apply to it.
-            var button = panel.GetComponentInChildren<Button>(false);
-            if (button != null)
-                Navigator.Select(button.gameObject);
-            else
-                SpeechService.Say(Describe.DescribeAction(panel.gameObject, detailed: false), Priority.Immediate, "nav");
-        }
-
-        private void CycleWorldButtons(int delta)
-        {
-            _worldButtons = GameQueries.GetWorldButtons();
-            if (_worldButtons.Count == 0)
-            {
-                SpeechService.Say("No locations or characters available.", Priority.Immediate, "nav");
-                return;
-            }
-            _worldIndex = ((_worldIndex + delta) % _worldButtons.Count + _worldButtons.Count) % _worldButtons.Count;
-            Navigator.Select(_worldButtons[_worldIndex]);
-        }
-
-        private static void SpeakHelp()
-        {
-            SpeechService.Say(
-                "Citizen Sleeper Access commands. " +
-                "Arrows and Enter use the game's own navigation. Space: describe the focused element in detail. " +
-                "Tab: jump between actions at this location. L: jump between locations and characters. " +
-                "I: toggle inventory items and data. U: character window. J: drive tracker. " +
-                "S: scan. Backspace: leave, back, or cancel the die picker. Shift R: reroll dice. " +
-                "Number keys: pick a dialogue choice. " +
-                "Enter on an action opens the game's die picker. Arrows choose a die, Enter slots it. " +
-                "D: read dice. K: read clocks. C: read status. " +
-                "F2: repeat dialogue line. R: repeat last speech. " +
-                "Left and right brackets: speech history. Grave: stop speech. " +
-                "T: focus the tutorial's continue button; Enter fires it.",
-                Priority.Immediate, "help");
         }
     }
 }

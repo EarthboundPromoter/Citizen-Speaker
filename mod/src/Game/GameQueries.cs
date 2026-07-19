@@ -352,6 +352,62 @@ namespace CSAccess.Game
             return false;
         }
 
+        // ---------- V and D queries (input-model.md; wording provisional until calibration) ----------
+
+        /// <summary>V: "Cycle 4. Energy 3 of 5. Condition 40, declining. Cryo 80."
+        /// Values from the W1 Lua adapter (single authoritative store, cross-checked live
+        /// against rendered truth this session); condition band word and STARVING from the
+        /// rendered HUD. Energy spoken in boxes (the bar has 5 real segment splits);
+        /// condition as value + band (its bar is continuous fill — boxes would be invented).</summary>
+        public static string DescribeVitals()
+        {
+            var sb = new StringBuilder();
+            int? cycle = Substrate.LuaStore.CycleNumber();
+            if (cycle != null) sb.Append("Cycle ").Append(cycle).Append(". ");
+            int? energy = Substrate.LuaStore.Energy();
+            if (energy != null)
+            {
+                sb.Append("Energy ").Append(energy).Append(" of 5");
+                var starving = GameObject.Find("Letterbox Canvas/Top UI/Energy UI/Energy Bar System/Starving");
+                if (starving != null && starving.activeInHierarchy) sb.Append(", starving");
+                sb.Append(". ");
+            }
+            int? condition = Substrate.LuaStore.Condition();
+            if (condition != null)
+            {
+                sb.Append("Condition ").Append(condition);
+                var conditionFsm = FindFsm("Condition System", "Energy UI");
+                string band = conditionFsm != null ? ConditionWord(conditionFsm) : null;
+                if (band != null) sb.Append(", ").Append(band.ToLowerInvariant());
+                sb.Append(". ");
+            }
+            int? bits = Substrate.LuaStore.Bits();
+            if (bits != null) sb.Append("Cryo ").Append(bits).Append(". ");
+            return sb.Length > 0 ? sb.ToString().TrimEnd() : "Vitals not available.";
+        }
+
+        /// <summary>D: "3 dice: 6, 2, 5." — flat string per input-model (tray is not
+        /// natively focusable outside allocation). Spent handling provisional.</summary>
+        public static string DescribeDiceBrief()
+        {
+            var dice = GetDice();
+            if (dice.Count == 0) return "No dice.";
+            var values = new List<string>();
+            int spent = 0;
+            foreach (var d in dice)
+            {
+                if (d.State == "Used") spent++;
+                else values.Add(d.Value.ToString());
+            }
+            var sb = new StringBuilder();
+            if (values.Count > 0)
+                sb.Append(values.Count).Append(values.Count == 1 ? " die: " : " dice: ")
+                  .Append(string.Join(", ", values)).Append('.');
+            else sb.Append("No dice left.");
+            if (spent > 0) sb.Append(' ').Append(spent).Append(" spent.");
+            return sb.ToString();
+        }
+
         // ---------- Dice allocation mode (native uGUI picker; see docs/ui-state-map.md 6b) ----------
 
         /// <summary>The Dice Gamepad System FSM owns allocation mode: Off -> Active while the
