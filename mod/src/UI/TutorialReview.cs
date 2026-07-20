@@ -56,7 +56,9 @@ namespace CSAccess.UI
             if (items.Count == 0) return;
             int next = Mathf.Clamp(_index + delta, 0, items.Count - 1);
             string boundary = "";
-            if (next == _index)
+            // delta 0 = bare repeat of the current block (Left/Right seal) — no
+            // boundary phrase.
+            if (next == _index && delta != 0)
                 boundary = delta > 0 ? "End of tutorial. Press Enter to continue. " : "Top of tutorial. ";
             _index = next;
             SpeechService.Say(boundary + items[_index], Priority.Immediate, "tutorial");

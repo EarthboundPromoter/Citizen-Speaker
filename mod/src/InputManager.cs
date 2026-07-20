@@ -81,7 +81,17 @@ namespace CSAccess
             { SpeechService.Say(ModeModel.WhereAmI(), Priority.Immediate, "query"); return; }
 
             if (Input.GetKeyDown(KeyCode.R) && !shift && Allowed(mode, ModKey.RereadDialogue))
-            { RereadDialogue(); return; }
+            {
+                // In a tutorial, R rereads the tutorial the way dialogue is reread
+                // (owner ruling 2026-07-20); dialogue reread everywhere else.
+                if (mode == Mode.Tutorial && Watchers.LastTutorialLine != null)
+                {
+                    SpeechService.Say(Watchers.LastTutorialLine, Priority.Immediate, "tutorial");
+                    return;
+                }
+                RereadDialogue();
+                return;
+            }
 
             // --- Scripted input pause: swallow game-facing keys; speech keys above still
             //     work. Exception: a tutorial continue the game itself selected. ---
@@ -160,6 +170,12 @@ namespace CSAccess
                 {
                     if (Input.GetKeyDown(KeyCode.DownArrow)) { TutorialReview.Review(1); return; }
                     if (Input.GetKeyDown(KeyCode.UpArrow)) { TutorialReview.Review(-1); return; }
+                    // Seal the surface (owner guard ruling 2026-07-20): Left/Right
+                    // consumed as a bare repeat — native graph moves never fire from
+                    // inside a tutorial; the player's only exits are Enter/T (and the
+                    // taught action where the game demands one).
+                    if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.LeftArrow))
+                    { TutorialReview.Review(0); return; }
                 }
                 if (CharacterSelect.IsActive())
                 {
@@ -355,6 +371,20 @@ namespace CSAccess
                 // station Confirm-backstop mirror to every mode with a designed anchor.
                 if (Navigator.Current() == null && FocusModel.ReAnchor(mode))
                     return;
+                // Tutorial with a disabled continue = a taught-action tutorial (the
+                // game wants the action, e.g. the scan toggle) — explain instead of
+                // the bare "Not activatable." (owner ruling; wording provisional).
+                if (mode == Mode.Tutorial)
+                {
+                    var cur = Navigator.Current();
+                    var sel = cur != null ? cur.GetComponent<UnityEngine.UI.Selectable>() : null;
+                    if (sel != null && !sel.IsInteractable())
+                    {
+                        SpeechService.Say("Continue not ready. Follow the tutorial's instruction first.",
+                            Priority.Immediate, "tutorial");
+                        return;
+                    }
+                }
                 Navigator.ActivateCurrent();
                 return;
             }

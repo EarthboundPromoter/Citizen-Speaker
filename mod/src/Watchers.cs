@@ -599,6 +599,10 @@ namespace CSAccess
             return alpha;
         }
 
+        /// <summary>The last spoken tutorial announce, for R-reread in Tutorial mode
+        /// (owner ruling 2026-07-20 — tutorials reread the way dialogue does).</summary>
+        internal static string LastTutorialLine;
+
         /// <summary>True when the panel had readable text and speech was queued —
         /// callers must not mark a panel handled on a false return (BL-3).</summary>
         private static bool AnnouncePanelTexts(Transform panel, string source, string prefix, string suffix)
@@ -611,7 +615,9 @@ namespace CSAccess
                 if (!parts.Contains(txt)) parts.Add(txt);
             }
             if (parts.Count == 0) return false;
-            SpeechService.Say(prefix + string.Join(". ", parts) + suffix, Priority.Queued, source);
+            string line = prefix + string.Join(". ", parts) + suffix;
+            if (source == "tutorial") LastTutorialLine = line;
+            SpeechService.Say(line, Priority.Queued, source);
             return true;
         }
     }
