@@ -37,12 +37,18 @@ namespace CSAccess.UI
             public const string HeaderSkill = "Skill";
             public const string HeaderTakes = "Takes";
             public const string HeaderRisk = "Risk";
+            public const string HeaderCost = "Cost";
+            public const string HeaderNarrative = "Narrative";
+            public const string NowDisabled = "now not activatable";
+            public const string NowEnabled = "now activatable";
         }
 
         private static bool _clocksTab;
         private static int _row, _col;
+        // Full facet set as columns (owner ruling: full read on row switch, table
+        // broken out by risk, cost, narrative block, ...).
         private static readonly string[] Headers =
-            { W.HeaderName, W.HeaderSkill, W.HeaderTakes, W.HeaderRisk };
+            { W.HeaderName, W.HeaderSkill, W.HeaderRisk, W.HeaderTakes, W.HeaderCost, W.HeaderNarrative };
 
         public static void OnLeftLocation() { _clocksTab = false; _row = 0; _col = 0; }
 
@@ -140,8 +146,66 @@ namespace CSAccess.UI
             // One native click on the card's own button (single-dispatch): die actions
             // open allocation, item/cryo actions run their designed slot flow.
             var button = FindCardButton(root);
-            if (button != null) Navigator.Click(button.gameObject);
+            if (button != null)
+            {
+                SnapshotForDiff();
+                Navigator.Click(button.gameObject);
+            }
             else SpeechService.Say(W.NotActivatable, Priority.Immediate, "table");
+        }
+
+        // ---------- Post-roll change callouts (owner ruling: all changes announced
+        // automatically; the narrative repopulation itself is spoken by the outcome
+        // pipeline, which reads the card's new Description) ----------
+
+        private static readonly Dictionary<string, string> _clockSnapshot =
+            new Dictionary<string, string>();
+        private static readonly Dictionary<string, bool> _activatableSnapshot =
+            new Dictionary<string, bool>();
+        private static bool _hasSnapshot;
+
+        private static void SnapshotForDiff()
+        {
+            _clockSnapshot.Clear();
+            _activatableSnapshot.Clear();
+            foreach (var clock in GameQueries.GetClockPanels())
+            {
+                string name = Describe.TextUnder(clock, "Clock Name") ?? clock.name;
+                _clockSnapshot[name] = GameQueries.ClockProgress(clock) ?? "";
+            }
+            foreach (var action in GameQueries.GetActionPanels())
+                _activatableSnapshot[ActionName(action)] = FindCardButton(action) != null;
+            _hasSnapshot = true;
+        }
+
+        /// <summary>Called by ActionOutcomes after its outcome announce: diff the
+        /// location's clocks and every card's activatable state against the
+        /// commit-time snapshot, announce what changed, refresh the snapshot.</summary>
+        public static void AfterOutcome()
+        {
+            if (!_hasSnapshot || Modality.ModeModel.Current() != Modality.Mode.ActionView)
+                return;
+            var parts = new List<string>();
+            foreach (var clock in GameQueries.GetClockPanels())
+            {
+                string name = Describe.TextUnder(clock, "Clock Name") ?? clock.name;
+                string now = GameQueries.ClockProgress(clock) ?? "";
+                if (_clockSnapshot.TryGetValue(name, out string was) && was != now
+                    && now.Length > 0)
+                    parts.Add(name + ", " + now);
+                else if (!_clockSnapshot.ContainsKey(name) && now.Length > 0)
+                    parts.Add(name + ", " + now);
+            }
+            foreach (var action in GameQueries.GetActionPanels())
+            {
+                string name = ActionName(action);
+                bool now = FindCardButton(action) != null;
+                if (_activatableSnapshot.TryGetValue(name, out bool was) && was != now)
+                    parts.Add(name + ", " + (now ? W.NowEnabled : W.NowDisabled));
+            }
+            if (parts.Count > 0)
+                SpeechService.Say(string.Join(". ", parts) + ".", Priority.Queued, "table");
+            SnapshotForDiff(); // rows stay live for the next roll
         }
 
         private static Button FindCardButton(Transform root)
@@ -159,17 +223,23 @@ namespace CSAccess.UI
         private static string ActionName(Transform root)
             => Describe.TextUnder(root, "Action Name") ?? root.name.TrimEnd();
 
+        /// <summary>Full read on row switch (owner ruling): every populated facet in
+        /// column order, narrative last.</summary>
         private static string ActionRow(Transform root)
         {
             var sb = new System.Text.StringBuilder(ActionName(root));
             var selectable = FindCardButton(root);
             string skill = Cell(root, 1);
-            string takes = Cell(root, 2);
-            string risk = Cell(root, 3);
+            string risk = Cell(root, 2);
+            string takes = Cell(root, 3);
+            string cost = Cell(root, 4);
+            string narrative = Cell(root, 5);
             if (skill != null) sb.Append(". ").Append(skill);
             if (risk != null) sb.Append(", ").Append(risk);
             sb.Append(". ").Append(takes ?? W.EnterToActivate).Append('.');
             if (selectable == null) sb.Append(" Not activatable.");
+            if (cost != null) sb.Append(' ').Append(cost).Append('.');
+            if (narrative != null) sb.Append(' ').Append(narrative);
             return sb.ToString();
         }
 
@@ -179,10 +249,12 @@ namespace CSAccess.UI
             {
                 case 0: return ActionRow(root);
                 case 1: return Describe.SkillLine(root);
-                case 2: return Describe.TakesLine(root);
-                default:
+                case 2:
                     var rating = Describe.TextUnder(root, "Rating Name");
                     return rating != null ? rating.ToLowerInvariant() : null;
+                case 3: return Describe.TakesLine(root);
+                case 4: return Describe.TextContaining(root, "PER CYCLE");
+                default: return Describe.TextUnder(root, "Description");
             }
         }
 

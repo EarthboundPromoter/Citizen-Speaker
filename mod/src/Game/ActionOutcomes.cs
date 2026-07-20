@@ -35,6 +35,11 @@ namespace CSAccess.Game
             Subscribe("Positive Outcome", "positive outcome");
             Subscribe("Neutral Outcome", "neutral outcome");
             Subscribe("Negative Outcome", "negative outcome");
+            // BL-14: the item/value-check family runs a third controller template with
+            // one bare Outcome state and NO tier states (DELIVER DATA live case +
+            // Solheim Data Action corpus decode) — always silent until now. No tier
+            // word: the game renders none (render-honesty).
+            Subscribe("Outcome", null);
         }
 
         private static void Subscribe(string state, string spokenTier)
@@ -49,7 +54,10 @@ namespace CSAccess.Game
             string name = root != null
                 ? (UI.Describe.TextUnder(root, "Action Name") ?? root.name.TrimEnd())
                 : "Action";
-            SpeechService.Say(name + ": " + spokenTier + ".", Priority.Queued, "outcome");
+            // Tierless (bare Outcome) actions announce name only; the deferred card
+            // read carries the content.
+            SpeechService.Say(spokenTier != null ? name + ": " + spokenTier + "." : name + ".",
+                Priority.Queued, "outcome");
             Queue.Add(new Pending
             {
                 Name = name,
@@ -76,6 +84,9 @@ namespace CSAccess.Game
                 else if (root == null)
                     Plugin.Log.LogInfo("[Outcome] card for '" + p.Name
                         + "' gone and not re-found in the active variant — silent.");
+                // Location table post-roll callouts (clock ticks, cards flipping
+                // activatable) — owner ruling: all changes announced automatically.
+                UI.LocationTable.AfterOutcome();
             }
         }
 
