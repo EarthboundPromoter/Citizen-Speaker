@@ -122,6 +122,14 @@ namespace CSAccess.Patches
                 return;
             }
 
+            // Map table browse/camera moves: the row report is the announcement; the
+            // native highlight lands silently (same pattern, second customer).
+            if (!userInitiated && UI.MapTable.SuppressingFocus())
+            {
+                Plugin.Log.LogInfo("[Focus] suppressed (map table): " + selected.name);
+                return;
+            }
+
             // Strip steal (owner-approved 2026-07-19): game-driven selection landing
             // on the CLOSED inventory strip in the action view is the spatial
             // selector's closest-button artifact (live: die-picker cancel handed

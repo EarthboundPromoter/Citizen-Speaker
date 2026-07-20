@@ -150,6 +150,15 @@ namespace CSAccess.Game
             return sb.ToString();
         }
 
+        /// <summary>Leading integer of a name ("32 Step Clock" -> 32); 0 if none.</summary>
+        public static int LeadingInt(string name)
+        {
+            int i = 0;
+            while (i < name.Length && char.IsDigit(name[i])) i++;
+            int.TryParse(name.Substring(0, i), out int result);
+            return result;
+        }
+
         private static int ParseTrailingInt(string name)
         {
             int i = name.Length - 1;

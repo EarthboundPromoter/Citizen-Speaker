@@ -23,6 +23,7 @@ namespace CSAccess.Modality
         TutorialContinue,  // T
         NumberChoices,     // 1-9
         ReviewArrows,      // review-cursor movement in cursor-owning modes
+        MapTable,          // N — station map table (map-table-design.md)
     }
 
     /// <summary>
@@ -91,7 +92,8 @@ namespace CSAccess.Modality
             t[Mode.ActionView] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks, ModKey.Reroll,
                 ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle);
             t[Mode.Station] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks,
-                ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle);
+                ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle,
+                ModKey.MapTable);
             return t;
         }
 
@@ -109,6 +111,7 @@ namespace CSAccess.Modality
             (ModKey.NumberChoices, "Number keys: pick a response"),
             (ModKey.TutorialContinue, "T: focus continue"),
             (ModKey.Reroll, "Shift R: reroll dice"),
+            (ModKey.MapTable, "N: station table"),
             (ModKey.InventoryToggle, "I: inventory"),
             (ModKey.CharacterToggle, "U: character window"),
             (ModKey.DriveLogToggle, "J: drive log"),

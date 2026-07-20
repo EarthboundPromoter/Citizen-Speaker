@@ -86,6 +86,18 @@ namespace CSAccess
             //     work. Exception: a tutorial continue the game itself selected. ---
             if (GameQueries.InputPaused() && !TutorialContinueFocused()) return;
 
+            // --- Station map table (map-table-design.md): while open it owns arrows,
+            //     slash, Space, Enter, Backspace and N; speech/query keys above still
+            //     answer. Closes itself on mode change via IsOpen+mode gate. ---
+            if (MapTable.IsOpen)
+            {
+                if (mode != Mode.Station) MapTable.Close(announce: false);
+                else if (MapTable.HandleKeys()) return;
+            }
+            if (Input.GetKeyDown(KeyCode.N) && mode == Mode.Station
+                && Allowed(mode, ModKey.MapTable))
+            { MapTable.Open(); return; }
+
             if (Input.GetKeyDown(KeyCode.Space) && Allowed(mode, ModKey.Describe))
             {
                 var current = Navigator.Current();
