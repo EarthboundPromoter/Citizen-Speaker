@@ -32,15 +32,15 @@ namespace CSAccess.UI
             public const string CostPrefix = "Costs ";
             public const string CostSuffix = " cryo";
             public const string EnterToActivate = "Enter to activate";
-            public const string NotActivatable = "Not activatable.";
+            public const string NotActivatable = "Action card disabled.";
             public const string HeaderName = "Name";
             public const string HeaderSkill = "Skill";
             public const string HeaderTakes = "Takes";
             public const string HeaderRisk = "Risk";
             public const string HeaderCost = "Cost";
             public const string HeaderNarrative = "Narrative";
-            public const string NowDisabled = "now not activatable";
-            public const string NowEnabled = "now activatable";
+            public const string NowDisabled = "action card disabled";
+            public const string NowEnabled = "action card enabled";
         }
 
         private static bool _clocksTab;
@@ -237,7 +237,7 @@ namespace CSAccess.UI
             if (skill != null) sb.Append(". ").Append(skill);
             if (risk != null) sb.Append(", ").Append(risk);
             sb.Append(". ").Append(takes ?? W.EnterToActivate).Append('.');
-            if (selectable == null) sb.Append(" Not activatable.");
+            if (selectable == null) sb.Append(' ').Append(W.NotActivatable);
             if (cost != null) sb.Append(' ').Append(cost).Append('.');
             if (narrative != null) sb.Append(' ').Append(narrative);
             return sb.ToString();
