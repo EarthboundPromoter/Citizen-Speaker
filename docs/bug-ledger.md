@@ -35,7 +35,17 @@ still W4. Awaiting live verification. Note: the
 deployed camera-flight mute changes the shape here — if the settle announce lands
 on the Scan Button it will still say "Y button" until (a) lands.
 
-**BL-3 — Trigger-driven tutorials invisible (silent tutorial).** The Character /
+**BL-3 — Trigger-driven tutorials invisible (silent tutorial).**
+ROOT-CAUSE CANDIDATE + FIX DEPLOYED (2026-07-20, code walk during the breakdown
+decode): CheckTutorial marked a panel SEEN before announcing, and
+AnnouncePanelTexts silently no-ops when the panel's text hasn't populated yet —
+trigger-activated panels activate first and fill text a beat later, so the one
+announce chance burned on an empty read. Fix: mark seen only when speech actually
+fired (AnnouncePanelTexts now returns bool); the 0.4s poll then retries until the
+text lands. Trigger keying confirmed from corpus: each trigger polls its Lua
+variable (Breakdown: BREAKDOWN_CYCLE) against a target, activates $TUTORIAL OBJECT
+once, then writes a per-tutorial done flag — the stakeout now VERIFIES the fix
+instead of diagnosing. Original entry below. The Character /
 Hacking / Breakdown Tutorial Triggers activate a `$TUTORIAL OBJECT` panel
 (corpus + live /fsm read; e.g. Breakdown → `Tutorial System/Breakdown Tutorial`).
 One such panel rendered ~run-1 f7900 with no auto-read, no Tutorial mode, no

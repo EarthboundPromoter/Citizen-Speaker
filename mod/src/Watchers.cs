@@ -250,8 +250,12 @@ namespace CSAccess
                 if (panel.name == "Button") continue;
                 int id = panel.GetInstanceID();
                 if (_seenPanels.Contains(id)) continue;
-                _seenPanels.Add(id);
-                AnnouncePanelTexts(panel, "tutorial", "Tutorial. ", ". Press Enter to continue.");
+                // Mark seen only when the announce actually spoke (BL-3 root-cause
+                // candidate, corpus + code walk 2026-07-20): trigger-activated panels
+                // populate text a beat AFTER activation — marking first burned the
+                // one announce chance on an empty read, silent forever after.
+                if (AnnouncePanelTexts(panel, "tutorial", "Tutorial. ", ". Press Enter to continue."))
+                    _seenPanels.Add(id);
             }
             // Allow re-announcing panels after they close.
             _seenPanels.RemoveWhere(id =>
@@ -595,7 +599,9 @@ namespace CSAccess
             return alpha;
         }
 
-        private static void AnnouncePanelTexts(Transform panel, string source, string prefix, string suffix)
+        /// <summary>True when the panel had readable text and speech was queued —
+        /// callers must not mark a panel handled on a false return (BL-3).</summary>
+        private static bool AnnouncePanelTexts(Transform panel, string source, string prefix, string suffix)
         {
             var parts = new List<string>();
             foreach (var tmp in panel.GetComponentsInChildren<TMP_Text>(false))
@@ -604,8 +610,9 @@ namespace CSAccess
                 if (string.IsNullOrEmpty(txt) || txt.Length <= 1) continue;
                 if (!parts.Contains(txt)) parts.Add(txt);
             }
-            if (parts.Count == 0) return;
+            if (parts.Count == 0) return false;
             SpeechService.Say(prefix + string.Join(". ", parts) + suffix, Priority.Queued, source);
+            return true;
         }
     }
 }
