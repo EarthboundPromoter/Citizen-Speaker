@@ -52,6 +52,8 @@ namespace CSAccess.UI
             public string EmptyForm;
         }
 
+        // Description column scrapped (owner, live calibration 2026-07-20): the
+        // tagline rides the Name cell instead.
         private static readonly List<Column> Columns = new List<Column>
         {
             new Column { Header = W.HeaderName, EmptyForm = null, Cell = NameCell },
@@ -67,8 +69,6 @@ namespace CSAccess.UI
                     int n = StationAtlas.ActionCount(r);
                     return n < 0 ? null : n + (n == 1 ? " action" : " actions");
                 } },
-            new Column { Header = W.HeaderTagline, EmptyForm = W.NoTagline,
-                Cell = r => r.Tagline },
         };
 
         // The characters tab appends the Where column (ruling 7).
@@ -162,6 +162,8 @@ namespace CSAccess.UI
 
         public static void Tick()
         {
+            TickPendingCommit();
+
             // Session zone observation (Hub tab gate — the Hub has no visited flag).
             if (!_hubSeen && Time.frameCount % 120 == 0 && StationAtlas.CurrentZone() == 2)
                 _hubSeen = true;
@@ -260,13 +262,40 @@ namespace CSAccess.UI
         {
             if (Tabs[_tab] == -3 || _view.Count == 0) return;
             var row = Current();
-            if (row.Button != null && row.Button.activeInHierarchy && row.Interactable)
+            if (LiveInteractable(row))
             {
                 Close(announce: false);
                 Navigator.Click(row.Button);
+                return;
             }
-            else
-                SpeechService.Say(row.Name + ": " + W.CommitDisabled, Priority.Immediate, "table");
+            // Camera may still be in flight to this row — wait for its button to
+            // enable rather than refusing off stale state; refuse only on timeout
+            // (genuinely locked markers never enable).
+            _pendingCommit = row;
+            _pendingCommitUntil = Time.unscaledTime + 2f;
+        }
+
+        private static StationAtlas.Row _pendingCommit;
+        private static float _pendingCommitUntil;
+
+        private static void TickPendingCommit()
+        {
+            if (_pendingCommit == null) return;
+            if (!IsOpen) { _pendingCommit = null; return; }
+            if (LiveInteractable(_pendingCommit))
+            {
+                var row = _pendingCommit;
+                _pendingCommit = null;
+                Close(announce: false);
+                Navigator.Click(row.Button);
+                return;
+            }
+            if (Time.unscaledTime > _pendingCommitUntil)
+            {
+                SpeechService.Say(_pendingCommit.Name + ": " + W.CommitDisabled,
+                    Priority.Immediate, "table");
+                _pendingCommit = null;
+            }
         }
 
         // ---------- Camera ----------
@@ -394,8 +423,21 @@ namespace CSAccess.UI
             if (r.IsCharacter) sb.Append(W.CharacterPrefix);
             sb.Append(r.Name);
             if (r.IsNew) sb.Append(", ").Append(W.RowNew);
-            if (!r.Interactable) sb.Append(", ").Append(W.RowDisabled);
+            // Disabled speaks ONLY when the marker is currently rendered and refuses
+            // (live read — the open-time cache falsely flagged every off-camera row;
+            // owner report 2026-07-20). Off-camera rows say nothing: no rendered truth
+            // yet, and camera-follow enables them by the time Enter matters.
+            if (r.Button != null && r.Button.activeInHierarchy && !LiveInteractable(r))
+                sb.Append(", ").Append(W.RowDisabled);
+            if (!string.IsNullOrEmpty(r.Tagline))
+                sb.Append(". ").Append(r.Tagline);
             return sb.ToString();
+        }
+
+        private static bool LiveInteractable(StationAtlas.Row r)
+        {
+            var s = r.Button != null ? r.Button.GetComponent<UnityEngine.UI.Selectable>() : null;
+            return s != null && r.Button.activeInHierarchy && s.IsInteractable();
         }
 
         private static string CellRaw(Column c) => c.Cell(Current());
