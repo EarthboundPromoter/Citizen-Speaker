@@ -358,7 +358,7 @@ namespace CSAccess.UI
         /// to a RESTING LOCKED state (LOCKED Critical when also non-repeatable) whose only
         /// render is a lock-glyph animator over the skill display — the pips-pattern
         /// transcode. Wording provisional.</summary>
-        private static bool ActionSkillLocked(Transform actionRoot)
+        public static bool ActionSkillLocked(Transform actionRoot)
         {
             foreach (var fsm in actionRoot.GetComponentsInChildren<PlayMakerFSM>(true))
             {

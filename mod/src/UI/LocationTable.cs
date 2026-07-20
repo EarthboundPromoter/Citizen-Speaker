@@ -157,6 +157,15 @@ namespace CSAccess.UI
             if (actions.Count == 0) return;
             _row = Mathf.Clamp(_row, 0, actions.Count - 1);
             var root = actions[_row];
+            // Skill-locked cards keep an interactable button and open a DOOMED picker
+            // (Haggle live case: LOCKED has no DiceSlotted response) — Enter states the
+            // reason instead of clicking (owner ruling 2026-07-20).
+            if (Describe.ActionSkillLocked(root))
+            {
+                SpeechService.Say(Describe.DisabledReason(root) ?? W.NotActivatable,
+                    Priority.Immediate, "table");
+                return;
+            }
             // One native click on the card's own button (single-dispatch): die actions
             // open allocation, item/cryo actions run their designed slot flow.
             var button = FindCardButton(root);
