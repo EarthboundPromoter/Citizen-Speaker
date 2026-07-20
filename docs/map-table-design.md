@@ -159,11 +159,35 @@ Fine for one-shot describes; wrong for a table. The table build introduces:
 5. Multi-drive tracking: confirm two simultaneous tracked drives → two pips
    (expected yes; per-quest flags, nothing exclusive in the decode).
 6. Zone-name visibility from boot (spoiler guard relaxation check).
-7. Zone-transition decode: who sends the Location Controller's
-   `Transition to <zone>` events; confirm mod-fireable as a designed event
-   (ruling 8's tab behavior).
-8. Camera-rig decode: is there a designed camera move-to-target event/route
-   (channel section preference ladder); else spec the scroll-hop synthesis.
+7. ~~Zone-transition decode~~ DONE (2026-07-20, desk): the Location
+   Controller's zone states consume plain FSM events (`RimTransit` /
+   `GreenwayTransit` / `HubTransit`) and run fully self-contained tweened
+   transitions (Focus position, rotator angle, zoom, sound, Leave Button
+   notify). Zone truth = Lua `LOCATION` (0 Rim / 1 Greenway / 2 Hub).
+   Topology: Greenway↔Hub only via Rim (tab routing follows it). CAVEATS:
+   (a) no in-corpus sender of these events was found — they exist and are
+   consumed, but the sanctioned sender is unidentified; first live zone-tab
+   validates. (b) STORY SAFETY (design amendment, needs owner confirmation):
+   the Greenway state SETS `GREENWAYVISITED` — firing a transit into a
+   never-visited zone could bypass first-visit story gating. Zone tabs
+   therefore only offer zones already visited natively (visited flags are
+   clock-tier reads); first-time entry stays on the game's own ferry/spoke
+   flow. This also strengthens the spoiler guard.
+8. ~~Camera-rig decode~~ DONE (2026-07-20, desk): the station camera is one
+   axis — Focus Rotator's Z angle, written every frame from `$Damped Z`
+   smooth-damped toward `$Focus Z`, which accumulates the Rewired scroll
+   axes and is FloatClamp'd per zone state (Rim 135–258; gated Rim 135–200 —
+   the `RIMGATE` Lua variable opens corridor). The game's own designed jump
+   (double-press scroll) IS a discrete write: Jump states do `$Damped Z ±20`
+   + clamp + SetRotation. Row-move camera route, preference order:
+   (a) RECOMMENDED — write `$Focus Z` to the target marker's rotator angle
+   and let the game's own damping/clamping/rotation drive everything (the
+   variable is the designed input accumulator; the game's jump states are
+   precedent for discrete writes; native clamps make overshoot impossible);
+   (b) fire the FSM's own `Jump Up/Down` events (±20° designed steps) with
+   canvas-state feedback; settle signal either way = target canvas leaving
+   `Off Camera`, CloudFlight-style mute during motion. Corridor order for
+   rows = marker rotator angle (same instrument as prerequisite 9).
 9. Corridor-axis position instrument: marker world positions for zone
    assignment + character proximity (ruling 7); one live read.
 
