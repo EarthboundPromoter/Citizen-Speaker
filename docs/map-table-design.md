@@ -170,11 +170,14 @@ Fine for one-shot describes; wrong for a table. The table build introduces:
 4. Action-count off-camera: decode action-card gating before the column reads
    anything not currently rendered (cards flip availability live — s7
    DELIVER DATA). STILL OPEN.
-5. Multi-drive tracking: DEFERRED, self-resolving — none of the owner's four
-   tracked drives currently has a pip-bearing location live (their pips sit
-   on dormant variants), so nothing can light yet. The tracked-drive LIST
-   comes from the QuestLog API mod-side (same call the pips make) and lands
-   with the Tracked Drives tab; pip observation happens naturally when a
+5. ~~Multi-drive tracking~~ RESOLVED (owner account + live table evidence,
+   2026-07-20): tracking is SINGLE — the journal enforces one live tracked
+   drive; each new track replaces the previous (three consecutive
+   replacements observed via the table; owner confirms that is how the game
+   presents it). The pip data could hold several flags, but the game never
+   does. Consequences: the Drives column carries at most one name; the
+   Tracked Drives tab is a one-row what-am-I-tracking status view — exactly
+   the BL-18 workaround. Pip observation still lands naturally when the
    tracked drive's location becomes available.
 6. ~~Zone-name visibility~~ CHECKED (live 2026-07-20): zero zone names
    rendered at the station map — the visited-flag gating on zone tabs stands.

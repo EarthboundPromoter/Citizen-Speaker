@@ -246,7 +246,9 @@ cannot know what is tracked. Render-paired fix when unparked: read the
 toggle's rendered state (or QuestLog.IsQuestTrackingEnabled — the same call
 the pips make) after the press and announce the resulting state. The map
 table's Tracked Drives tab (a8aff7b) meanwhile gives an authoritative
-what-is-tracked list on demand.
+what-is-tracked list on demand. RESOLVED FACT (owner + table, 2026-07-20):
+tracking is SINGLE — each new track replaces the previous — so the clean
+future announce is simply "Tracking: <drive>." after any toggle.
 
 ## DEPLOYED, AWAITING LIVE VERIFICATION (2026-07-19 batch)
 
