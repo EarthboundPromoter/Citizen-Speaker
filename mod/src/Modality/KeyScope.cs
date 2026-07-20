@@ -71,7 +71,10 @@ namespace CSAccess.Modality
             t[Mode.Dialogue] = S(ModKey.Navigate, ModKey.Activate);
             t[Mode.DiceAllocation] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Reroll,
                 ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle);
-            t[Mode.CharacterWindow] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.ReviewArrows,
+            // Character table owns arrows/Enter/Space here (fourth table, owner
+            // 2026-07-20) — ReviewArrows dropped with the retired review cursor so
+            // F1 no longer offers "review".
+            t[Mode.CharacterWindow] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel,
                 ModKey.CharacterToggle);
             t[Mode.DriveLog] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.DriveLogToggle);
             // Inventory: U/J stay live — the designed controller idiom is dedicated

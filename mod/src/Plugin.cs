@@ -70,7 +70,7 @@ namespace CSAccess
             _watchers.Tick();
             Game.ActionOutcomes.Tick();
             Game.CloudOutcomes.Tick();
-            UI.CharacterWindowReview.Tick();
+            UI.CharacterTable.Tick();
             UI.MapTable.Tick();
             UI.JournalTable.Tick();
             Modality.CloudFlight.Tick();

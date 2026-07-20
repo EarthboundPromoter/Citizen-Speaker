@@ -114,6 +114,13 @@ namespace CSAccess
                 LocationTable.OnLeftLocation();
             }
 
+            // --- Character table (fourth table, owner rulings 2026-07-20): rows =
+            //     skills, columns Name | Perks | Next, read-only until Enter arms the
+            //     game's upgrade flow. Replaces the CharacterWindowReview cursor. ---
+            if (mode == Mode.CharacterWindow && CharacterTable.IsActive()
+                && CharacterTable.HandleKeys())
+                return;
+
             if (Input.GetKeyDown(KeyCode.Space) && Allowed(mode, ModKey.Describe))
             {
                 var current = Navigator.Current();
@@ -142,20 +149,6 @@ namespace CSAccess
                 {
                     if (Input.GetKeyDown(KeyCode.DownArrow)) { TutorialReview.Review(1); return; }
                     if (Input.GetKeyDown(KeyCode.UpArrow)) { TutorialReview.Review(-1); return; }
-                }
-                if (CharacterWindowReview.IsActive())
-                {
-                    if (Input.GetKeyDown(KeyCode.DownArrow)) { CharacterWindowReview.Review(1); return; }
-                    if (Input.GetKeyDown(KeyCode.UpArrow)) { CharacterWindowReview.Review(-1); return; }
-                    // Right/Left = the perk axis (owner ruling 2026-07-19). Capturing
-                    // them here also closes the blind-purchase hole: they previously
-                    // fell through to native spatial moves that landed on unlabeled
-                    // perk buttons (BL-9 incident).
-                    if (Input.GetKeyDown(KeyCode.RightArrow)) { CharacterWindowReview.Adjust(1); return; }
-                    if (Input.GetKeyDown(KeyCode.LeftArrow)) { CharacterWindowReview.Adjust(-1); return; }
-                    if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-                        && CharacterWindowReview.Activate())
-                        return;
                 }
                 if (CharacterSelect.IsActive())
                 {
