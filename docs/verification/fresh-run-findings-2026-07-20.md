@@ -177,6 +177,45 @@ Active Frame=NATIVE SELECTION HIGHLIGHT (FSM On iff game Selected == this
 card's Gamepad Dice Slot — transient, not card data; this was the "highlight"
 the owner saw on ASK FOR DIRECTIONS); Outline/Input Border/BG/Marker=chrome.
 
+**F11 — Clock composition can overshoot the dial: "now 9 of 8 segments" (run 3,
+f6148, BACK IN BUSINESS completion).** The step FSM's ClockValue passes the
+authored size before completion handling; ClockNow/ClockProgress speak it raw.
+Fix: when value >= steps, speak "complete" (matches the rendered full dial) —
+"BACK IN BUSINESS complete." Clamp applies to the F7 effect line and the
+callout/table reads alike. Owner wording call: "complete" vs "8 of 8, full".
+
+**F12 — Character upgrade Confirm? modal is silent and misreported (run 3,
+owner-caught).** Enter on an armed row opens the row's Confirm? modal
+(SKILL List/<SKILL>/Confirm?/Confirm Button — the corpus sub-step, first
+live appearance) — the modal NEVER claims selection, so nothing announces it,
+AND the deferred purchase read sees no purchase and speaks "No change." —
+a pending confirmation misreported as refusal (two identical false refusals
+with a valid point, f12743/f13112). Backspace is the only exit the player can
+find; the second Enter would fire the Confirm Button (RowButton prefers it).
+Fix: after a row click, if Confirm? is up — announce its rendered content +
+"Enter to confirm, Backspace to cancel.", suppress the premature "No change.";
+purchase/refusal compose clocks on Confirm? teardown (success → points +
+skill/perk compose; cancel → "Cancelled." + points). Genuine refusals keep
+current wording. §8 purchase compose still UNHEARD pending this.
+
+**F13 — Tutorial announce can fire before the panel PRESENTS (run 3,
+owner-caught: CLOUD tutorial).** The cycle-end trigger ACTIVATES the panel
+(f20049, spoke queued behind the cycle string, mid cycle-end scene) but the
+game only presents it visually after backing out of the container — activation
+≠ presentation for cycle-end-triggered tutorials. Fix: gate the announce on
+rendered visibility (effective CanvasGroup alpha via AlphaUpTo, threshold as
+in DescribeOutcomeCard), keeping BL-3's mark-on-success + text-retry intact —
+an early-activated panel just waits until the game actually shows it.
+
+**F14 — Cryo-cost actions resolve entirely silently: Action Cryo Controller
+never subscribed (run 3, owner-caught: ORDER FUNGUS purchase).** Zero outcome
+events at the purchase (f233xx — only EnergyWatch's side-effect announce);
+ActionOutcomes clocks "Action Controller" only, while cryo purchases run
+"Action Cryo Controller" (the family DisabledReason already knows). Fix:
+subscribe the same outcome states (tiers + bare Outcome) on Action Cryo
+Controller — restores name + card content incl. the cryo effect line (F7
+form). BL-14's bare-outcome family remains otherwise unexercised.
+
 ## Wording/polish samples (park in polish queue)
 
 - **P1** Overwrite warning read runs body + both button labels in one utterance:
@@ -193,6 +232,10 @@ the owner saw on ASK FOR DIRECTIONS); Outline/Input Border/BG/Marker=chrome.
 - **P6** Tutorial glyph drop (known W4): INTRODUCTION body read "Select locations
   with and .." — sprite glyphs vanish (f12473).
 - **P7** → promoted to F7 (owner ruling mid-run).
+- **P8** Cryo Takes cell doubles the unit + speaks a glyph token: "Costs INPUT
+  15 CRYO cryo" (ORDER FUNGUS, run 3 f23037) — TakesLine appends "cryo" to a
+  Cost Label that already renders "INPUT 15 CRYO". Prefer numeric Cryo Cost
+  ("Costs 15 cryo") or strip the glyph token and dedupe the unit.
 
 ## Verified this run (checklist ticks, details in session log)
 

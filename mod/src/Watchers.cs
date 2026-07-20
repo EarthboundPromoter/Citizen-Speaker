@@ -683,6 +683,12 @@ namespace CSAccess
         /// callers must not mark a panel handled on a false return (BL-3).</summary>
         private static bool AnnouncePanelTexts(Transform panel, string source, string prefix, string suffix)
         {
+            // F13 (run 3, CLOUD tutorial): activation ≠ presentation — cycle-end
+            // triggers activate the panel while the game presents it only later.
+            // Announce only when it actually renders; a false return leaves the
+            // panel unmarked and the poll retries (BL-3 machinery unchanged).
+            if (AlphaUpTo(panel, null) < 0.5f) return false;
+
             var parts = new List<string>();
             foreach (var tmp in panel.GetComponentsInChildren<TMP_Text>(false))
             {

@@ -91,7 +91,37 @@ namespace CSAccess.UI
         public static void Close(bool announce)
         {
             IsOpen = false;
+            // D2: a close in the cloud sticks for THIS cloud visit; leaving and
+            // re-entering Cloud mode re-arms the auto-open.
+            if (Modality.ModeModel.Current() == Modality.Mode.Cloud)
+                _closedThisVisit = true;
             if (announce) SpeechService.Say(W.Closed, Priority.Immediate, "table");
+        }
+
+        // D2 (owner ruling, run 3, MapTable pattern): the table IS the cloud idiom —
+        // auto-open on a settled Cloud entry; N/Backspace close for this visit.
+        private static Modality.Mode _autoPrevMode;
+        private static float _autoStableAt;
+        private static bool _closedThisVisit;
+
+        private static void AutoOpenTick()
+        {
+            var mode = Modality.ModeModel.Current();
+            if (mode != _autoPrevMode)
+            {
+                _autoPrevMode = mode;
+                _autoStableAt = Time.unscaledTime;
+                if (mode != Modality.Mode.Cloud) _closedThisVisit = false;
+                return;
+            }
+            if (mode != Modality.Mode.Cloud || IsOpen || _closedThisVisit) return;
+            // 1.2s: land AFTER the entry census's own 0.8s Text Setup settle so
+            // row names are populated and the silent baseline has run.
+            if (Time.unscaledTime - _autoStableAt < 1.2f) return;
+            // Camera flights inside the cloud keep their own mute; don't pop the
+            // table mid-flight.
+            if (Modality.CloudFlight.Suppressing()) return;
+            Open();
         }
 
         public static bool HandleKeys()
@@ -317,6 +347,7 @@ namespace CSAccess.UI
 
         public static void Tick()
         {
+            AutoOpenTick();
             bool cloud = Modality.ModeModel.Current() == Modality.Mode.Cloud;
             if (cloud && !_wasCloud)
                 _entryCensusAt = Time.unscaledTime + 0.8f; // let Text Setup settle

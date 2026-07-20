@@ -193,7 +193,10 @@ namespace CSAccess.Game
                 var positive = fsm.FsmVariables.GetFsmBool("Positive?");
                 var cycle = fsm.FsmVariables.GetFsmBool("Cycle Clock?");
                 var sb = new System.Text.StringBuilder();
-                sb.Append(Mathf.RoundToInt(value.Value)).Append(" of ").Append(steps);
+                int v = Mathf.RoundToInt(value.Value);
+                // F11: overshoot past the authored size renders full — "complete".
+                if (v >= steps) sb.Append("complete");
+                else sb.Append(v).Append(" of ").Append(steps);
                 if (positive != null) sb.Append(positive.Value ? ", positive" : ", negative");
                 if (cycle != null && cycle.Value) sb.Append(" cycle");
                 sb.Append(" clock");

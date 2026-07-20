@@ -46,6 +46,12 @@ namespace CSAccess.Game
         {
             FsmSignals.Subscribe("Action Controller", state,
                 (fsm, s) => Capture(fsm, spokenTier));
+            // F14 (run 3): cryo-cost actions run their own controller — ORDER
+            // FUNGUS resolved with zero announcements because only "Action
+            // Controller" was clocked. Same outcome-state template, same capture
+            // (DisabledReason has known this family all along).
+            FsmSignals.Subscribe("Action Cryo Controller", state,
+                (fsm, s) => Capture(fsm, spokenTier));
         }
 
         private static void Capture(PlayMakerFSM fsm, string spokenTier)

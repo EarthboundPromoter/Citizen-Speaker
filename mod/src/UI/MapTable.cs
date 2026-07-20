@@ -139,7 +139,38 @@ namespace CSAccess.UI
             IsOpen = false;
             _muteUntil = -1f;
             _pendingZone = -1;
+            // D2: a close at station sticks for THIS station visit; leaving and
+            // re-entering Station mode re-arms the auto-open.
+            if (Modality.ModeModel.Current() == Modality.Mode.Station)
+                _closedThisVisit = true;
             if (announce) SpeechService.Say(W.Closed, Priority.Immediate, "table");
+        }
+
+        // ---------- D2 (owner ruling, run 3): the table IS the station idiom ----------
+        // Auto-open on a settled Station mode entry — no N step. N/Backspace still
+        // close (escape hatch to raw WASD + native arrows); the close holds until
+        // the next station entry. U/O/I/J and query keys pass through regardless
+        // (HandleKeys never consumes them).
+
+        private static Modality.Mode _autoPrevMode;
+        private static float _autoStableAt;
+        private static bool _closedThisVisit;
+
+        private static void AutoOpenTick()
+        {
+            var mode = Modality.ModeModel.Current();
+            if (mode != _autoPrevMode)
+            {
+                _autoPrevMode = mode;
+                _autoStableAt = Time.unscaledTime;
+                if (mode != Modality.Mode.Station) _closedThisVisit = false;
+                return;
+            }
+            if (mode != Modality.Mode.Station || IsOpen || _closedThisVisit) return;
+            // Settle debounce: transitional mode flickers (flights, teardown)
+            // must not pop the table.
+            if (Time.unscaledTime - _autoStableAt < 0.6f) return;
+            Open();
         }
 
         // ---------- Input (routed from InputManager while open) ----------
@@ -162,6 +193,7 @@ namespace CSAccess.UI
 
         public static void Tick()
         {
+            AutoOpenTick();
             TickPendingCommit();
 
             // Session zone observation (Hub tab gate — the Hub has no visited flag).

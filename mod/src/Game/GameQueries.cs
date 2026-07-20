@@ -243,7 +243,12 @@ namespace CSAccess.Game
                 bool cycle = fsm.FsmVariables.GetFsmBool("Cycle Clock?")?.Value ?? false;
 
                 var sb = new StringBuilder();
-                if (steps > 0) sb.Append(value).Append(" of ").Append(steps).Append(" segments, ");
+                // F11: ClockValue can pass the authored size before completion
+                // handling ("9 of 8" live) — a full dial renders full: "complete".
+                if (steps > 0 && value >= steps)
+                    sb.Append("complete, ");
+                else if (steps > 0)
+                    sb.Append(value).Append(" of ").Append(steps).Append(" segments, ");
                 sb.Append(positive ? "positive" : "negative");
                 if (cycle) sb.Append(" cycle");
                 sb.Append(" clock");

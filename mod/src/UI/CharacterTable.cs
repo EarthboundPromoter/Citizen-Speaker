@@ -35,6 +35,8 @@ namespace CSAccess.UI
             public const string LadderComplete = "Ladder complete.";
             public const string Broken = "broken";
             public const string NoChange = "No change.";
+            public const string Cancelled = "Cancelled.";
+            public const string ConfirmPrompt = "Enter to confirm, Backspace to cancel.";
             public const string HeaderName = "Name";
             public const string HeaderPerks = "Perks";
             public const string HeaderNext = "Next";
@@ -320,7 +322,21 @@ namespace CSAccess.UI
             _watchRow = row;
             for (int n = 1; n <= 2; n++) _perkWasOwned[n] = PerkOwned(row, n);
             _checkAt = Time.unscaledTime + 0.3f;
+            // F12: a fresh arm on a row with no modal up starts a new attempt.
+            if (ConfirmRoot(row) == null) _confirmAnnounced = false;
         }
+
+        /// <summary>F12: the row's Confirm? modal when it is actually up. The game
+        /// opens it on the first row click WITHOUT moving selection (run-3 finding:
+        /// two silent false "No change." refusals) — the deferred read must treat
+        /// it as a pending confirmation, not a result.</summary>
+        private static Transform ConfirmRoot(Transform row)
+        {
+            var c = row != null ? row.Find("Confirm?") : null;
+            return c != null && c.gameObject.activeInHierarchy ? c : null;
+        }
+
+        private static bool _confirmAnnounced;
 
         /// <summary>From Plugin.Update: the deferred post-activation read.</summary>
         public static void Tick()
@@ -331,6 +347,25 @@ namespace CSAccess.UI
 
             string after = PointsLine();
             bool pointsChanged = after != null && _pointsBefore != null && after != _pointsBefore;
+
+            // F12: modal up and nothing spent yet = PENDING, not refused. Announce
+            // the modal once (its own rendered text when present), keep re-clocking
+            // until it resolves — Enter fires the Confirm button (RowButton prefers
+            // it), Backspace closes it natively.
+            var confirm = ConfirmRoot(_watchRow);
+            if (!pointsChanged && confirm != null)
+            {
+                if (!_confirmAnnounced)
+                {
+                    _confirmAnnounced = true;
+                    string label = Describe.JoinTexts(confirm.gameObject, 3);
+                    SpeechService.Say((string.IsNullOrEmpty(label) ? "Confirm upgrade" : label)
+                        + ". " + W.ConfirmPrompt, Priority.Queued, "table");
+                }
+                _checkAt = Time.unscaledTime + 0.3f; // watch stays armed
+                return;
+            }
+
             string perkBought = null;
             for (int n = 1; n <= 2; n++)
             {
@@ -350,9 +385,12 @@ namespace CSAccess.UI
             }
             else
             {
-                sb.Append(W.NoChange);
+                // F12: an announced modal resolving with nothing spent = the
+                // player cancelled; a true refusal never showed a modal.
+                sb.Append(_confirmAnnounced ? W.Cancelled : W.NoChange);
                 if (after != null) sb.Append(' ').Append(after).Append('.');
             }
+            _confirmAnnounced = false;
             SpeechService.Say(sb.ToString(), Priority.Queued, "table");
             _watchRow = null;
         }
