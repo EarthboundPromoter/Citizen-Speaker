@@ -147,18 +147,37 @@ Fine for one-shot describes; wrong for a table. The table build introduces:
 
 ## Build prerequisites (invariant 6 — no unverified signals ship)
 
-1. Live one-shot: bridge read of ALL canvas FSM ActiveStateNames + Location
-   Name variables with camera parked — proves the dial incl. off-camera rows.
-2. Clock-dial staleness off-camera: do inactive dial FSM variables hold
-   current values? (Same one-shot session.)
-3. `Location Description` render target (map hover vs entered header) — where
-   the game shows it decides which cell/level it rides.
+1. ~~Live one-shot canvas dial~~ PROVEN (live 2026-07-20): all 147 canvas
+   FSMs read camera-independently via bridge; states matched reality exactly
+   (3 Variables Met on-camera, 6 Off Camera = the WASD-discovered set, rest
+   Off/Off 2); Rotunda observed flipping Off Camera → Variables Met live as
+   the owner scrolled to it. Variant dedup confirmed (Empty Container live
+   variant = Canvas 2, original Off 2). NOTE: bridge FsmList/Find cannot
+   reach DISABLED objects — the mod-side reader walks from the always-active
+   canvas roots (GetComponentsInChildren(true)); bridge limitation only.
+2. ~~Clock-dial staleness~~ RESOLVED BY DESIGN (live 2026-07-20): billboard
+   dial FSMs drop out of FsmList while contents are deactivated, and their
+   Setter re-syncs on enable — so the table reads the authoritative clock
+   source (the same variables the K index reads), not the billboard render.
+   Verify that read at build. Also learned: not every location billboards a
+   clock (Rotunda has none — its clocks render only in the location view);
+   the Clock column is map-parity and stays empty there, correctly.
+3. ~~Description render target~~ RESOLVED (live 2026-07-20): the billboard
+   itself renders name + a SHORT TAGLINE ("ROTUNDA" / "Old dock terminal") —
+   the `<ID>_DESC` string the canvas FSM resolves. Description column = the
+   tagline, map-parity by construction. The long in-location narrative is
+   separate content and stays in the location view.
 4. Action-count off-camera: decode action-card gating before the column reads
    anything not currently rendered (cards flip availability live — s7
-   DELIVER DATA).
-5. Multi-drive tracking: confirm two simultaneous tracked drives → two pips
-   (expected yes; per-quest flags, nothing exclusive in the decode).
-6. Zone-name visibility from boot (spoiler guard relaxation check).
+   DELIVER DATA). STILL OPEN.
+5. Multi-drive tracking: DEFERRED, self-resolving — none of the owner's four
+   tracked drives currently has a pip-bearing location live (their pips sit
+   on dormant variants), so nothing can light yet. The tracked-drive LIST
+   comes from the QuestLog API mod-side (same call the pips make) and lands
+   with the Tracked Drives tab; pip observation happens naturally when a
+   tracked drive's location becomes available.
+6. ~~Zone-name visibility~~ CHECKED (live 2026-07-20): zero zone names
+   rendered at the station map — the visited-flag gating on zone tabs stands.
 7. ~~Zone-transition decode~~ DONE (2026-07-20, desk): the Location
    Controller's zone states consume plain FSM events (`RimTransit` /
    `GreenwayTransit` / `HubTransit`) and run fully self-contained tweened
