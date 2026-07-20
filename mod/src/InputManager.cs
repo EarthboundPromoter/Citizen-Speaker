@@ -99,6 +99,17 @@ namespace CSAccess
                 && Allowed(mode, ModKey.MapTable))
             { MapTable.Open(); return; }
 
+            // --- Cloud table (same registry, owner walk 2026-07-20): N in cloud mode;
+            //     corridor-sorted node rows; census/reveal callouts live in its Tick. ---
+            if (CloudTable.IsOpen)
+            {
+                if (mode != Mode.Cloud) CloudTable.Close(announce: false);
+                else if (CloudTable.HandleKeys()) return;
+            }
+            if (Input.GetKeyDown(KeyCode.N) && mode == Mode.Cloud
+                && Allowed(mode, ModKey.MapTable))
+            { CloudTable.Open(); return; }
+
             // --- Location table (always-on at a location): arrows walk rows, slash
             //     swaps Actions/Clocks tabs, Enter = row commit, Space = detail.
             //     Supersedes native arrow adjacency at action view; K retired here

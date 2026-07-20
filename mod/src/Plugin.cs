@@ -73,6 +73,7 @@ namespace CSAccess
             UI.CharacterTable.Tick();
             UI.MapTable.Tick();
             UI.JournalTable.Tick();
+            UI.CloudTable.Tick();
             Modality.CloudFlight.Tick();
             Patches.FocusPatch.Tick();
             SpeechService.Tick();

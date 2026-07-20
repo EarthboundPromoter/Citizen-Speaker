@@ -115,6 +115,9 @@ namespace CSAccess.Game
             }
 
             AnnounceCollectButton(root, p);
+            // Reveal callout (cloud table two-channel design): diff the rendered node
+            // set a beat after resolve — gate hacks reveal their corridor neighborhood.
+            UI.CloudTable.AfterOutcome();
             if (LastAnnounced.Count > 100) LastAnnounced.Clear();
         }
 

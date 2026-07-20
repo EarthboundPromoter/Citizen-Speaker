@@ -91,7 +91,7 @@ namespace CSAccess.Modality
             // Active -> Camera Transition 2). Without it, an open node is a trap:
             // the game disables the Scan toggle while a node is open.
             t[Mode.Cloud] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks, ModKey.Reroll,
-                ModKey.ScanToggle);
+                ModKey.ScanToggle, ModKey.MapTable);
             // K retired at action view (owner 2026-07-20): the location table's Clocks
             // tab is the clock index — "K becomes unnecessary under a logical nav
             // grammar." Arrows/Enter/Space route to LocationTable in InputManager.
@@ -117,7 +117,7 @@ namespace CSAccess.Modality
             (ModKey.NumberChoices, "Number keys: pick a response"),
             (ModKey.TutorialContinue, "T: focus continue"),
             (ModKey.Reroll, "Shift R: reroll dice"),
-            (ModKey.MapTable, "N: station table"),
+            (ModKey.MapTable, "N: map table"), // station or cloud, mode-scoped
             (ModKey.InventoryToggle, "I: inventory"),
             (ModKey.CharacterToggle, "U: character window"),
             (ModKey.DriveLogToggle, "J: drive log"),
