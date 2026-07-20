@@ -70,13 +70,22 @@ ACTIONS 2/2 arrived as its own sequential panel on the owner's Enter advance
 (f56229) and auto-announced in full — the corpus single-page/sequential model
 and the Left/Right seal both hold.
 
-**F5 — Energy has no live channel (owner sidebar question, run 1).** Condition is
-live-watched (ConditionWatch: band crossings + breakdowns); energy is on-demand
-only (V query + cycle string via Energy Bar System FSM / Lua Player_Energy). A
-mid-cycle energy rise/fall announces nothing. Candidate design: EnergyWatch in
-the ConditionWatch shape — needs a corpus look at Energy Bar System's states
-(band-like? plus the rendered "Starving" marker object) and an OWNER RULING on
-what it should announce (every change vs thresholds/starving only).
+**F5 — Energy live channel: BUILT + DEPLOYED (owner ruling, same day —
+segments-first).** Corpus: Energy Bar System = Energy Getter → Checker →
+Setter 0..6 (setter index IS the rendered box count, 7 authored levels) +
+Condition Minus (starving path, rendered Starving marker). EnergyWatch mirrors
+ConditionWatch: "Energy falling/rising: N." on level change only (silent boot
+baseline), "Starving. Energy empty." edge announce (re-arms on recovery).
+Every level change logs `[EnergyWatch] level N (Lua E)` — threshold/max
+calibration next launch ("of 6" wording deferred until the pairs confirm).
+OWNER DIRECTIVE, SAME RULING (pending build — the unification pass):
+segments-first across ALL stat reads. Condition has NO box states (continuous
+bar floats; five 20-point band states render the band word) but the CONDITION
+tutorial says "depletes by one segment each cycle" — segment count lives in
+the bar GRAPHIC. Next launch: count tick objects in the bar hierarchy via
+bridge (+ observe one cycle's delta; likely 5 points → 20 segments), then one
+wording pass converts cycle string / V query / F7 "now" values / band
+announces to "N of M[, band]" form. Band always rides with the count (owner).
 
 **F6 — Die-picker open speaks every die (BL-6 confirmed, frame-batched).** Picker
 open at Dragos's Yard: ALL FOUR dice fired focus events on one frame (f64067 —

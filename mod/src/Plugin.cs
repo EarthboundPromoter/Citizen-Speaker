@@ -64,6 +64,7 @@ namespace CSAccess
             Game.CloudOutcomes.Init();
             Game.RefusalWatch.Init();
             Game.ConditionWatch.Init();
+            Game.EnergyWatch.Init();
             Modality.WindowState.Init();
             Modality.CloudFlight.Init();
 
@@ -79,6 +80,7 @@ namespace CSAccess
             Game.CloudOutcomes.Tick();
             Game.RefusalWatch.Tick();
             Game.ConditionWatch.Tick();
+            Game.EnergyWatch.Tick();
             UI.CharacterTable.Tick();
             UI.MapTable.Tick();
             UI.JournalTable.Tick();
