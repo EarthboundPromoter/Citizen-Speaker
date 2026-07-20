@@ -239,6 +239,15 @@ Button inactive AND the Scan Button fallback read disabled. Owner wasn't
 trapped (ended cycle seconds later) but the field-exit path remains unproven;
 capture Scan Button state at the next refusal before touching the check.
 
+**BL-18 — Drive-log tracking toggle: on and off are indistinguishable (PARKED,
+owner 2026-07-20).** The TOGGLE TRACKING announce carries no state and the
+game's toggle sound is identical both ways — after several presses the player
+cannot know what is tracked. Render-paired fix when unparked: read the
+toggle's rendered state (or QuestLog.IsQuestTrackingEnabled — the same call
+the pips make) after the press and announce the resulting state. The map
+table's Tracked Drives tab (a8aff7b) meanwhile gives an authoritative
+what-is-tracked list on demand.
+
 ## DEPLOYED, AWAITING LIVE VERIFICATION (2026-07-19 batch)
 
 **s7 verification run results (2026-07-19 evening, logs/LogOutput_s7run1; owner
