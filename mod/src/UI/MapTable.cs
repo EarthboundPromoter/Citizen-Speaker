@@ -40,7 +40,7 @@ namespace CSAccess.UI
             public const string TabDrives = "Tracked drives";
             public const string NoRows = "Nothing here.";
             public const string CommitDisabled = "Not open yet.";
-            public const string NoObjective = "No current objective.";
+            public const string NoObjective = "No marked locations.";
             public static string Zone(int z) => z == 0 ? "The Rim" : z == 1 ? "Greenway" : z == 2 ? "The Hub" : "Station";
         }
 
@@ -478,7 +478,12 @@ namespace CSAccess.UI
                         != PixelCrushers.DialogueSystem.QuestState.Active) continue;
                     string text = PixelCrushers.DialogueSystem.QuestLog.GetQuestEntry(quest, i);
                     if (!string.IsNullOrEmpty(text))
-                        sb.Append(' ').Append(SpeechService.Clean(text)).Append('.');
+                    {
+                        string clean = SpeechService.Clean(text).TrimEnd();
+                        sb.Append(' ').Append(clean);
+                        if (!clean.EndsWith(".") && !clean.EndsWith("!") && !clean.EndsWith("?"))
+                            sb.Append('.');
+                    }
                 }
             }
             catch { }

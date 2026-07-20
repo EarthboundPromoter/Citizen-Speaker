@@ -53,7 +53,10 @@ namespace CSAccess.Game
             var byName = new Dictionary<string, Row>();
             CollectContainer("Locations", false, rows, byName);
             CollectContainer("Characters", true, rows, byName);
-            rows.Sort((a, b) => a.Angle.CompareTo(b.Angle));
+            // Descending: table-Down matches the camera's natural forward travel from
+            // the default position (owner report 2026-07-20 — ascending read inverted;
+            // static flip, never dynamic reordering).
+            rows.Sort((a, b) => b.Angle.CompareTo(a.Angle));
             return rows;
         }
 
@@ -117,22 +120,54 @@ namespace CSAccess.Game
 
         // ---------- Facet reads (cells; each cites its source in map-table-design.md) ----------
 
-        /// <summary>Billboard clock dial: the active step-clock variant's rendered values
-        /// ("2 of 3, negative"). As-rendered truth — re-synced by its Setter whenever the
-        /// billboard shows; may lag a cycle for unvisited locations (acceptance-flagged).
-        /// Null when the location billboards no clock (Rotunda pattern — map parity).</summary>
+        /// <summary>Clock cell: the billboard dial first, else the location's own clock
+        /// groups (the K-index source — render-paired via the owner's reachability
+        /// ruling: one Enter away). "Billboarded" and "started" are different axes
+        /// (owner catch 2026-07-20: Shipyard's 0-of-8 didn't billboard and read as no
+        /// clock; the club's 0-of-4 did) — null now means the location truly has NO
+        /// clock. Values are as-rendered/last-maintained; staleness acceptance-flagged.</summary>
         public static string ClockCell(Row row)
         {
             var clockRoot = FindDeep(row.Canvas, "Location Clock");
-            if (clockRoot == null) return null;
-            foreach (Transform dial in clockRoot)
+            string fromBillboard = clockRoot != null ? DialString(clockRoot, activeOnly: true) : null;
+            if (fromBillboard != null) return fromBillboard;
+
+            // Interior clock groups live in the location's Actions group (corpus:
+            // "<Location> Actions/<Name> Clock/<N> Step Clock" families).
+            var fsm = row.Canvas != null ? row.Canvas.GetComponent<PlayMakerFSM>() : null;
+            var group = fsm != null ? fsm.FsmVariables.GetFsmGameObject("Location Actions") : null;
+            var groupGo = group != null ? group.Value : null;
+            if (groupGo == null) return null;
+            var parts = new List<string>();
+            foreach (Transform child in groupGo.transform)
             {
-                if (!dial.gameObject.activeSelf) continue;
-                var fsm = dial.GetComponent<PlayMakerFSM>();
-                if (fsm == null) continue;
+                if (!child.name.TrimEnd().EndsWith(" Clock")) continue;
+                string dial = DialString(child, activeOnly: false);
+                if (dial != null) parts.Add(dial);
+            }
+            return parts.Count > 0 ? string.Join("; ", parts) : null;
+        }
+
+        /// <summary>The step-clock dial under root with a ClockValue: the authored size
+        /// variant (activeSelf when rendered; first-with-value when reading an interior
+        /// group whose objects may be inactive).</summary>
+        private static string DialString(Transform root, bool activeOnly)
+        {
+            foreach (var fsm in root.GetComponentsInChildren<PlayMakerFSM>(true))
+            {
+                if (!fsm.gameObject.name.Contains("Step Clock")) continue;
+                if (activeOnly && !fsm.gameObject.activeSelf) continue;
                 var value = fsm.FsmVariables.GetFsmFloat("ClockValue");
                 if (value == null) continue;
-                int steps = GameQueries.LeadingInt(dial.name);
+                int steps = GameQueries.LeadingInt(fsm.gameObject.name);
+                if (steps <= 0) continue;
+                // Interior groups keep every size variant; the authored one is the
+                // ACTIVE child when rendered — prefer it, else take the first valued.
+                if (!activeOnly && !fsm.gameObject.activeSelf)
+                {
+                    var active = FindActiveDial(root);
+                    if (active != null && active != fsm) continue;
+                }
                 var positive = fsm.FsmVariables.GetFsmBool("Positive?");
                 var cycle = fsm.FsmVariables.GetFsmBool("Cycle Clock?");
                 var sb = new System.Text.StringBuilder();
@@ -142,6 +177,15 @@ namespace CSAccess.Game
                 sb.Append(" clock");
                 return sb.ToString();
             }
+            return null;
+        }
+
+        private static PlayMakerFSM FindActiveDial(Transform root)
+        {
+            foreach (var fsm in root.GetComponentsInChildren<PlayMakerFSM>(false))
+                if (fsm.gameObject.name.Contains("Step Clock")
+                    && fsm.FsmVariables.GetFsmFloat("ClockValue") != null)
+                    return fsm;
             return null;
         }
 
