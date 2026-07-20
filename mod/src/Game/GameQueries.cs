@@ -416,14 +416,19 @@ namespace CSAccess.Game
             return fsm != null && fsm.ActiveStateName == "Active";
         }
 
-        /// <summary>Spoken description of the die a picker cursor stands for.</summary>
+        /// <summary>Spoken description of the die a picker cursor stands for.
+        /// Owner wording ruling 2026-07-20: value leads — "value X, die a of b".</summary>
         public static string DescribeDieForCursor(int cursorNumber)
         {
-            foreach (var die in GetDice())
+            var dice = GetDice();
+            int ordinal = 0;
+            foreach (var die in dice)
             {
+                ordinal++;
                 if (die.SlotNumber != cursorNumber) continue;
-                if (die.State == "Used") return "Die " + cursorNumber + ", spent";
-                return "Die " + cursorNumber + ", value " + die.Value;
+                string pos = "die " + ordinal + " of " + dice.Count;
+                if (die.State == "Used") return pos + ", spent";
+                return "value " + die.Value + ", " + pos;
             }
             return "Die " + cursorNumber;
         }
