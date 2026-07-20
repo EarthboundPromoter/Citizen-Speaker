@@ -179,6 +179,13 @@ namespace CSAccessBridge
                 case "/selectables":
                     result = MainThread.Run(() => UiQuery.Selectables());
                     break;
+                case "/transforms":
+                {
+                    string tf = q.TryGetValue("filter", out var tff) ? tff : null;
+                    int tmax = q.TryGetValue("max", out var tm) ? int.Parse(tm) : 300;
+                    result = MainThread.Run(() => UiQuery.Transforms(tf, tmax));
+                    break;
+                }
                 case "/selection":
                     result = MainThread.Run(() => UiQuery.Selection());
                     break;

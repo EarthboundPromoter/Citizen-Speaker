@@ -184,6 +184,43 @@ namespace CSAccessBridge
             return new Dictionary<string, object> { ["count"] = items.Count, ["fsms"] = items };
         }
 
+        /// <summary>World transforms by path filter, INCLUDING inactive objects (walks
+        /// scene roots with GetComponentsInChildren(true) — FsmList and Find can't see
+        /// disabled objects; this can). Read-only; capped. Built for the map-table
+        /// verification: marker corridor angles + watching the Focus rig live.</summary>
+        public static object Transforms(string filter, int max)
+        {
+            var items = new List<object>();
+            for (int si = 0; si < UnityEngine.SceneManagement.SceneManager.sceneCount; si++)
+            {
+                var scene = UnityEngine.SceneManagement.SceneManager.GetSceneAt(si);
+                if (!scene.isLoaded) continue;
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                    {
+                        string path = PathOf(t.gameObject);
+                        if (!string.IsNullOrEmpty(filter)
+                            && path.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0)
+                            continue;
+                        var p = t.position;
+                        var e = t.rotation.eulerAngles;
+                        items.Add(new Dictionary<string, object>
+                        {
+                            ["path"] = path,
+                            ["active"] = t.gameObject.activeInHierarchy,
+                            ["pos"] = new float[] { p.x, p.y, p.z },
+                            ["euler"] = new float[] { e.x, e.y, e.z },
+                        });
+                        if (items.Count >= max)
+                            return new Dictionary<string, object>
+                                { ["count"] = items.Count, ["truncated"] = true, ["transforms"] = items };
+                    }
+                }
+            }
+            return new Dictionary<string, object> { ["count"] = items.Count, ["transforms"] = items };
+        }
+
         public static object FsmDetail(GameObject go, string name)
         {
             if (go == null) throw new ArgumentException("object not found");
