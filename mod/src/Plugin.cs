@@ -21,6 +21,7 @@ namespace CSAccess
         internal static ConfigEntry<bool> TraceFsmSignals;
         internal static ConfigEntry<bool> TraceInput;
         internal static ConfigEntry<bool> MapTableCamera;
+        internal static ConfigEntry<bool> NarrateOnPlacement;
 
         private InputManager _input;
         private Watchers _watchers;
@@ -46,6 +47,10 @@ namespace CSAccess
             MapTableCamera = Config.Bind("MapTable", "CameraFollow", true,
                 "Station table row moves drive the camera (Focus Z write - the game's "
                 + "own scroll accumulator). Disable to browse without camera movement.");
+            NarrateOnPlacement = Config.Bind("Speech", "NarrateOnPlacement", true,
+                "After a die settles on an action, read the action's pre-spend narrative "
+                + "followed by 'Enter to start.' (owner design 2026-07-20). Disable for "
+                + "placement-acknowledgment only.");
 
             SpeechService.Init();
 
