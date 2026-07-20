@@ -202,6 +202,10 @@ subscribe ("Action Controller", "Outcome") as a fourth clock, announce name +
 card content with NO tier word (game renders none); item-commit announcement is
 the separate W4 real-state-hook item (slot FSM `Slot Item` family), promoted by
 this evidence.
+FIX DEPLOYED `a9c962f`: ActionOutcomes subscribes the bare "Outcome" state —
+name announce (no tier word; the game renders none) + the deferred card read.
+Item-commit announcement (the slot FSM Slot Item family) still the separate
+W4 item. Awaiting live verification.
 
 **BL-15 — Character window toggle transiently refused (~25s), self-recovered.**
 s7 run f48332–f48765: six U presses over ~25s all refused "Character window not
