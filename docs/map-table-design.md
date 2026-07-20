@@ -57,7 +57,24 @@ Wording throughout is provisional until owner calibration.
    pip-on locations, zone-tagged).
 6. **Columns**: Name (new/disabled flags ride it), Clock, Drives, Actions
    count, Description. Icon/type column later, when the W4 glyph transcode
-   lands. Characters: TBD (interleave vs own tab — undecided, owner).
+   lands.
+7. **Characters: both** (owner, walk 2026-07-20): interleaved in zone tabs in
+   corridor order (a character is another stop on the ring; name cell carries
+   the game's kind word) AND an extra Characters tab whose additional
+   "where are they" cell gives zone + nearest non-Off location ("near Feng's
+   Bay, the Rim"). Both halves ride one new instrument: corridor-axis marker
+   positions (zone assignment + proximity) — see prerequisites.
+8. **Camera-synced browse** (owner, walk 2026-07-20 — supersedes the
+   no-highlight consequence below): the browse DRIVES the camera. Slash tab =
+   fire the Location Controller's own zone transition (designed event;
+   character tab excluded by design); row move = move the camera to the
+   highlighted marker and let the native highlight land. The screen stays
+   synced with the browse at all times.
+9. **Commit = Enter on ANY cell of the row** (owner-confirmed): horizontal
+   position is facet browsing; Enter always means "go there." Space is
+   reserved for future cell-level actions (consistent with Space-for-detail).
+10. **Key: N** (owner-confirmed). Wording: ships provisional, owner
+   calibrates live (standing practice).
 
 ## Announce grammar (draft — owner calibration pass expected)
 
@@ -70,24 +87,30 @@ Wording throughout is provisional until owner calibration.
 - Tab swap (slash): "<Zone>." then first row report. Empty zone tab: see
   spoiler guard.
 
-## Channel + selection (supersedes one line of the old N-tree spec)
+## Channel + selection (RULED — camera-synced browse, walk 2026-07-20)
 
-- Browsing NEVER moves EventSystem selection (channel law, W3) — and cannot:
-  off-camera rows have no active Button. Consequence, surfaced for explicit
-  owner sign-off: **the browse cursor renders no on-screen highlight**; the
-  game shows nothing until commit. (The old input-model N-tree line "each
-  cursor move natively selects the marker" is retired by this.)
-- Commit (OPEN — Call 3, owner has not ruled): on-camera rows = one native
-  click (camera flight for free, single-dispatch). Off-camera rows, options
-  on the table: (a) guidance-only v1 — announce direction, player travels by
-  WASD; (b) camera-ride commit — synthesize native camera input until the
-  frustum enables the marker, then one click; (c) zone-jump decode — find who
-  sends the Location Controller's `Transition to <zone>` events and whether a
-  designed event exists. Claude's recommendation: (a) for v1, (b) as v2.
+- The browse drives the camera (ruling 8). Row moves bring the target marker
+  on-frustum, its canvas re-enables the contents, the selector/native
+  machinery places the real highlight — the old channel-law concern (mod-held
+  browse selection) is moot because selection lands via the game's own claim,
+  not a mod grab. This restores the original input-model intent ("each cursor
+  move natively selects the marker") inside the table UX.
+- Camera mechanism, preference ladder (decode decides — prerequisites 7/8):
+  (a) designed camera-rig event if one exists (canvas FSMs hold Main Camera
+  Transform references — a rig FSM is likely); (b) short synthesized native
+  scroll hops toward the target — zone jumps absorb long distances, so
+  within-zone hops stay small; (c) fallback: highlight without camera, camera
+  on commit only.
+- Pass-over chatter: as the camera sweeps between rows the selector claims
+  intermediate markers — reuse the CloudFlight pattern (mute game-driven focus
+  during a table-driven move, announce the settle once). Second customer of
+  that machinery.
+- Commit: Enter on any cell = one native click on the row's marker
+  (single-dispatch; the click's own Camera Transition flow does the zoom).
 - Companion feature (endorsed, separate build): **scroll ticker** — FsmSignals
   on canvas FSMs entering/leaving `Variables Met` announces markers as they
   come over the horizon during native WASD browse. Pure announcement layer,
-  no interception. (Full WASD interception/snap-scroll: rejected for now —
+  no interception. (Full WASD interception/snap-scroll: rejected —
   fights the native channel.)
 
 ## Spoiler guard
@@ -136,11 +159,15 @@ Fine for one-shot describes; wrong for a table. The table build introduces:
 5. Multi-drive tracking: confirm two simultaneous tracked drives → two pips
    (expected yes; per-quest flags, nothing exclusive in the decode).
 6. Zone-name visibility from boot (spoiler guard relaxation check).
+7. Zone-transition decode: who sends the Location Controller's
+   `Transition to <zone>` events; confirm mod-fireable as a designed event
+   (ruling 8's tab behavior).
+8. Camera-rig decode: is there a designed camera move-to-target event/route
+   (channel section preference ladder); else spec the scroll-hop synthesis.
+9. Corridor-axis position instrument: marker world positions for zone
+   assignment + character proximity (ruling 7); one live read.
 
 ## Open questions
 
-- Characters: interleaved rows vs own tab (ruling 6, owner).
-- Commit path for off-camera rows (Call 3, owner).
-- No-highlight browse: owner sign-off (channel section).
-- Key to open the table (N inherited from the tree spec; confirm).
-- All wording (calibration pass on first live build).
+All design calls made (owner walk, 2026-07-20). Remaining before build:
+the prerequisites above, then wording calibration on first live build.
