@@ -427,7 +427,7 @@ namespace CSAccess.Game
                 ordinal++;
                 if (die.SlotNumber != cursorNumber) continue;
                 string pos = "die " + ordinal + " of " + dice.Count;
-                if (die.State == "Used") return pos + ", spent";
+                if (die.State == "Used") return "spent, " + pos;
                 return "value " + die.Value + ", " + pos;
             }
             return "Die " + cursorNumber;
