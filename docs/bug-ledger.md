@@ -254,6 +254,18 @@ what-is-tracked list on demand. RESOLVED FACT (owner + table, 2026-07-20):
 tracking is SINGLE — each new track replaces the previous — so the clean
 future announce is simply "Tracking: <drive>." after any toggle.
 
+**BL-19 — "Ghost Trackers" HUD family: story-gated, currently unrendered — WATCH,
+do not build yet (2026-07-20 corpus audit).** `Letterbox Canvas/Top UI/Ghost Trackers`
+holds three two-stage progression trackers, zone-filtered by the root FSM (one
+tracker family per zone via the Location variable). All three tracker children are
+GameObject-INACTIVE in the census and on the current save — nothing renders, so
+render-honesty says nothing is spoken and nothing is missing TODAY. The trap this
+entry guards: when story activates one, it becomes a rendered HUD meter with zero
+mod coverage (no watcher knows the family). Trigger for action: any Ghost Tracker
+child going active (bridge /hierarchy check or a log sighting) → design a transcode
+then (stage + rendered texts). Spoiler note: tracker identities deliberately not
+elaborated here.
+
 ## DEPLOYED, AWAITING LIVE VERIFICATION (2026-07-19 batch)
 
 **s7 verification run results (2026-07-19 evening, logs/LogOutput_s7run1; owner

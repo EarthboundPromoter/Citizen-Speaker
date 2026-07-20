@@ -283,32 +283,9 @@ namespace CSAccess.Game
             return results;
         }
 
-        // ---------- Status ----------
-
-        public static string DescribeStatus()
-        {
-            var sb = new StringBuilder();
-
-            string meters = MetersBrief();
-            if (meters != null) sb.Append(meters).Append(' ');
-
-            var cryo = GameObject.Find("Letterbox Canvas/Bottom UI/Inventory/ITEM Inventory UI/Cryo Slot /Amount");
-            if (cryo != null)
-            {
-                var tmp = cryo.GetComponent<TMP_Text>();
-                if (tmp != null) sb.Append("Cryo ").Append(tmp.text.Trim().TrimEnd('.')).Append(". ");
-            }
-            var driveRoot = GameObject.Find("Letterbox Canvas/Drive System/Drive Tracker HUD");
-            if (driveRoot != null)
-            {
-                foreach (var tmp in driveRoot.GetComponentsInChildren<TMP_Text>(false))
-                {
-                    string txt = tmp.text?.Trim();
-                    if (!string.IsNullOrEmpty(txt)) sb.Append(txt.TrimEnd('.')).Append(". ");
-                }
-            }
-            return sb.Length > 0 ? "Status: " + sb.ToString().TrimEnd() : "Status not available.";
-        }
+        // DescribeStatus (the old unbound "status" reader) removed 2026-07-20: its
+        // facts all live in bound readers now — vitals/cryo in DescribeVitals (C),
+        // tracked drive in the map table's Drives column and Tracked Drives tab.
 
         /// <summary>Energy and condition, read from the HUD bar FSMs that drive the rendered
         /// meters (live-verified 2026-07-18). The Cycle Controller's same-named locals are only

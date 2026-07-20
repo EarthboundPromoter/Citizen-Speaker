@@ -7,8 +7,8 @@ namespace CSAccess.Modality
         Navigate,       // arrows through the game's own graph
         Activate,       // Enter
         Cancel,         // Backspace — designed cancel, mode-resolved
-        Vitals,         // V
-        Dice,           // D
+        Vitals,         // C (s5 keymap reorder)
+        Dice,           // V (s5 keymap reorder)
         Clocks,         // K
         WhereAmI,       // L
         Respeak,        // Z
@@ -18,7 +18,7 @@ namespace CSAccess.Modality
         InventoryToggle,   // I
         CharacterToggle,   // U
         DriveLogToggle,    // J
-        ScanToggle,        // S
+        ScanToggle,        // O (s5 keymap reorder; S/D are native camera keys)
         Reroll,            // Shift+R
         TutorialContinue,  // T
         NumberChoices,     // 1-9
