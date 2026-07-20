@@ -34,6 +34,7 @@ namespace CSAccess.UI
             public const string EnterToActivate = "Enter to activate";
             public const string NotActivatable = "Action card disabled.";
             public const string HeaderName = "Name";
+            public const string HeaderProgress = "Progress";
             public const string HeaderSkill = "Skill";
             public const string HeaderTakes = "Takes";
             public const string HeaderRisk = "Risk";
@@ -49,6 +50,10 @@ namespace CSAccess.UI
         // broken out by risk, cost, narrative block, ...).
         private static readonly string[] Headers =
             { W.HeaderName, W.HeaderSkill, W.HeaderRisk, W.HeaderTakes, W.HeaderCost, W.HeaderNarrative };
+        // Clock rows are real rows too (owner ruling, live 2026-07-20): whole row
+        // auto-reads on row switch, and the narrative block is its own cell.
+        private static readonly string[] ClockHeaders =
+            { W.HeaderName, W.HeaderProgress, W.HeaderNarrative };
 
         public static void OnLeftLocation() { _clocksTab = false; _row = 0; _col = 0; }
 
@@ -93,7 +98,9 @@ namespace CSAccess.UI
                 if (clocks.Count == 0)
                 { SpeechService.Say(W.NoClocks, Priority.Immediate, "table"); return; }
                 _row = Mathf.Clamp(_row + delta, 0, clocks.Count - 1);
-                SpeechService.Say(ClockRow(clocks[_row]), Priority.Immediate, "table");
+                SpeechService.Say(_col == 0 ? ClockRow(clocks[_row])
+                    : ClockName(clocks[_row]) + ". " + ClockCell(clocks[_row], _col),
+                    Priority.Immediate, "table");
                 return;
             }
             var actions = GameQueries.GetActionPanels();
@@ -107,7 +114,16 @@ namespace CSAccess.UI
 
         private static void MoveCol(int delta)
         {
-            if (_clocksTab) return; // clock rows are single-cell
+            if (_clocksTab)
+            {
+                var clocks = GameQueries.GetClockPanels();
+                if (clocks.Count == 0) return;
+                _row = Mathf.Clamp(_row, 0, clocks.Count - 1);
+                _col = Mathf.Clamp(_col + delta, 0, ClockHeaders.Length - 1);
+                SpeechService.Say(ClockHeaders[_col] + ": " + ClockCell(clocks[_row], _col),
+                    Priority.Immediate, "table");
+                return;
+            }
             var actions = GameQueries.GetActionPanels();
             if (actions.Count == 0) return;
             _row = Mathf.Clamp(_row, 0, actions.Count - 1);
@@ -123,10 +139,8 @@ namespace CSAccess.UI
                 var clocks = GameQueries.GetClockPanels();
                 if (clocks.Count == 0) return;
                 _row = Mathf.Clamp(_row, 0, clocks.Count - 1);
-                string desc = Describe.TextUnder(clocks[_row], "Description")
-                              ?? Describe.TextUnder(clocks[_row], "Clock Description");
-                SpeechService.Say(ClockRow(clocks[_row]) + (desc != null ? " " + desc : ""),
-                    Priority.Immediate, "table");
+                // ClockRow already carries the narrative (full-row ruling).
+                SpeechService.Say(ClockRow(clocks[_row]), Priority.Immediate, "table");
                 return;
             }
             var actions = GameQueries.GetActionPanels();
@@ -258,11 +272,31 @@ namespace CSAccess.UI
             }
         }
 
+        private static string ClockName(Transform clock)
+            => Describe.TextUnder(clock, "Clock Name") ?? clock.name;
+
+        private static string ClockNarrative(Transform clock)
+            => Describe.TextUnder(clock, "Description")
+               ?? Describe.TextUnder(clock, "Clock Description");
+
+        /// <summary>Full read on row switch (owner ruling, live 2026-07-20): name,
+        /// progress, then the narrative block.</summary>
         private static string ClockRow(Transform clock)
         {
-            string name = Describe.TextUnder(clock, "Clock Name") ?? clock.name;
             string progress = GameQueries.ClockProgress(clock);
-            return name + (progress != null ? ", " + progress : "") + ".";
+            string narrative = ClockNarrative(clock);
+            return ClockName(clock) + (progress != null ? ", " + progress : "") + "."
+                   + (narrative != null ? " " + narrative : "");
+        }
+
+        private static string ClockCell(Transform clock, int col)
+        {
+            switch (col)
+            {
+                case 0: return ClockRow(clock);
+                case 1: return GameQueries.ClockProgress(clock);
+                default: return ClockNarrative(clock);
+            }
         }
     }
 }
