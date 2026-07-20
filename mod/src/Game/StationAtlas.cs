@@ -128,9 +128,24 @@ namespace CSAccess.Game
         /// clock. Values are as-rendered/last-maintained; staleness acceptance-flagged.</summary>
         public static string ClockCell(Row row)
         {
+            // F1b (run-2 finding): the billboard must actually RENDER before its
+            // dial is read — step-clock variants keep local activeSelf under an
+            // off billboard root, which spoke a clock the game wasn't drawing
+            // (Dragos's Yard "0 of 8, negative"). Billboard cycle-ness renders
+            // via the separate Cycle Clock Visual child, not the FSM bool.
             var clockRoot = FindDeep(row.Canvas, "Location Clock");
-            string fromBillboard = clockRoot != null ? DialString(clockRoot, activeOnly: true) : null;
-            if (fromBillboard != null) return fromBillboard;
+            string fromBillboard =
+                clockRoot != null && clockRoot.gameObject.activeInHierarchy
+                    ? DialString(clockRoot, activeOnly: true) : null;
+            if (fromBillboard != null)
+            {
+                var cycleVisual = FindDeep(clockRoot, "Cycle Clock Visual");
+                if (cycleVisual != null && cycleVisual.gameObject.activeInHierarchy
+                    && !fromBillboard.Contains("cycle clock") && fromBillboard.EndsWith(" clock"))
+                    fromBillboard = fromBillboard.Substring(0, fromBillboard.Length - " clock".Length)
+                        + " cycle clock";
+                return fromBillboard;
+            }
 
             // Interior clock groups live in the location's Actions group (corpus:
             // "<Location> Actions/<Name> Clock/<N> Step Clock" families).

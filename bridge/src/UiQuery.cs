@@ -101,6 +101,9 @@ namespace CSAccessBridge
                 ["name"] = go.name,
                 ["id"] = Register(go),
                 ["active"] = go.activeInHierarchy,
+                // Local flag: survives parent-off subtrees — the story-gate output
+                // reads (F1 family) are unanswerable without it.
+                ["activeSelf"] = go.activeSelf,
             };
 
             var comps = new List<string>();
