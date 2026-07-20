@@ -52,6 +52,7 @@ namespace CSAccess
             CheckPauseMenu();
             CheckWarningMenus();
             CheckQrCanvas();
+            CheckTitleOverwriteWarning();
             CheckDriveLog();
             CheckCharacterWindow();
             Modality.WindowState.DivergenceTick();
@@ -126,6 +127,27 @@ namespace CSAccess
                 SpeechService.Say((body ?? "QR code.") + " CLOSE button.", Priority.Queued, "nav");
             }
             _qrWasOpen = open;
+        }
+
+        private bool _titleWarningWasOpen;
+
+        /// <summary>Title new-game overwrite warning (corpus: one shared
+        /// "Demo Menu/Warning Menu" panel serves the per-slot Warning 1/2/3 states of the
+        /// MAIN MENU master FSM). Previously silent — a player could overwrite a save
+        /// without hearing the warning. Same rendered-body-on-open idiom as the pause
+        /// warning menus; the joined body carries its own button labels.</summary>
+        private void CheckTitleOverwriteWarning()
+        {
+            if (!_lastScene.Contains("MAIN TITLE")) return;
+            var menu = GameObject.Find("MAIN MENU/Demo Menu/Warning Menu");
+            bool open = menu != null && menu.activeInHierarchy;
+            if (open && !_titleWarningWasOpen)
+            {
+                string body = UI.Describe.JoinTexts(menu, 3);
+                SpeechService.Say(body ?? "Warning: starting a new game here overwrites this save slot.",
+                    Priority.Queued, "nav");
+            }
+            _titleWarningWasOpen = open;
         }
 
         /// <summary>One-time diagnostic: log all PlayMaker global variables so we can learn
