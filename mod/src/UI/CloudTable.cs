@@ -101,8 +101,14 @@ namespace CSAccess.UI
             if (rows.Count == 0)
             { SpeechService.Say(W.NoRows, Priority.Immediate, "table"); return; }
             _row = Mathf.Clamp(_row + delta, 0, rows.Count - 1);
-            SpeechService.Say(_col == 0 ? RowRead(rows[_row])
-                : rows[_row].Name + ". " + Cell(rows[_row], _col),
+            var n = rows[_row];
+            // Camera-synced browse (owner live-confirmed: cloud rides the same
+            // one-axis Focus rig — W/S pans the corridor identically). Same config
+            // gate and focus mute as the station table.
+            MapTable.CameraToAngle(Game.StationAtlas.MarkerAngle(
+                n.Button != null ? n.Button.transform : n.Canvas));
+            SpeechService.Say(_col == 0 ? RowRead(n)
+                : n.Name + ". " + Cell(n, _col),
                 Priority.Immediate, "table");
         }
 

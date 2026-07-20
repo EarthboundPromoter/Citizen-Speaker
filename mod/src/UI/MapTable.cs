@@ -313,6 +313,15 @@ namespace CSAccess.UI
             WriteAngle(row.Angle);
         }
 
+        /// <summary>Camera write for other tables riding the same one-axis rig — the
+        /// cloud table (owner live-confirmed 2026-07-20: W/S pans the cloud corridor
+        /// identically, same Focus rig). Shares the config gate and the focus mute.</summary>
+        public static void CameraToAngle(float angle)
+        {
+            if (!Plugin.MapTableCamera.Value) return;
+            WriteAngle(angle);
+        }
+
         /// <summary>The Focus Z write: the FSM's own scroll accumulator — the game's
         /// jump states do the same discrete write (+/-20) to the same domain, and its
         /// per-zone FloatClamp + SmoothDamp own everything after (map-table-design.md,
