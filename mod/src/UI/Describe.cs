@@ -141,6 +141,12 @@ namespace CSAccess.UI
             string rating = TextUnder(root, "Rating Name");
             if (rating != null) sb.Append(", ").Append(rating.ToLowerInvariant());
 
+            // Type badge (fresh-run F10): cards render Repeatable|Critical one-
+            // active; critical = one-time-only roll — decision-relevant, so speak
+            // the badge's own rendered text. Repeatable is the default: silent.
+            string critical = CriticalBadge(root);
+            if (critical != null) sb.Append(", ").Append(critical.ToLowerInvariant());
+
             // Affordance: the three take-kinds distinguished structurally (corpus
             // 2026-07-20): cryo controller / item slot (Item Cost) / die slot; plain
             // activate otherwise. Prefix match fixes the cloud numbered-slot miss
@@ -175,6 +181,20 @@ namespace CSAccess.UI
                 }
             }
             return sb.ToString();
+        }
+
+        /// <summary>The card's Critical Action badge text when that badge renders
+        /// (its local activeSelf is the authored type dial; the plate carries
+        /// localized text "CRITICAL ACTION" — fresh-run F10 render map).</summary>
+        public static string CriticalBadge(Transform root)
+        {
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name != "Critical Action") continue;
+                if (!t.gameObject.activeSelf) return null;
+                return FirstText(t.gameObject) ?? "Critical action";
+            }
+            return null;
         }
 
         /// <summary>Cloud node die demand (BL-12): the card renders 1–3 die glyphs whose
@@ -266,6 +286,7 @@ namespace CSAccess.UI
 
         private static string CleanActionRootName(string name)
         {
+            name = name.TrimEnd();
             return name.EndsWith(" Action") ? name.Substring(0, name.Length - " Action".Length) : name;
         }
 

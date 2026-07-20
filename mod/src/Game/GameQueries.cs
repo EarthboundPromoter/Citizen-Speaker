@@ -180,7 +180,9 @@ namespace CSAccess.Game
                 foreach (Transform child in group)
                 {
                     if (!child.gameObject.activeInHierarchy) continue;
-                    if (child.name.EndsWith(" Action"))
+                    // TrimEnd: card names ship with trailing spaces
+                    // ("Ask for Directions Action " — fresh-run F9).
+                    if (child.name.TrimEnd().EndsWith(" Action"))
                         results.Add(child);
                 }
             }
@@ -198,7 +200,7 @@ namespace CSAccess.Game
                 foreach (Transform child in group)
                 {
                     if (!child.gameObject.activeInHierarchy) continue;
-                    if (child.name.EndsWith(" Clock"))
+                    if (child.name.TrimEnd().EndsWith(" Clock"))
                         results.Add(child);
                 }
             }

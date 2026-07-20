@@ -212,9 +212,14 @@ namespace CSAccess.UI
             if (!_hasSnapshot || Modality.ModeModel.Current() != Modality.Mode.ActionView)
                 return;
             var parts = new List<string>();
+            // F7 dedupe: clocks the outcome's effect line already spoke as state
+            // ("NAME now x of y") are skipped here — one tick, one announcement.
+            bool effectFresh = UnityEngine.Time.unscaledTime - Watchers.RecentEffectClocksAt < 2f;
             foreach (var clock in GameQueries.GetClockPanels())
             {
                 string name = Describe.TextUnder(clock, "Clock Name") ?? clock.name;
+                if (effectFresh && Watchers.RecentEffectClocks.Contains(name.Trim().ToUpperInvariant()))
+                    continue;
                 string now = GameQueries.ClockProgress(clock) ?? "";
                 if (_clockSnapshot.TryGetValue(name, out string was) && was != now
                     && now.Length > 0)
@@ -278,8 +283,18 @@ namespace CSAccess.UI
                 case 0: return ActionRow(root);
                 case 1: return Describe.SkillLine(root);
                 case 2:
+                {
+                    // Risk cell carries the type badge too (fresh-run F10):
+                    // "risky" / "danger, critical action". Repeatable = silent.
                     var rating = Describe.TextUnder(root, "Rating Name");
-                    return rating != null ? rating.ToLowerInvariant() : null;
+                    string risk = rating != null ? rating.ToLowerInvariant() : null;
+                    string badge = Describe.CriticalBadge(root);
+                    if (badge != null)
+                        risk = risk != null
+                            ? risk + ", " + badge.ToLowerInvariant()
+                            : badge.ToLowerInvariant();
+                    return risk;
+                }
                 case 3: return Describe.TakesLine(root);
                 case 4: return Describe.TextContaining(root, "PER CYCLE");
                 default: return Describe.TextUnder(root, "Description");

@@ -142,6 +142,13 @@ namespace CSAccess.Game
             foreach (Transform child in groupGo.transform)
             {
                 if (!child.name.TrimEnd().EndsWith(" Clock")) continue;
+                // The clock group's own local activeSelf is the story gate's
+                // output (Action Switch family writes it) and survives the
+                // parent Actions group being off at map view. Locally-off
+                // groups are story-gated ghosts — the game never rendered
+                // them (fresh-run F1: Empty Container spoke three unstarted
+                // clocks; the rendered set inside was empty).
+                if (!child.gameObject.activeSelf) continue;
                 string dial = DialString(child, activeOnly: false);
                 if (dial != null) parts.Add(dial);
             }
@@ -182,8 +189,13 @@ namespace CSAccess.Game
 
         private static PlayMakerFSM FindActiveDial(Transform root)
         {
-            foreach (var fsm in root.GetComponentsInChildren<PlayMakerFSM>(false))
-                if (fsm.gameObject.name.Contains("Step Clock")
+            // Local activeSelf, not activeInHierarchy: the authored size variant
+            // keeps its local flag when the parent Actions group is off at map
+            // view (fresh-run F1 — the old (false) walk found nothing there and
+            // the caller fell back to an arbitrary first-valued variant).
+            foreach (var fsm in root.GetComponentsInChildren<PlayMakerFSM>(true))
+                if (fsm.gameObject.activeSelf
+                    && fsm.gameObject.name.Contains("Step Clock")
                     && fsm.FsmVariables.GetFsmFloat("ClockValue") != null)
                     return fsm;
             return null;
@@ -201,7 +213,10 @@ namespace CSAccess.Game
             if (billboard == null) return drives;
             foreach (Transform child in billboard)
             {
-                if (!child.name.Contains(" pip")) continue;
+                // Case-insensitive: pips ship as both " pip" and " Pip"
+                // ("SURVIVE Pip" at Bright Market — fresh-run F8).
+                if (child.name.IndexOf(" pip", System.StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
                 var fsm = child.GetComponent<PlayMakerFSM>();
                 if (fsm == null) continue;
                 var quest = fsm.FsmVariables.GetFsmString("Quest Name");

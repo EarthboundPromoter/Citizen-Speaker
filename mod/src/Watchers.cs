@@ -568,7 +568,7 @@ namespace CSAccess
                     if (AlphaUpTo(tmp.transform, actionRoot) < 0.5f) continue;
                     string txt = tmp.text?.Trim();
                     if (string.IsNullOrEmpty(txt)) continue;
-                    txt = TranscribeEffect(txt);
+                    txt = ComposeEffect(txt);
                     if (!parts.Contains(txt)) parts.Add(txt);
                 }
             }
@@ -577,13 +577,85 @@ namespace CSAccess
             return parts.Count > 0 ? string.Join(". ", parts) : null;
         }
 
-        private static string TranscribeEffect(string txt)
+        /// <summary>Clock names spoken as state by the last ComposeEffect batch —
+        /// LocationTable.AfterOutcome's callout skips these (F7 dedupe: the effect
+        /// line already said "NAME now x of y").</summary>
+        internal static readonly HashSet<string> RecentEffectClocks = new HashSet<string>();
+        internal static float RecentEffectClocksAt = -10f;
+
+        /// <summary>F7 (owner ruling, fresh run 2026-07-20): effect lines compose
+        /// STATE, not raw markup. Clocks → "NAME now x of y" (post-tick dial).
+        /// ENERGY/CONDITION → delta + present value (condition adds the rendered
+        /// band word). Value resources keep the rendered amount ("plus 15 CRYO").
+        /// Unrecognized multi-sign effects speak "plus N, X" (provisional).</summary>
+        private static string ComposeEffect(string txt)
         {
-            if (txt.StartsWith("++")) return "plus plus " + txt.Substring(2).Trim();
-            if (txt.StartsWith("--")) return "minus minus " + txt.Substring(2).Trim();
-            if (txt.StartsWith("+")) return "plus " + txt.Substring(1).Trim();
-            if (txt.StartsWith("-")) return "minus " + txt.Substring(1).Trim();
-            return txt;
+            string s = txt.Trim();
+            int gain = 0, loss = 0, i = 0;
+            while (i < s.Length && (s[i] == '+' || s[i] == '-' || s[i] == ' '))
+            {
+                if (s[i] == '+') gain++;
+                else if (s[i] == '-') loss++;
+                i++;
+            }
+            int delta = gain + loss;
+            if (delta == 0) return s;
+            string body = s.Substring(i).Trim();
+            if (body.Length == 0) return s;
+            string sign = gain >= loss ? "plus" : "minus";
+            string upper = body.ToUpperInvariant();
+
+            if (upper == "ENERGY")
+            {
+                int? now = Substrate.LuaStore.Energy();
+                return "ENERGY " + sign + " " + delta + (now != null ? ", now " + now : "");
+            }
+            if (upper == "CONDITION")
+            {
+                int? now = Substrate.LuaStore.Condition();
+                string band = ConditionBand();
+                return "CONDITION " + sign + " " + delta
+                    + (now != null ? ", now " + now : "")
+                    + (band != null ? ", " + band : "");
+            }
+
+            string clock = ClockNow(body);
+            if (clock != null)
+            {
+                if (Time.unscaledTime - RecentEffectClocksAt > 2f) RecentEffectClocks.Clear();
+                RecentEffectClocks.Add(upper);
+                RecentEffectClocksAt = Time.unscaledTime;
+                return clock;
+            }
+
+            if (delta == 1) return sign + " " + body;
+            return sign + " " + delta + ", " + body;
+        }
+
+        /// <summary>Post-tick dial for the location clock whose rendered name matches
+        /// the effect target, or null when no such clock renders here.</summary>
+        private static string ClockNow(string name)
+        {
+            foreach (var clock in GameQueries.GetClockPanels())
+            {
+                string cname = UI.Describe.TextUnder(clock, "Clock Name");
+                if (cname == null
+                    || !cname.Trim().Equals(name, System.StringComparison.OrdinalIgnoreCase))
+                    continue;
+                string now = GameQueries.ClockProgress(clock);
+                if (now == null) return null;
+                return cname.Trim() + " now " + now;
+            }
+            return null;
+        }
+
+        private static string ConditionBand()
+        {
+            var fsm = GameQueries.FindFsm("Condition System", "Energy UI");
+            string band = fsm != null
+                ? fsm.FsmVariables.GetFsmString("Breaking")?.Value?.Trim()
+                : null;
+            return string.IsNullOrEmpty(band) ? null : band.ToLowerInvariant();
         }
 
         /// <summary>Effective CanvasGroup visibility of t, multiplying alphas up to (not
@@ -612,6 +684,12 @@ namespace CSAccess
             {
                 string txt = tmp.text?.Trim();
                 if (string.IsNullOrEmpty(txt) || txt.Length <= 1) continue;
+                // F4: glyph gaps ("select it with [] and []") filled with the
+                // rendered prompt's controller name; die-odds texts prefixed with
+                // the die value(s) their Die group renders.
+                txt = FillPromptGaps(tmp, txt);
+                string die = DiePrefix(tmp.transform, panel);
+                if (die != null) txt = die + txt;
                 if (!parts.Contains(txt)) parts.Add(txt);
             }
             if (parts.Count == 0) return false;
@@ -619,6 +697,87 @@ namespace CSAccess
             if (source == "tutorial") LastTutorialLine = line;
             SpeechService.Say(line, Priority.Queued, source);
             return true;
+        }
+
+        // ---------- F4: tutorial glyph + die-odds transcodes ----------
+
+        /// <summary>Controller words for rendered prompt glyph children (render-honest:
+        /// the game shows gamepad glyphs; keyboard equivalents are an input-contract
+        /// design question, not a transcode).</summary>
+        private static readonly Dictionary<string, string> PromptWords =
+            new Dictionary<string, string>
+            {
+                { "A Prompt", "the A button" },
+                { "B Prompt", "the B button" },
+                { "X Prompt", "the X button" },
+                { "Y Prompt", "the Y button" },
+                { "DPAD", "the D-pad" },
+                { "Stick", "the stick" },
+            };
+
+        /// <summary>Fills a prompt-glyph text's whitespace gaps ("select it with
+        /// [gap] and [gap]") with its rendered prompt children's controller names,
+        /// in child order. Mismatched counts append instead (logged).</summary>
+        private static string FillPromptGaps(TMP_Text tmp, string txt)
+        {
+            var prompts = new List<string>();
+            foreach (Transform child in tmp.transform)
+            {
+                if (!child.gameObject.activeSelf) continue;
+                string n = child.name;
+                if (n.IndexOf("ostioner", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    continue; // per-locale positioner copies ("A Prompt postioner FR")
+                foreach (var kv in PromptWords)
+                    if (n.StartsWith(kv.Key) || n.Contains(kv.Key)) { prompts.Add(kv.Value); break; }
+            }
+            if (prompts.Count == 0) return txt;
+            var segments = System.Text.RegularExpressions.Regex.Split(txt, "\\s{3,}");
+            if (segments.Length == prompts.Count + 1)
+            {
+                var sb = new System.Text.StringBuilder(segments[0]);
+                for (int i = 0; i < prompts.Count; i++)
+                    sb.Append(' ').Append(prompts[i]).Append(' ').Append(segments[i + 1].TrimStart());
+                return sb.ToString();
+            }
+            Plugin.Log.LogInfo("[Tutorial] prompt gap mismatch: " + prompts.Count
+                + " prompt(s), " + (segments.Length - 1) + " gap(s) — appending.");
+            return txt + ". Shown with " + string.Join(" and ", prompts) + ".";
+        }
+
+        /// <summary>"Die N. " / "Dice N and M. " prefix for odds texts inside a
+        /// tutorial Die group (fresh-run F4: the die faces are graphics, so the
+        /// value→odds mapping was unheard). Values parse from the group's Image
+        /// sprite names — Marker images first, any image as fallback; every sprite
+        /// name is logged for calibration since this ships built blind (game was
+        /// closed). No parse → no prefix, odds read as before.</summary>
+        private static string DiePrefix(Transform tmp, Transform panel)
+        {
+            Transform dieRoot = null;
+            for (var cur = tmp; cur != null && cur != panel; cur = cur.parent)
+                if (cur.name.TrimEnd() == "Die") dieRoot = cur; // topmost Die wins
+            if (dieRoot == null) return null;
+
+            var fromMarkers = new SortedSet<int>();
+            var fromAny = new SortedSet<int>();
+            foreach (var img in dieRoot.GetComponentsInChildren<UnityEngine.UI.Image>(true))
+            {
+                var sp = img.sprite;
+                if (sp == null) continue;
+                Plugin.Log.LogInfo("[Tutorial] die sprite (" + img.gameObject.name + "): " + sp.name);
+                var m = System.Text.RegularExpressions.Regex.Match(sp.name, "[1-6]");
+                if (!m.Success) continue;
+                int v = int.Parse(m.Value);
+                fromAny.Add(v);
+                if (img.gameObject.name.StartsWith("Marker") || img.gameObject.name.StartsWith("FILL"))
+                    fromMarkers.Add(v);
+            }
+            var values = fromMarkers.Count > 0 ? fromMarkers : fromAny;
+            if (values.Count == 0) return null;
+            if (values.Count == 1)
+            {
+                foreach (int v in values) return "Die " + v + ". ";
+            }
+            return "Dice " + string.Join(" and ", values) + ". ";
         }
     }
 }

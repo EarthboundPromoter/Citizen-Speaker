@@ -51,6 +51,17 @@ namespace CSAccess.Patches
         private static float _pendingItemAt;
         private static bool _pendingItemUser;
 
+        // Settle idiom (fresh-run F2/F6): game-driven focus arrives in bursts —
+        // conversation teardown pinballs across story-unlocked cards (4 events,
+        // ~1.3s, live f35510) and picker open fires every die on ONE frame
+        // (f64067). Defer game-driven announcements briefly and speak only the
+        // burst's endpoint: whatever is STILL selected and alive at settle.
+        // Doomed objects (a dying conversation's button) fail the liveness check
+        // and drop silently. User navigation is never deferred.
+        private const float FocusSettle = 0.25f;
+        private static GameObject _pendingFocus;
+        private static float _pendingFocusAt;
+
         /// <summary>From Plugin.Update: scheduled strip-steal recovery + deferred
         /// inventory-item announcements.</summary>
         public static void Tick()
@@ -59,6 +70,23 @@ namespace CSAccess.Patches
             {
                 _reanchorAt = -1f;
                 Modality.FocusModel.ReAnchor(_reanchorMode);
+            }
+
+            if (_pendingFocus != null && Time.unscaledTime >= _pendingFocusAt)
+            {
+                var go = _pendingFocus;
+                _pendingFocus = null;
+                if (go != null && go.activeInHierarchy && EventSystem.current != null
+                    && EventSystem.current.currentSelectedGameObject == go)
+                {
+                    string d = Describe.Element(go, detailed: false);
+                    if (!string.IsNullOrEmpty(d))
+                        SpeechService.Say(d, Priority.Queued, "focus");
+                }
+                else if (go != null)
+                {
+                    Plugin.Log.LogInfo("[Focus] settle-dropped: " + go.name);
+                }
             }
 
             if (_pendingItem != null && Time.unscaledTime >= _pendingItemAt)
@@ -178,11 +206,19 @@ namespace CSAccess.Patches
                 return;
             }
 
+            if (!userInitiated)
+            {
+                // F2/F6 settle: collapse game-driven bursts to their endpoint;
+                // Tick announces only what survives selected + alive.
+                _pendingFocus = selected;
+                _pendingFocusAt = Time.unscaledTime + FocusSettle;
+                return;
+            }
+
             string description = Describe.Element(selected, detailed: false);
             if (string.IsNullOrEmpty(description)) return;
 
-            // Game-driven focus must never stomp queued dialogue.
-            SpeechService.Say(description, userInitiated ? Priority.Immediate : Priority.Queued, "focus");
+            SpeechService.Say(description, Priority.Immediate, "focus");
         }
     }
 }

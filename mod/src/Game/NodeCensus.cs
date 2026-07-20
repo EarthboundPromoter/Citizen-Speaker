@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using CSAccess.Modality;
-using CSAccess.Speech;
 using UnityEngine.UI;
 
 namespace CSAccess.Game
@@ -80,8 +79,10 @@ namespace CSAccess.Game
                 sb.Append(addedChar).Append(addedChar == 1 ? " character added. " : " characters added. ");
             if (removed > 0)
                 sb.Append(removed).Append(removed == 1 ? " node removed." : " nodes removed.");
-            SpeechService.Say(sb.ToString().Trim(), Priority.Queued, "nav");
-            Plugin.Log.LogInfo("[NodeCensus] " + sb.ToString().Trim());
+            // BL-16 / fresh-run F3: the enabled-Selectable set is zone/camera-
+            // local, so this diff conflates story changes with camera position.
+            // MUTED until the census redesign; log-only as redesign evidence.
+            Plugin.Log.LogInfo("[NodeCensus] (muted, BL-16) " + sb.ToString().Trim());
         }
 
         /// <summary>Strip variant decoration: trailing digits, "Canvas", parentheticals —
