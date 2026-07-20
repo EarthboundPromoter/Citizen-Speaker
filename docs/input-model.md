@@ -54,7 +54,13 @@ owner calibration (standing rule). W2 implements against this document.
 
 ## Mode-scoped keys
 
-- **Station map: N — navigate tree.** Two levels: region (Rim, Greenway, Hub)
+- **Station map: N — SUPERSEDED (2026-07-20): the two-level tree below is
+  replaced by the zone-tabbed table in docs/map-table-design.md** (owner
+  design session; slash swaps zone tabs, spreadsheet navigation, no native
+  selection while browsing — the "each cursor move natively selects" line
+  below is retired). Key N and the gesture family carry over. Original spec
+  kept for the record:
+  Two levels: region (Rim, Greenway, Hub)
   → reachable markers only. Down/Up walk; Right expands a region; Left
   collapses. Each cursor move natively selects the marker (game renders its
   own highlight); camera rides the game's machinery if that's free (W3 wiring
