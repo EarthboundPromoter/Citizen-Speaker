@@ -299,11 +299,11 @@ namespace CSAccess.Game
             var sb = new StringBuilder();
             var energyFsm = FindFsm("Energy Bar System", "Energy UI");
             if (energyFsm != null && TryReadFsmNumber(energyFsm, "Player Energy", out int energy))
-                sb.Append("Energy ").Append(energy).Append(". ");
+                sb.Append("Energy ").Append(EnergyBoxes(energy)).Append(". ");
             var conditionFsm = FindFsm("Condition System", "Energy UI");
             if (conditionFsm != null && TryReadFsmNumber(conditionFsm, "Player Condition", out int condition))
             {
-                sb.Append("Condition ").Append(condition);
+                sb.Append("Condition ").Append(ConditionBoxes(condition));
                 // The FSM holds the rendered condition label in per-band string vars;
                 // exactly the current one is non-empty (e.g. Fading = "FADING").
                 string word = ConditionWord(conditionFsm);
@@ -315,6 +315,18 @@ namespace CSAccess.Game
                     + (energyFsm != null) + " condition=" + (conditionFsm != null));
             return sb.Length > 0 ? sb.ToString().TrimEnd() : null;
         }
+
+        // ---------- Segments-first stat reads (owner ruling 2026-07-20) ----------
+        // Energy renders 5 boxes at 20 points (4 Splitter objects; FSM Setter index =
+        // box count, live pairs 2↔40 / 3↔60 / 5↔100). Condition renders 20 boxes at
+        // 5 points (art-level ticks, owner-counted; chunk live-confirmed 65→60).
+        // All spoken stat values use filled-box form; band words ride with the count.
+
+        public static string EnergyBoxes(int value)
+            => Mathf.RoundToInt(value / 20f) + " of 5";
+
+        public static string ConditionBoxes(int value)
+            => Mathf.RoundToInt(value / 5f) + " of 20";
 
         private static readonly string[] ConditionWordVars =
             { "Stable", "Flickering", "Fading", "Declining", "Breaking", "Attempting Recovery" };
@@ -345,23 +357,21 @@ namespace CSAccess.Game
 
         // ---------- V and D queries (input-model.md; wording provisional until calibration) ----------
 
-        /// <summary>V: "Cycle 4. Energy 3 of 5. Condition 40, declining. Cryo 80."
-        /// Values from the W1 Lua adapter (single authoritative store, cross-checked live
-        /// against rendered truth this session); condition band word and STARVING from the
-        /// rendered HUD. Energy spoken in boxes (the bar has 5 real segment splits);
-        /// condition as value + band (its bar is continuous fill — boxes would be invented).</summary>
+        /// <summary>V: "Cycle 4. Energy 3 of 5. Condition 8 of 20, declining. Cryo 80."
+        /// Values from the W1 Lua adapter; condition band word and STARVING from the
+        /// rendered HUD. Segments-first (owner ruling 2026-07-20): energy 5 boxes at
+        /// 20 pts, condition 20 boxes at 5 pts (art-tick render, owner-counted).
+        /// Cryo stays numeric (value resource).</summary>
         public static string DescribeVitals()
         {
             var sb = new StringBuilder();
             int? cycle = Substrate.LuaStore.CycleNumber();
             if (cycle != null) sb.Append("Cycle ").Append(cycle).Append(". ");
-            // Energy is NOT 0-5: a fresh character reads 80 (live finding, W2 run) — the
-            // bar's five segments are visual divisions of a larger scale. Speak the raw
-            // value like condition; box wording returns once the scale is owner-calibrated.
+            // Segments-first (owner ruling 2026-07-20): calibrated 20 pts/box × 5.
             int? energy = Substrate.LuaStore.Energy();
             if (energy != null)
             {
-                sb.Append("Energy ").Append(energy);
+                sb.Append("Energy ").Append(EnergyBoxes(energy.Value));
                 var starving = GameObject.Find("Letterbox Canvas/Top UI/Energy UI/Energy Bar System/Starving");
                 if (starving != null && starving.activeInHierarchy) sb.Append(", starving");
                 sb.Append(". ");
@@ -369,7 +379,7 @@ namespace CSAccess.Game
             int? condition = Substrate.LuaStore.Condition();
             if (condition != null)
             {
-                sb.Append("Condition ").Append(condition);
+                sb.Append("Condition ").Append(ConditionBoxes(condition.Value));
                 var conditionFsm = FindFsm("Condition System", "Energy UI");
                 string band = conditionFsm != null ? ConditionWord(conditionFsm) : null;
                 if (band != null) sb.Append(", ").Append(band.ToLowerInvariant());

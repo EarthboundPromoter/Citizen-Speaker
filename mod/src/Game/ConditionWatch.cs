@@ -86,10 +86,15 @@ namespace CSAccess.Game
             // rendered word, fall back to the state-name word.
             string word = fsm.FsmVariables.GetFsmString("Breaking")?.Value?.Trim();
             if (string.IsNullOrEmpty(word)) word = band;
+            // Segments-first (owner ruling 2026-07-20): box count rides with the
+            // band word — 20 boxes at 5 points, from the same FSM's value var.
+            var cv = fsm.FsmVariables.GetFsmFloat("Player Condition");
+            string boxes = cv != null
+                ? GameQueries.ConditionBoxes(Mathf.RoundToInt(cv.Value)) + ", " : "";
             Queue.Add(new PendingSay
             {
                 Text = "Condition " + (falling ? "falling: " : "improving: ")
-                    + word.ToLowerInvariant() + ".",
+                    + boxes + word.ToLowerInvariant() + ".",
                 Due = Time.unscaledTime + 0.3f, // let the localized label land
             });
         }

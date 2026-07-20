@@ -70,7 +70,9 @@ namespace CSAccess.Game
                 + " (Lua " + (LuaStore.Energy()?.ToString() ?? "?") + ")");
             Queue.Add(new PendingSay
             {
-                Text = "Energy " + (falling ? "falling: " : "rising: ") + level + ".",
+                // "of 5" per the segments-first ruling (5 rendered boxes; Setter 6
+                // = boost overcharge, spoken as "6 of 5" if it ever fires — flag it).
+                Text = "Energy " + (falling ? "falling: " : "rising: ") + level + " of 5.",
                 Due = Time.unscaledTime + 0.3f,
             });
         }

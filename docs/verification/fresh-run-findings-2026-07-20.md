@@ -78,7 +78,16 @@ ConditionWatch: "Energy falling/rising: N." on level change only (silent boot
 baseline), "Starving. Energy empty." edge announce (re-arms on recovery).
 Every level change logs `[EnergyWatch] level N (Lua E)` — threshold/max
 calibration next launch ("of 6" wording deferred until the pairs confirm).
-OWNER DIRECTIVE, SAME RULING (pending build — the unification pass):
+UNIFICATION PASS BUILT + DEPLOYED (run-2 close, owner-calibrated): energy =
+5 boxes @ 20 pts (Setter pairs 2↔40/3↔60/5↔100; Setter 6 = boost overcharge,
+flagged if heard); condition = 20 boxes @ 5 pts (art-tick render,
+owner-counted; chunk confirmed 65→60). All stat reads segments-first:
+cycle string + V ("Energy 3 of 5. Condition 12 of 20, flickering."),
+MetersBrief, EnergyWatch ("of 5"), ConditionWatch band announces (box count
+rides with band), F7 effect "now" values (sign counts = box deltas,
+live-confirmed -- ENERGY = 2 boxes). Cryo stays numeric. Acceptance: next
+cycle end should speak "Condition falling: 11 of 20, fading." at 55.
+ORIGINAL DIRECTIVE (superseded by the build above):
 segments-first across ALL stat reads. Condition has NO box states (continuous
 bar floats; five 20-point band states render the band word) but the CONDITION
 tutorial says "depletes by one segment each cycle" — segment count lives in

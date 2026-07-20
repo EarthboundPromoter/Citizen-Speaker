@@ -605,17 +605,21 @@ namespace CSAccess
             string sign = gain >= loss ? "plus" : "minus";
             string upper = body.ToUpperInvariant();
 
+            // Segments-first (owner ruling): sign counts ARE box counts (-- ENERGY
+            // = 2 boxes = 40 pts; - CONDITION = 1 box = 5 pts, live-confirmed);
+            // "now" values speak as filled boxes, condition with its band word.
             if (upper == "ENERGY")
             {
                 int? now = Substrate.LuaStore.Energy();
-                return "ENERGY " + sign + " " + delta + (now != null ? ", now " + now : "");
+                return "ENERGY " + sign + " " + delta
+                    + (now != null ? ", now " + Game.GameQueries.EnergyBoxes(now.Value) : "");
             }
             if (upper == "CONDITION")
             {
                 int? now = Substrate.LuaStore.Condition();
                 string band = ConditionBand();
                 return "CONDITION " + sign + " " + delta
-                    + (now != null ? ", now " + now : "")
+                    + (now != null ? ", now " + Game.GameQueries.ConditionBoxes(now.Value) : "")
                     + (band != null ? ", " + band : "");
             }
 
