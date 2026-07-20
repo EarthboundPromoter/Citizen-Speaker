@@ -30,6 +30,20 @@ they stay with the card flow).
    nothing extra (its own despawn updates the rolling set silently — the outcome
    announce already covered it).
 
+## Round 2 additions (owner rulings, same day — commit c43cb92)
+
+6. **Columns now Name | Status | Demand | Narrative | Drives.** Demand speaks on
+   EVERY dice node, entered or not: values from the authored Required Roll
+   constants, count from the INTERFACE bucket (at +1, every node offers 2 dice —
+   "Matches die N or M"). Cipher/gate rows read "Takes an item…" instead. A
+   demand heard on a dormant node should match the glyphs seen after entering
+   it — the acceptance check.
+7. **Narrative cell** is empty until a node's group first activates, then
+   persists for the session — an entered node's narrative is re-readable from
+   the table any time (N inside the node auto-selects its row).
+8. **Camera-synced browse** (commit 0f4fd7e): row moves pan the corridor like
+   the station table; same config switch.
+
 ## Wiring risks flagged in advance
 
 - Node names come from the canvas FSM's Location Name variable (Text Setup runs
