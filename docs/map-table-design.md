@@ -213,7 +213,38 @@ Fine for one-shot describes; wrong for a table. The table build introduces:
 9. Corridor-axis position instrument: marker world positions for zone
    assignment + character proximity (ruling 7); one live read.
 
+## Journal table (owner rulings, 2026-07-20 evening)
+
+The drive journal becomes a second table — same grammar, same registry
+pattern. Decompile ground truth (StandardUIQuestLogWindow): objective text
+renders only for the SELECTED quest (native pull-out; `selectedQuest`
+readable); `trackOneQuestAtATime` is the game's own config (single tracking
+confirmed structurally); each heading row carries its own tracking toggle;
+abandon = details-panel button + the game's own confirmation panel.
+
+- Tabs: slash between Active/Completed (native tab clicks — already shipped).
+- Rows: quests of the current tab. Row report: "TITLE, tracked." (terse).
+- Columns: Name (tracked flag rides it) | Objectives | Track | Abandon.
+- **Press-only semantics (owner ruling — "not auto-fire")**: movement ONLY
+  reads; Enter performs the cell's full game-sanctioned action:
+  - Objectives: cell READS entry text + state from the QuestLog API on
+    movement (precedent: the map table's drives tab, owner-heard); Enter
+    fires the native heading click (pull-out) for visual sync.
+  - Track: cell reads "Tracked"/"Not tracked"; Enter clicks the row's native
+    toggle, then announces "Tracking: <API truth>." — closes BL-18's gap.
+  - Abandon: cell reads abandonability; Enter clicks the native abandon
+    route; the game's own confirmation panel takes over (announced; its
+    buttons stay native). Destructive step keeps the game's two-step guard.
+- Enter is CELL-CONTEXTUAL here (vs row-commit in the map table): journal
+  rows have several actions, map rows have one — Enter always activates
+  what the cell is.
+- Arrows never touch the tab row, foldouts, or scrollbar (the old
+  inconsistency); slash owns tabs. The tab row remains natively focusable
+  outside the review if the player wants it.
+- `showDetailsOnSelect` live check folds into first launch (affects nothing
+  in this design; noted for completeness).
+
 ## Open questions
 
-All design calls made (owner walk, 2026-07-20). Remaining before build:
+All design calls made (owner walks, 2026-07-20). Remaining before build:
 the prerequisites above, then wording calibration on first live build.

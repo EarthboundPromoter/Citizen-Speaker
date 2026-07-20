@@ -150,6 +150,13 @@ namespace CSAccess
                 }
             }
 
+            // --- Drive log: the journal table owns arrows/Enter/Space while the
+            //     window is open (map-table-design.md journal section — press-only
+            //     cell actions; the native nav soup is never walked). Slash falls
+            //     through to the native tab swap below. ---
+            if (mode == Mode.DriveLog && JournalTable.HandleKeys())
+                return;
+
             // --- Drive log: slash = tab swap (owner ruling) — clicks the OTHER
             //     native tab button (Active/Completed), announced by rendered label. ---
             if (mode == Mode.DriveLog && Input.GetKeyDown(KeyCode.Slash))

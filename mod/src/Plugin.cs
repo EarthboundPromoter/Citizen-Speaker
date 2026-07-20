@@ -72,6 +72,7 @@ namespace CSAccess
             Game.CloudOutcomes.Tick();
             UI.CharacterWindowReview.Tick();
             UI.MapTable.Tick();
+            UI.JournalTable.Tick();
             Modality.CloudFlight.Tick();
             Patches.FocusPatch.Tick();
             SpeechService.Tick();
