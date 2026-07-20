@@ -305,6 +305,54 @@ namespace CSAccess.UI
             return null;
         }
 
+        /// <summary>Why a rendered card can't be acted on (owner ruling 2026-07-20:
+        /// every lock reason spoken, and refusals state it). Sources are the
+        /// controller's RESTING state + its Button Label FSM string — the game's own
+        /// localized reason text, which survives readable even though the game
+        /// deactivates the button object carrying it (corpus: Action Completed /
+        /// Temp Complete / Working all deactivate Dice Slot Button and write the
+        /// label). Null when the card has no known gate (caller keeps its generic
+        /// wording). Wording provisional.</summary>
+        public static string DisabledReason(Transform actionRoot)
+        {
+            foreach (var fsm in actionRoot.GetComponentsInChildren<PlayMakerFSM>(true))
+            {
+                string owner = fsm.gameObject.name;
+                if (owner != "Action Controller" && owner != "Action Cryo Controller")
+                    continue;
+                string state = fsm.ActiveStateName;
+                string label = fsm.FsmVariables.GetFsmString("Button Label")?.Value?.Trim();
+                switch (state)
+                {
+                    case "LOCKED":
+                    case "LOCKED Critical":
+                        string skill = SkillWordOf(actionRoot);
+                        return "Skill locked" + (skill != null ? " — needs " + skill + " at +1." : ".");
+                    case "Action Completed":
+                    case "Temp Complete":
+                    case "Not Repeatable":
+                        return !string.IsNullOrEmpty(label) ? label + "." : "Completed.";
+                    case "Working":
+                        return !string.IsNullOrEmpty(label) ? label + "." : "Working.";
+                }
+                return null;
+            }
+            return null;
+        }
+
+        /// <summary>The card's rendered skill word, if any.</summary>
+        public static string SkillWordOf(Transform root)
+        {
+            foreach (var tmp in root.GetComponentsInChildren<TMP_Text>(false))
+            {
+                string txt = tmp.text?.Trim();
+                if (string.IsNullOrEmpty(txt)) continue;
+                foreach (var skill in SkillNames)
+                    if (txt == skill) return skill;
+            }
+            return null;
+        }
+
         /// <summary>Skill-lock dial (corpus + live 2026-07-20, HAGGLE OVER PRICES): tiered
         /// cards carry an authored Z Skill Lock; modifier buckets -1/0 route the controller
         /// to a RESTING LOCKED state (LOCKED Critical when also non-repeatable) whose only

@@ -165,7 +165,10 @@ namespace CSAccess.UI
                 SnapshotForDiff();
                 Navigator.Click(button.gameObject);
             }
-            else SpeechService.Say(W.NotActivatable, Priority.Immediate, "table");
+            // Refusal states its reason (owner ruling 2026-07-20): resting lock dial
+            // + the game's own Button Label text, falling back to the generic word.
+            else SpeechService.Say(Describe.DisabledReason(root) ?? W.NotActivatable,
+                Priority.Immediate, "table");
         }
 
         // ---------- Post-roll change callouts (owner ruling: all changes announced
@@ -251,7 +254,9 @@ namespace CSAccess.UI
             if (skill != null) sb.Append(". ").Append(skill);
             if (risk != null) sb.Append(", ").Append(risk);
             sb.Append(". ").Append(takes ?? W.EnterToActivate).Append('.');
-            if (selectable == null) sb.Append(' ').Append(W.NotActivatable);
+            // Disabled rows carry the reason (owner ruling 2026-07-20).
+            if (selectable == null)
+                sb.Append(' ').Append(Describe.DisabledReason(root) ?? W.NotActivatable);
             if (cost != null) sb.Append(' ').Append(cost).Append('.');
             if (narrative != null) sb.Append(' ').Append(narrative);
             return sb.ToString();
