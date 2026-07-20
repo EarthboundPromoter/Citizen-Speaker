@@ -16,7 +16,9 @@ points, then perk bought when one was, then skill value after purchase.
 2. **Left/Right:** header + cell — "Perks: …", "Next: …". Name column returns the
    full row (standard idiom). Space = full row.
 3. **Enter, not armed:** clicks the main Upgrade button, speaks
-   "Choose a skill to upgrade." Row buttons become interactable (game's arming).
+   "Choose a skill to upgrade." — or "Choose a skill to upgrade or repair." when
+   any row rests BROKEN (owner ruling). Row buttons become interactable (game's
+   arming).
    Full-row reads now DROP the Next tail (owner: constrain to skill + perks);
    the Next cell stays reachable by column. Broken flag stays in-row (repair is
    what Enter buys there — surfaced call, owner may reverse).

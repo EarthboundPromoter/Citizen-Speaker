@@ -29,6 +29,7 @@ namespace CSAccess.UI
         private static class W
         {
             public const string ChooseSkill = "Choose a skill to upgrade.";
+            public const string ChooseSkillRepair = "Choose a skill to upgrade or repair.";
             public const string UpgradeUnavailable = "Upgrade not available.";
             public const string NoRows = "No skill rows.";
             public const string LadderComplete = "Ladder complete.";
@@ -272,7 +273,13 @@ namespace CSAccess.UI
                 if (mainBtn != null && mainBtn.IsInteractable() && main.gameObject.activeInHierarchy)
                 {
                     Navigator.Click(main.gameObject);
-                    SpeechService.Say(W.ChooseSkill, Priority.Immediate, "table");
+                    // Owner ruling 2026-07-20: the arm announce names repair when any
+                    // skill is broken (repair is the same buy on a broken row).
+                    bool anyBroken = false;
+                    foreach (var row in Rows())
+                        if (RestingState(row) == "BROKEN") { anyBroken = true; break; }
+                    SpeechService.Say(anyBroken ? W.ChooseSkillRepair : W.ChooseSkill,
+                        Priority.Immediate, "table");
                 }
                 else
                     SpeechService.Say(W.UpgradeUnavailable, Priority.Immediate, "table");
