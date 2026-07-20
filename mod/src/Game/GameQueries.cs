@@ -227,7 +227,7 @@ namespace CSAccess.Game
         /// on the dial: filled wedges (ClockValue), segment count (dial variant), the +/- glyph
         /// (Positive?), and the CYCLE CLOCK banner (Cycle Clock?). Verified live against the
         /// Back in Business 8-step dial, session 5.</summary>
-        private static string ClockProgress(Transform clock)
+        public static string ClockProgress(Transform clock)
         {
             foreach (Transform child in clock)
             {

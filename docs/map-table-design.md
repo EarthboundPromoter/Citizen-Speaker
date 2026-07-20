@@ -244,6 +244,26 @@ abandon = details-panel button + the game's own confirmation panel.
 - `showDetailsOnSelect` live check folds into first launch (affects nothing
   in this design; noted for completeness).
 
+## Location table (owner rulings, 2026-07-20 night)
+
+The action view becomes the third table — always-on at a location, no toggle
+key. Slash swaps **Actions / Clocks** tabs; arrows walk rows; Enter = row
+commit (one native click on the card's button — die actions open allocation,
+item/cryo actions run their designed slot flow); Space = full detail.
+Supersedes the input-model native-arrow adjacency idiom at action view.
+**K retired at locations** (owner: "K becomes unnecessary under a logical nav
+grammar") — the Clocks tab IS the clock index; clock rows reuse the K reader
+(name + dial), Space adds the narrative. Clocks stay display-only (no commit).
+
+Action columns: Name | Skill | Takes | Risk. The **Takes** cell finally kills
+the blanket "Takes a die" (corpus decode): cryo cards run Action Cryo
+Controller (rendered Cost Label + Cryo Cost → "Costs 200 cryo"); item slots
+carry Item Cost + the INV_* held-count read ("Takes an item, cost 1" — the
+item's display NAME via the INV→inventory pairing is a queued upgrade);
+die slots are the same machinery without a cost ("Takes a die"); no slot =
+plain activate. The shared Describe.TakesLine also fixes the cloud
+numbered-slot miss (cards said "Enter to activate" though they take dice).
+
 ## Open questions
 
 All design calls made (owner walks, 2026-07-20). Remaining before build:

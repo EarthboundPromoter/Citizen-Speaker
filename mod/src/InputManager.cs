@@ -15,6 +15,7 @@ namespace CSAccess
     internal class InputManager
     {
         private readonly MonoBehaviour _host;
+        private bool _wasActionView;
 
         public InputManager(MonoBehaviour host)
         {
@@ -97,6 +98,21 @@ namespace CSAccess
             if (Input.GetKeyDown(KeyCode.N) && mode == Mode.Station
                 && Allowed(mode, ModKey.MapTable))
             { MapTable.Open(); return; }
+
+            // --- Location table (always-on at a location): arrows walk rows, slash
+            //     swaps Actions/Clocks tabs, Enter = row commit, Space = detail.
+            //     Supersedes native arrow adjacency at action view; K retired here
+            //     (owner ruling — the Clocks tab is the clock index now). ---
+            if (mode == Mode.ActionView)
+            {
+                _wasActionView = true;
+                if (LocationTable.HandleKeys()) return;
+            }
+            else if (_wasActionView)
+            {
+                _wasActionView = false;
+                LocationTable.OnLeftLocation();
+            }
 
             if (Input.GetKeyDown(KeyCode.Space) && Allowed(mode, ModKey.Describe))
             {

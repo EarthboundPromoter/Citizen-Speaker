@@ -89,7 +89,10 @@ namespace CSAccess.Modality
             // the game disables the Scan toggle while a node is open.
             t[Mode.Cloud] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks, ModKey.Reroll,
                 ModKey.ScanToggle);
-            t[Mode.ActionView] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks, ModKey.Reroll,
+            // K retired at action view (owner 2026-07-20): the location table's Clocks
+            // tab is the clock index — "K becomes unnecessary under a logical nav
+            // grammar." Arrows/Enter/Space route to LocationTable in InputManager.
+            t[Mode.ActionView] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Reroll,
                 ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle);
             t[Mode.Station] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks,
                 ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle,

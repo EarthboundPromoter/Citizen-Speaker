@@ -141,10 +141,11 @@ namespace CSAccess.UI
             string rating = TextUnder(root, "Rating Name");
             if (rating != null) sb.Append(", ").Append(rating.ToLowerInvariant());
 
-            // Affordance: a "Gamepad Dice Slot" child (even inactive) marks a die-taking
-            // action; its absence marks a plain activate button. Universal differentiator —
-            // "Dice Slot Button" itself is present on ALL actions (docs/verification/C).
-            sb.Append(TakesDie(root) ? ". Takes a die" : ". Enter to activate");
+            // Affordance: the three take-kinds distinguished structurally (corpus
+            // 2026-07-20): cryo controller / item slot (Item Cost) / die slot; plain
+            // activate otherwise. Prefix match fixes the cloud numbered-slot miss
+            // ("Gamepad Dice Slot 1" read as plain activate — s8 finding).
+            sb.Append(". ").Append(TakesLine(root) ?? "Enter to activate");
 
             // Cloud node die demand (BL-12): the gating fact, graphics-only on the card.
             string demand = HackingDemand(root);
@@ -206,14 +207,40 @@ namespace CSAccess.UI
                 + " or " + values[values.Count - 1];
         }
 
-        /// <summary>Die-taking actions carry a "Gamepad Dice Slot" descendant (inactive while
-        /// the picker is closed, so search inactive too); plain-activate actions never do.</summary>
-        private static bool TakesDie(Transform actionRoot)
+        /// <summary>The card's take-kind, structurally distinguished: cryo cards run
+        /// Action Cryo Controller (Cryo Cost + rendered Cost Label); item slots carry
+        /// Item Cost > 0 (Check Amount reads the INV_* held count); die slots are the
+        /// same machinery without a cost; null = plain activate. Wording provisional.</summary>
+        public static string TakesLine(Transform actionRoot)
         {
             foreach (var t in actionRoot.GetComponentsInChildren<Transform>(true))
-                if (t.name == "Gamepad Dice Slot") return true;
-            return false;
+            {
+                if (t.name == "Action Cryo Controller")
+                {
+                    var fsm = t.GetComponent<PlayMakerFSM>();
+                    var label = fsm != null ? fsm.FsmVariables.GetFsmString("Cost Label") : null;
+                    var cost = fsm != null ? fsm.FsmVariables.GetFsmFloat("Cryo Cost") : null;
+                    string amount = label != null && !string.IsNullOrEmpty(label.Value)
+                        ? label.Value.Trim()
+                        : cost != null ? Mathf.RoundToInt(cost.Value).ToString() : null;
+                    return amount != null ? "Costs " + amount + " cryo" : "Costs cryo";
+                }
+            }
+            foreach (var t in actionRoot.GetComponentsInChildren<Transform>(true))
+            {
+                if (!t.name.StartsWith("Gamepad Dice Slot")) continue;
+                var fsm = t.GetComponent<PlayMakerFSM>();
+                var itemCost = fsm != null ? fsm.FsmVariables.GetFsmFloat("Item Cost") : null;
+                if (itemCost != null && itemCost.Value > 0f)
+                    return "Takes an item, cost " + Mathf.RoundToInt(itemCost.Value);
+                return "Takes a die";
+            }
+            return null;
         }
+
+        /// <summary>Rendered skill word + Lua modifier bucket (public for the location
+        /// table's Skill column).</summary>
+        public static string SkillLine(Transform root) => CollectSkillLine(root);
 
         /// <summary>Cloud action roots break the " Action" suffix convention freely
         /// ("Yatagan Agent 1 Action " trailing space, "ConSec X3 Hack Action (2)",
