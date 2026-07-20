@@ -38,6 +38,8 @@ namespace CSAccess.UI
             public const string NoRows = "No nodes rendered.";
             public const string HeaderName = "Name";
             public const string HeaderStatus = "Status";
+            public const string HeaderDemand = "Demand";
+            public const string HeaderNarrative = "Narrative";
             public const string HeaderDrives = "Drives";
             public const string StatusOpen = "open";
             public const string StatusAvailable = "available";
@@ -47,7 +49,12 @@ namespace CSAccess.UI
             public const string Closed = "Cloud table closed.";
         }
 
-        private static readonly string[] Headers = { W.HeaderName, W.HeaderStatus, W.HeaderDrives };
+        // Demand + Narrative added on owner override 2026-07-20 ("strictly better
+        // UX"): demand speaks pre-entry from authored constants + the game's own
+        // INTERFACE-bucket count; narrative reads the card's resolved description
+        // (empty until the node's group first activates — natural boundary).
+        private static readonly string[] Headers =
+            { W.HeaderName, W.HeaderStatus, W.HeaderDemand, W.HeaderNarrative, W.HeaderDrives };
 
         public static bool IsOpen { get; private set; }
         private static int _row, _col;
@@ -61,6 +68,8 @@ namespace CSAccess.UI
             public GameObject Button;
             public bool Open;
             public string Drives;
+            public string Demand;
+            public string Narrative;
         }
 
         // ---------- Open / close / keys (MapTable pattern) ----------
@@ -69,9 +78,13 @@ namespace CSAccess.UI
         {
             var rows = Rows();
             IsOpen = true;
+            // Auto-select the open node's row (owner: narrative review from inside a
+            // node — N inside one lands on it).
             _row = 0; _col = 0;
+            for (int i = 0; i < rows.Count; i++)
+                if (rows[i].Open) { _row = i; break; }
             SpeechService.Say(W.TableName + " "
-                + (rows.Count > 0 ? RowRead(rows[0]) : W.NoRows),
+                + (rows.Count > 0 ? RowRead(rows[_row]) : W.NoRows),
                 Priority.Immediate, "table");
         }
 
@@ -190,6 +203,7 @@ namespace CSAccess.UI
                         || (bs != null && bs.StartsWith("Camera Transition"));
                 }
 
+                var card = CardOf(fsm);
                 list.Add(new Node
                 {
                     Name = name,
@@ -199,10 +213,58 @@ namespace CSAccess.UI
                     Button = buttonT != null ? buttonT.gameObject : null,
                     Open = open,
                     Drives = DrivesFor(canvas),
+                    Demand = card != null ? DemandFor(card) : null,
+                    Narrative = card != null ? NarrativeFor(card) : null,
                 });
             }
             list.Sort((a, b) => b.Z.CompareTo(a.Z)); // static descending corridor sort
             return list;
+        }
+
+        /// <summary>The node's single action card (corpus: every one of the 40 groups
+        /// holds exactly one action) via the canvas FSM's own Hacking Actions group
+        /// reference — resolvable while the group is dormant.</summary>
+        private static Transform CardOf(PlayMakerFSM canvasFsm)
+        {
+            var groupVar = canvasFsm.FsmVariables.GetFsmGameObject("Hacking Actions");
+            var group = groupVar != null ? groupVar.Value : null;
+            if (group == null) return null;
+            foreach (Transform card in group.transform) return card;
+            return null;
+        }
+
+        /// <summary>Demand cell (owner override: pre-entry demand is strictly better
+        /// UX). Dice cards: authored Required Roll values + the INTERFACE-bucket count
+        /// when the card is dormant. Cipher/item cards: the Takes read.</summary>
+        private static string DemandFor(Transform card)
+        {
+            string demand = Describe.HackingDemand(card, InterfaceBucketCount());
+            return demand ?? Describe.TakesLine(card);
+        }
+
+        private static int InterfaceBucketCount()
+        {
+            // The game's own bucket→glyph-count mapping (corpus: 0→1, +1→2, +2→3).
+            switch (Substrate.LuaStore.SkillModifierForWord("INTERFACE"))
+            {
+                case "+1": return 2;
+                case "+2": return 3;
+                default: return 1;
+            }
+        }
+
+        /// <summary>Narrative cell: the card controller's resolved Action Description
+        /// (localizes at the group's first activation; empty before — the natural
+        /// boundary). Falls back to the rendered Description text when active.</summary>
+        private static string NarrativeFor(Transform card)
+        {
+            foreach (var fsm in card.GetComponentsInChildren<PlayMakerFSM>(true))
+            {
+                var v = fsm.FsmVariables.GetFsmString("Action Description");
+                if (v != null && !string.IsNullOrEmpty(v.Value))
+                    return SpeechService.Clean(v.Value.Trim());
+            }
+            return Describe.TextUnder(card, "Description");
         }
 
         /// <summary>Tracking-gated drive pips on the billboard ("&lt;DRIVE&gt; pip &lt;n&gt;"
@@ -226,6 +288,8 @@ namespace CSAccess.UI
             var sb = new System.Text.StringBuilder(n.Name);
             if (n.Tagline != null) sb.Append(". ").Append(n.Tagline);
             if (n.Open) sb.Append(". ").Append(W.StatusOpen);
+            if (n.Demand != null) sb.Append(". ").Append(n.Demand);
+            if (n.Narrative != null) sb.Append(". ").Append(n.Narrative);
             if (n.Drives != null) sb.Append(". ").Append(W.HeaderDrives).Append(' ').Append(n.Drives);
             return sb.ToString() + ".";
         }
@@ -236,6 +300,8 @@ namespace CSAccess.UI
             {
                 case 0: return RowRead(n);
                 case 1: return n.Open ? W.StatusOpen : W.StatusAvailable;
+                case 2: return n.Demand;
+                case 3: return n.Narrative;
                 default: return n.Drives ?? W.NoDrives;
             }
         }

@@ -182,8 +182,13 @@ namespace CSAccess.UI
         /// bucket) drives the rendered glyph via FloatSwitch → Dice Value states, and
         /// Slotted 1–3 accept exactly these values (corpus render-route trace,
         /// Potential Dice = rendered glyph count). Null on non-cloud actions or an
-        /// unset slot (graceful silence).</summary>
-        private static string HackingDemand(Transform actionRoot)
+        /// unset slot (graceful silence). fallbackCount covers DORMANT cards (cloud
+        /// table demand column, owner override 2026-07-20): Required Roll/+1/+2 are
+        /// authored constants readable pre-activation; only the glyph count (Potential
+        /// Dice) is Setup-computed — callers pass the INTERFACE-bucket count (the
+        /// game's own 0→1/+1→2/+2→3 mapping; all 30 cloud dice nodes check INTERFACE,
+        /// corpus-verified).</summary>
+        public static string HackingDemand(Transform actionRoot, int fallbackCount = 0)
         {
             var slotT = actionRoot.Find("Hacking Dice Slot 1");
             if (slotT == null) return null;
@@ -191,6 +196,7 @@ namespace CSAccess.UI
             if (fsm == null) return null;
             var vars = fsm.FsmVariables;
             int count = Mathf.RoundToInt(vars.GetFsmFloat("Potential Dice")?.Value ?? 0f);
+            if (count < 1) count = fallbackCount;
             if (count < 1) return null;
 
             var names = new[] { "Required Roll", "Required Roll +1", "Required Roll +2" };
