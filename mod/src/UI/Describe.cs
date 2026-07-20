@@ -290,11 +290,29 @@ namespace CSAccess.UI
                     if (txt == skill)
                     {
                         string modifier = Substrate.LuaStore.SkillModifierForWord(skill);
-                        return modifier != null ? skill + " " + modifier : skill;
+                        string line = modifier != null ? skill + " " + modifier : skill;
+                        if (ActionSkillLocked(root)) line += ", skill locked";
+                        return line;
                     }
                 }
             }
             return null;
+        }
+
+        /// <summary>Skill-lock dial (corpus + live 2026-07-20, HAGGLE OVER PRICES): tiered
+        /// cards carry an authored Z Skill Lock; modifier buckets -1/0 route the controller
+        /// to a RESTING LOCKED state (LOCKED Critical when also non-repeatable) whose only
+        /// render is a lock-glyph animator over the skill display — the pips-pattern
+        /// transcode. Wording provisional.</summary>
+        private static bool ActionSkillLocked(Transform actionRoot)
+        {
+            foreach (var fsm in actionRoot.GetComponentsInChildren<PlayMakerFSM>(true))
+            {
+                if (fsm.gameObject.name != "Action Controller") continue;
+                string s = fsm.ActiveStateName;
+                return s == "LOCKED" || s == "LOCKED Critical";
+            }
+            return false;
         }
 
         /// <summary>Name of the ancestor of go that is a direct child of containerName,
