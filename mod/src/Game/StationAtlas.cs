@@ -216,28 +216,58 @@ namespace CSAccess.Game
 
         // ---------- Rig geometry ----------
 
-        /// <summary>Corridor angle of a marker in the Focus rotator's Z-rotation domain.
-        /// The rig rotates Focus Rotator's Z; a marker's angle = atan2 of its XY offset
-        /// from the rotator axis, mapped into the rig's domain. CALIBRATION: verified
-        /// against live Damped Z at the first debug dump (F6) — the offset constant may
-        /// need one live correction; flagged in acceptance.</summary>
+        /// <summary>Corridor angle in the rig's Damped Z domain, self-calibrating: the
+        /// Focus object rides the rotator AT the centered location (live /transforms
+        /// proof 2026-07-20 — Focus world pos == the on-camera marker's pos), so
+        /// offset = Damped Z − rawAngle(Focus) holds every frame, no guessed constants.
+        /// rawAngle = signed angle around the rotator's forward axis (the ring is the
+        /// plane perpendicular to it — vertical in world; never use world Y).
+        /// Sign risk (acceptance-flagged): if row moves drive the camera the WRONG WAY,
+        /// negate raw angles (one line, AngleSign).</summary>
+        private const float AngleSign = 1f;
+
         public static float MarkerAngle(Transform marker)
         {
             var rotator = RotatorTransform();
             if (rotator == null || marker == null) return 0f;
-            Vector3 local = marker.position - rotator.position;
-            float a = Mathf.Atan2(local.y, local.x) * Mathf.Rad2Deg;
-            return (a + 360f) % 360f;
+            float raw = RawAngle(marker.position, rotator);
+            var focus = rotator.Find("Focus");
+            var fsm = FocusFsm();
+            var damped = fsm != null ? fsm.FsmVariables.GetFsmFloat("Damped Z") : null;
+            if (focus == null || damped == null) return (raw + 360f) % 360f;
+            float offset = damped.Value - RawAngle(focus.position, rotator);
+            return Norm(raw + offset);
         }
 
-        /// <summary>Zone heuristic (calibrate at first live dump): the ring sits at high
-        /// world Y (~19000, Rim/Greenway); the Hub is near origin (~150). On the ring,
-        /// the rig clamps Rim to 135–258 and Greenway rides 258+ (Location Controller
-        /// tween decode).</summary>
+        private static float RawAngle(Vector3 p, Transform rotator)
+        {
+            Vector3 axis = rotator.forward;
+            Vector3 v = Vector3.ProjectOnPlane(p - rotator.position, axis);
+            Vector3 reference = Vector3.ProjectOnPlane(Vector3.up, axis).normalized;
+            return AngleSign * Vector3.SignedAngle(reference, v, axis);
+        }
+
+        private static float Norm(float a) => (a % 360f + 360f) % 360f;
+
+        /// <summary>Zone from rig geometry: the Hub is literally the wheel's hub —
+        /// small radial distance from the rotator axis (ring markers sit at ~9300;
+        /// threshold halves it). On the ring, the rig clamps Rim to 135–258 and the
+        /// Greenway ferry tween rides 258–275 (Location Controller decode) — split by
+        /// calibrated angle. Thresholds live here for one-place calibration.</summary>
+        private const float HubRadius = 5000f;
+        private const float GreenwayFrom = 258.5f;
+        private const float GreenwayTo = 320f;
+
         public static int ZoneOf(Transform marker, float angle)
         {
-            if (marker != null && marker.position.y < 10000f) return 2; // Hub
-            return angle > 258f || angle < 130f ? 1 : 0;               // Greenway : Rim
+            var rotator = RotatorTransform();
+            if (marker != null && rotator != null)
+            {
+                Vector3 v = Vector3.ProjectOnPlane(
+                    marker.position - rotator.position, rotator.forward);
+                if (v.magnitude < HubRadius) return 2; // Hub
+            }
+            return angle > GreenwayFrom && angle < GreenwayTo ? 1 : 0; // Greenway : Rim
         }
 
         public static Transform RotatorTransform()

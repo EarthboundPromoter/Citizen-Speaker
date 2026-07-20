@@ -106,21 +106,32 @@ namespace CSAccess.UI
 
         public static void Open()
         {
-            _rows = StationAtlas.Build();
-            if (_rows.Count == 0)
+            try
             {
-                SpeechService.Say(W.NoRows, Priority.Immediate, "table");
-                return;
+                _rows = StationAtlas.Build();
+                if (_rows.Count == 0)
+                {
+                    SpeechService.Say(W.NoRows, Priority.Immediate, "table");
+                    return;
+                }
+                BuildTabs();
+                IsOpen = true;
+                int zone = StationAtlas.CurrentZone();
+                _tab = Mathf.Max(0, Tabs.IndexOf(zone));
+                BuildView();
+                _row = NearestRowToCamera();
+                _col = 0;
+                SpeechService.Say(W.Opened + " " + TabName(Tabs[_tab]) + ". "
+                    + (_view.Count > 0 ? RowReport() : W.NoRows),
+                    Priority.Immediate, "table");
             }
-            BuildTabs();
-            IsOpen = true;
-            int zone = StationAtlas.CurrentZone();
-            _tab = Mathf.Max(0, Tabs.IndexOf(zone));
-            BuildView();
-            _row = NearestRowToCamera();
-            _col = 0;
-            SpeechService.Say(W.Opened + " " + TabName(Tabs[_tab]) + ". " + RowReport(),
-                Priority.Immediate, "table");
+            catch (System.Exception e)
+            {
+                // Never open silently: a failure closes clean and says so.
+                IsOpen = false;
+                Plugin.Log.LogWarning("[Table] open failed: " + e);
+                SpeechService.Say("Table unavailable.", Priority.Immediate, "table");
+            }
         }
 
         public static void Close(bool announce = true)
@@ -331,13 +342,15 @@ namespace CSAccess.UI
             int current = StationAtlas.CurrentZone();
             for (int z = 0; z <= 2; z++)
             {
+                // The CURRENT zone always gets its tab (even row-less — an honest
+                // "Nothing here." beats landing the player in a drives-only trap);
+                // other zones need rows AND native reachability (story safety).
                 bool hasRows = _rows.Exists(r => !r.IsCharacter && r.Zone == z);
-                if (!hasRows) continue;
                 bool reachable = z == current
                     || (z == 0)                                  // Rim: the start zone
                     || (z == 1 && StationAtlas.GreenwayVisited())
                     || (z == 2 && _hubSeen);
-                if (reachable) Tabs.Add(z);
+                if (z == current || (hasRows && reachable)) Tabs.Add(z);
             }
             if (_rows.Exists(r => r.IsCharacter)) Tabs.Add(-2);
             BuildDriveRows();
