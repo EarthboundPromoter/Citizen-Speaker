@@ -414,6 +414,12 @@ namespace CSAccess.Game
                   .Append(string.Join(", ", values)).Append('.');
             else sb.Append("No dice left.");
             if (spent > 0) sb.Append(' ').Append(spent).Append(" spent.");
+            // ENDURE perk 2: the cycle reset renders a "PERK: Hard to Kill" badge
+            // beside the dice when the perk kept the extra die (corpus, Reset 1
+            // PERKED); GameObject.Find sees active objects only, so this speaks
+            // exactly while the game shows it.
+            if (GameObject.Find("PERK: Hard to Kill") != null)
+                sb.Append(" Perk: Hard to Kill.");
             return sb.ToString();
         }
 

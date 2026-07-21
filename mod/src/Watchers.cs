@@ -33,9 +33,12 @@ namespace CSAccess
                 Patches.FocusPatch.OnSceneChanged();
                 Modality.WindowState.OnSceneChanged();
                 Game.NodeCensus.OnSceneChanged();
-                if (scene.Contains("MAIN TITLE"))
-                    SpeechService.Say("Main menu.", Priority.Queued, "scene");
-                else if (scene.Contains("MAIN"))
+                UI.TitleFlow.OnSceneChanged();
+                // Title arrival speaks from the MAIN MENU FSM's own states (TitleFlow)
+                // — the scene loads while the engine splash still owns the screen, so
+                // a scene-keyed line here spoke over the company crawl (owner report
+                // 2026-07-20).
+                if (scene.Contains("MAIN") && !scene.Contains("MAIN TITLE"))
                 {
                     SpeechService.Say("On station.", Priority.Queued, "scene");
                     DumpGlobalVariables();

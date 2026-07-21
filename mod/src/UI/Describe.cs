@@ -249,7 +249,15 @@ namespace CSAccess.UI
                     string amount = label != null && !string.IsNullOrEmpty(label.Value)
                         ? label.Value.Trim()
                         : cost != null ? Mathf.RoundToInt(cost.Value).ToString() : null;
-                    return amount != null ? "Costs " + amount + " cryo" : "Costs cryo";
+                    string line = amount != null ? "Costs " + amount + " cryo" : "Costs cryo";
+                    // ENGAGE perk 2 (corpus): the controller cuts the cost 20%,
+                    // rewrites the rendered label with the new number, and shows a
+                    // DISCOUNT! badge — the label flows through above; the badge is
+                    // one word.
+                    var badge = Game.StationAtlas.FindDeep(actionRoot, "DISCOUNT!");
+                    if (badge != null && badge.gameObject.activeInHierarchy)
+                        line += ", discounted";
+                    return line;
                 }
             }
             foreach (var t in actionRoot.GetComponentsInChildren<Transform>(true))
@@ -267,6 +275,36 @@ namespace CSAccess.UI
         /// <summary>Rendered skill word + Lua modifier bucket (public for the location
         /// table's Skill column).</summary>
         public static string SkillLine(Transform root) => CollectSkillLine(root);
+
+        /// <summary>The Intuit perk's predicted-outcomes display: every station action
+        /// card carries an OUTCOMES/PREDICTIVE object gated on INTUIT_PERKS >= 1
+        /// (corpus 2026-07-20). Speaks its rendered text while it is on; null while
+        /// dormant. If it turns out to render icon-only, the one-time log line below
+        /// flags the live calibration pass it needs.</summary>
+        public static string PredictiveLine(Transform actionRoot)
+        {
+            var pred = Game.StationAtlas.FindDeep(actionRoot, "PREDICTIVE");
+            if (pred == null || !pred.gameObject.activeInHierarchy) return null;
+            var texts = new System.Collections.Generic.List<string>();
+            foreach (var tmp in pred.GetComponentsInChildren<TMPro.TMP_Text>(false))
+            {
+                string t = tmp.text != null ? tmp.text.Trim() : null;
+                if (!string.IsNullOrEmpty(t)) texts.Add(Speech.SpeechService.Clean(t));
+            }
+            if (texts.Count == 0)
+            {
+                if (!_predictiveLogged)
+                {
+                    _predictiveLogged = true;
+                    Plugin.Log.LogInfo("[Describe] PREDICTIVE renders but carries no text"
+                        + " — icon decode needed (live look).");
+                }
+                return null;
+            }
+            return string.Join(", ", texts);
+        }
+
+        private static bool _predictiveLogged;
 
         /// <summary>Cloud action roots break the " Action" suffix convention freely
         /// ("Yatagan Agent 1 Action " trailing space, "ConSec X3 Hack Action (2)",

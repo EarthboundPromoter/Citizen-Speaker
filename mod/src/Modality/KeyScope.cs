@@ -96,8 +96,12 @@ namespace CSAccess.Modality
             // grammar." Arrows/Enter/Space route to LocationTable in InputManager.
             t[Mode.ActionView] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Reroll,
                 ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle);
+            // Reroll in scope at the station (perk decode 2026-07-20): the REROLL
+            // DICE button renders in the Top UI there; availability is the FSM's own
+            // perk/once-per-cycle gate, which the key path can never bypass.
             t[Mode.Station] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks,
-                ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle);
+                ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle,
+                ModKey.Reroll);
             return t;
         }
 

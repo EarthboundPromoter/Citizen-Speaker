@@ -67,6 +67,8 @@ namespace CSAccess
             Game.EnergyWatch.Init();
             Modality.WindowState.Init();
             Modality.CloudFlight.Init();
+            Game.PerkWatch.Init();
+            UI.TitleFlow.Init();
 
             Log.LogInfo("Citizen Sleeper Access 0.1.0 loaded. Press F1 in game for commands.");
             SpeechService.Say("Citizen Sleeper Access loaded. Press F1 for commands.", Priority.Queued, "init");

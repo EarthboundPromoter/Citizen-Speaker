@@ -43,6 +43,7 @@ namespace CSAccess.UI
             public const string HeaderTakes = "Takes";
             public const string HeaderRisk = "Risk";
             public const string HeaderCost = "Cost";
+            public const string HeaderPredicted = "Predicted";
             public const string HeaderNarrative = "Narrative";
             public const string NowDisabled = "action card disabled";
             public const string NowEnabled = "action card enabled";
@@ -54,8 +55,11 @@ namespace CSAccess.UI
         private static bool _inClocks;
         // Full facet set as columns (owner ruling: full read on row switch, table
         // broken out by risk, cost, narrative block, ...).
+        // Predicted rides between Cost and Narrative (Intuit perk 1: the PREDICTIVE
+        // display is render-gated — the cell is silent until the perk is bought).
         private static readonly string[] Headers =
-            { W.HeaderName, W.HeaderSkill, W.HeaderRisk, W.HeaderTakes, W.HeaderCost, W.HeaderNarrative };
+            { W.HeaderName, W.HeaderSkill, W.HeaderRisk, W.HeaderTakes, W.HeaderCost,
+              W.HeaderPredicted, W.HeaderNarrative };
         // Clock rows are real rows too (owner ruling, live 2026-07-20): whole row
         // auto-reads on row switch, and the narrative block is its own cell.
         private static readonly string[] ClockHeaders =
@@ -267,7 +271,8 @@ namespace CSAccess.UI
             string risk = Cell(root, 2);
             string takes = Cell(root, 3);
             string cost = Cell(root, 4);
-            string narrative = Cell(root, 5);
+            string predicted = Cell(root, 5);
+            string narrative = Cell(root, 6);
             if (skill != null) sb.Append(". ").Append(skill);
             if (risk != null) sb.Append(", ").Append(risk);
             sb.Append(". ").Append(takes ?? W.EnterToActivate).Append('.');
@@ -275,6 +280,8 @@ namespace CSAccess.UI
             if (selectable == null)
                 sb.Append(' ').Append(Describe.DisabledReason(root) ?? W.NotActivatable);
             if (cost != null) sb.Append(' ').Append(cost).Append('.');
+            if (predicted != null)
+                sb.Append(' ').Append(W.HeaderPredicted).Append(": ").Append(predicted).Append('.');
             if (narrative != null) sb.Append(' ').Append(narrative);
             return sb.ToString();
         }
@@ -300,6 +307,7 @@ namespace CSAccess.UI
                 }
                 case 3: return Describe.TakesLine(root);
                 case 4: return Describe.TextContaining(root, "PER CYCLE");
+                case 5: return Describe.PredictiveLine(root);
                 default: return Describe.TextUnder(root, "Description");
             }
         }

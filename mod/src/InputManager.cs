@@ -49,6 +49,9 @@ namespace CSAccess
             // station moment per cycle (focus-model row 3; cheap no-op otherwise).
             Game.NodeCensus.Tick(mode);
 
+            // Pending reroll result: the new pool speaks once the dice re-render.
+            TickRerollRead();
+
             // --- Speech and queries (near-universal; KeyScope gates the title scene) ---
             if (Input.GetKeyDown(KeyCode.Z) && Allowed(mode, ModKey.Respeak))
             { SpeechService.RepeatLast(); return; }
@@ -319,8 +322,7 @@ namespace CSAccess
             if (Input.GetKeyDown(KeyCode.R) && shift)
             {
                 if (!Allowed(mode, ModKey.Reroll)) { Refuse(mode, "Reroll"); return; }
-                ClickFirstActive("Reroll dice",
-                    "Letterbox Canvas/Top UI/Dice UI/REROLL DICE");
+                TriggerReroll();
                 return;
             }
 
@@ -370,6 +372,16 @@ namespace CSAccess
             if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
                 && Allowed(mode, ModKey.Activate))
             {
+                // Title landing (owner report 2026-07-20: "enter to start doesn't
+                // always fire"): the press-to-start button's Set Selected can lag the
+                // canvas — a selection-less Enter clicks the landing button directly,
+                // the same designed activation the selection would have submitted.
+                if (mode == Mode.Title && Navigator.Current() == null)
+                {
+                    var landing = GameObject.Find("MAIN MENU/Demo Menu/Landing Canvas/NEW GAME");
+                    if (landing != null && landing.activeInHierarchy)
+                    { Navigator.Click(landing); return; }
+                }
                 // Empty-Enter = the universal mode-aware re-anchor (W3, H commitment 4):
                 // put focus back where the game intends it for this mode — extends the
                 // station Confirm-backstop mirror to every mode with a designed anchor.
@@ -395,6 +407,49 @@ namespace CSAccess
         }
 
         // ---------- Helpers ----------
+
+        /// <summary>The REROLL DICE button FSM (corpus decode 2026-07-20): perk-gated
+        /// (INTUIT_PERKS >= 2), once per cycle (Lua REROLL flag), full-pool only. Its
+        /// On-family states watch the Rewired REROLL action (left-stick click) and
+        /// pointer clicks, both firing the FSM's own Reroll event — we send that same
+        /// event. Off/Hide states carry no Reroll transition, so the gate can never be
+        /// bypassed. (The FSM has no Click event: the old ClickFirstActive fallback
+        /// was a silent no-op.) Refusals state their reason from the same variables
+        /// the FSM's gates read; wording provisional.</summary>
+        private void TriggerReroll()
+        {
+            var fsm = GameQueries.FindFsm("REROLL DICE", "Dice UI");
+            string state = fsm != null ? fsm.ActiveStateName : null;
+            if (state != null && state.StartsWith("On"))
+            {
+                fsm.SendEvent("Reroll");
+                SpeechService.Say("Rerolled.", Priority.Immediate, "dice");
+                _rerollReadAt = Time.unscaledTime + 1.0f; // dice re-render, then the new pool
+                return;
+            }
+            int? perks = Substrate.LuaStore.PerkCount(Substrate.LuaStore.Skill.Intuit);
+            if (perks != null && perks < 2)
+            {
+                SpeechService.Say("Reroll requires the second Intuit perk.",
+                    Priority.Immediate, "dice");
+                return;
+            }
+            if (Substrate.LuaClocks.RerollUsed())
+            {
+                SpeechService.Say("Reroll already used this cycle.", Priority.Immediate, "dice");
+                return;
+            }
+            SpeechService.Say("Reroll not available.", Priority.Immediate, "dice");
+        }
+
+        private float _rerollReadAt = -1f;
+
+        private void TickRerollRead()
+        {
+            if (_rerollReadAt < 0 || Time.unscaledTime < _rerollReadAt) return;
+            _rerollReadAt = -1f;
+            SpeechService.Say(GameQueries.DescribeDiceBrief(), Priority.Queued, "dice");
+        }
 
         private static bool Allowed(Mode mode, ModKey key) => KeyScope.Allows(mode, key);
 

@@ -99,6 +99,12 @@ namespace CSAccess.Substrate
             return idx >= 0 ? SkillModifier((Skill)idx) : null;
         }
 
+        /// <summary>Purchased perk rungs for a skill (0/1/2). Render pairing: the
+        /// character window's skill rows render the bought perk rungs — the SKILL List
+        /// FSMs read these exact *_PERKS variables to draw them (corpus), and the
+        /// character table speaks the same ladder.</summary>
+        public static int? PerkCount(Skill skill) => Num(SkillVars[(int)skill] + "_PERKS");
+
         // ---------- Plumbing ----------
 
         private static bool _faultLogged;
@@ -151,6 +157,20 @@ namespace CSAccess.Substrate
                 var r = DialogueLua.GetVariable("IntroComplete");
                 return r.hasReturnValue && r.isNumber ? r.asFloat >= 1f
                      : r.hasReturnValue && r.isBool && r.asBool;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>Reroll-spent flag (Lua REROLL: 0 = available, 1 = used; the Cycle
+        /// Controller's "Reset UI + ReROLL" clears it each cycle — corpus). Gate-only:
+        /// its render is the REROLL DICE button's own visibility; we use it to pick the
+        /// refusal wording, never to speak the value.</summary>
+        public static bool RerollUsed()
+        {
+            try
+            {
+                var r = DialogueLua.GetVariable("REROLL");
+                return r.hasReturnValue && r.isNumber && r.asFloat >= 1f;
             }
             catch { return false; }
         }
