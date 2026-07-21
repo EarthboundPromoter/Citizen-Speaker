@@ -91,11 +91,21 @@ namespace CSAccess.Game
             string state = fsm.ActiveStateName;
             bool listed = characters ? CharacterListed.Contains(state)
                                      : LocationListed.Contains(state);
-            if (!listed) return;
-
             string varPrefix = characters ? "Character" : "Location";
+            if (!listed)
+            {
+                WarnIfGroupingShape(canvas, varPrefix);
+                return;
+            }
+
             string name = StringVar(fsm, varPrefix + " Name");
-            if (string.IsNullOrEmpty(name)) return; // graceful silence: unnamed template
+            if (string.IsNullOrEmpty(name))
+            {
+                // Graceful silence: unnamed template. But warn if it looks like a
+                // grouping node — see WarnIfGroupingShape.
+                WarnIfGroupingShape(canvas, varPrefix);
+                return;
+            }
             string tagline = StringVar(fsm, varPrefix + " Description");
 
             var button = FindDeep(canvas, characters ? "Character Button" : "Location Button");
@@ -116,6 +126,7 @@ namespace CSAccess.Game
                 Angle = MarkerAngle(button != null ? button.transform : canvas),
             };
             row.Zone = ZoneOf(button != null ? button.transform : canvas, row.Angle);
+            row.Angle = UnwrapForZone(row.Zone, row.Angle);
 
             // Variant dedup by rendered name: the live (non-Off) variant wins; if two
             // variants both read listed (transitional frame), keep the interactable one.
@@ -338,16 +349,45 @@ namespace CSAccess.Game
             return AngleSign * Vector3.SignedAngle(reference, v, axis);
         }
 
+        /// <summary>Insurance against the Post-Rim-Gate bug class (zone audit risk 5):
+        /// a node the walk bails on (unlisted state / unnamed template) that holds
+        /// availability-FSM children of its own would silently drop a whole subtree —
+        /// exactly how the far station vanished pre-2da528d, except with an FSM on
+        /// the grouping node. No such shape exists today (Rim Gate Controller is
+        /// childless); if a game patch mints one, this logs it instead of losing it.
+        /// Once per node name; the child probe only runs until then.</summary>
+        private static readonly HashSet<string> WarnedGroups = new HashSet<string>();
+
+        private static void WarnIfGroupingShape(Transform node, string varPrefix)
+        {
+            if (WarnedGroups.Contains(node.name)) return;
+            foreach (Transform child in node)
+            {
+                var childFsm = CanvasFsm(child);
+                if (childFsm == null || StringVar(childFsm, varPrefix + " Name") == null)
+                    continue;
+                WarnedGroups.Add(node.name);
+                Plugin.Log.LogWarning("[Atlas] '" + node.name + "' was skipped ("
+                    + "unlisted/unnamed) but holds canvas-shaped children — possible "
+                    + "hidden subtree, Post-Rim-Gate class. Child: '" + child.name + "'.");
+                return;
+            }
+            WarnedGroups.Add(node.name); // probed clean — don't rescan every build
+        }
+
         private static float Norm(float a) => (a % 360f + 360f) % 360f;
 
         /// <summary>Zone from rig geometry: the Hub is literally the wheel's hub —
         /// small radial distance from the rotator axis (ring markers sit at ~9300;
-        /// threshold halves it). On the ring, the rig clamps Rim to 135–258 and the
-        /// Greenway ferry tween rides 258–275 (Location Controller decode) — split by
-        /// calibrated angle. Thresholds live here for one-place calibration.</summary>
+        /// threshold halves it). On the ring the rule is a COMPLEMENT (zone audit
+        /// 2026-07-21): the game's own Focus clamps put Rim at 135–258 and Greenway
+        /// at 275–390, extending to 430 when the Flotilla opens — so anything on the
+        /// ring outside Rim's band IS Greenway (the 258–275 sliver is the ferry
+        /// tween itself). The old (258.5, 320) window misfiled the outer Greenway
+        /// and the whole Flotilla band (which normalizes to 30–70) into Rim.</summary>
         private const float HubRadius = 5000f;
-        private const float GreenwayFrom = 258.5f;
-        private const float GreenwayTo = 320f;
+        private const float RimFrom = 135f;
+        private const float RimTo = 258.5f;
 
         public static int ZoneOf(Transform marker, float angle)
         {
@@ -358,8 +398,15 @@ namespace CSAccess.Game
                     marker.position - rotator.position, rotator.forward);
                 if (v.magnitude < HubRadius) return 2; // Hub
             }
-            return angle > GreenwayFrom && angle < GreenwayTo ? 1 : 0; // Greenway : Rim
+            return angle >= RimFrom && angle <= RimTo ? 0 : 1; // Rim : Greenway
         }
+
+        /// <summary>Greenway angles past 360 normalize to 30–70 (Flotilla band) —
+        /// unwrap so sort order stays physically adjacent and camera-follow writes
+        /// land in the game's own 275–430 clamp domain instead of flying to the
+        /// wrong end of the zone (zone audit risk 2).</summary>
+        public static float UnwrapForZone(int zone, float angle)
+            => zone == 1 && angle < RimFrom ? angle + 360f : angle;
 
         public static Transform RotatorTransform()
         {

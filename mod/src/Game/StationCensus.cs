@@ -270,13 +270,30 @@ namespace CSAccess.Game
         /// station-side surfaces only — overlays, dialogue, transitions and the cloud
         /// all outrank Station/ActionView in Current(), so "quiet" is free. Queued
         /// priority lands it behind the causing beat's own speech.</summary>
+        /// <summary>Above this many same-direction changes, the flush batches to a
+        /// count (zone audit risk 4: a district gate opening activates dozens of
+        /// canvases in one frame — correct, but a name-by-name read at that scale is
+        /// a wall of speech; N carries the detail). Wording provisional.</summary>
+        private const int BatchThreshold = 6;
+
         private static void TryFlush()
         {
             if (Pending.Count == 0) return;
             var mode = ModeModel.Current();
             if (mode != Mode.Station && mode != Mode.ActionView) return;
             var sb = new System.Text.StringBuilder();
-            foreach (var c in Pending) sb.Append(W.Present(c)).Append(' ');
+            int appeared = 0, gone = 0;
+            foreach (var c in Pending) { if (c.Appeared) appeared++; else gone++; }
+            if (appeared > BatchThreshold)
+                sb.Append(appeared).Append(" locations have appeared. ");
+            if (gone > BatchThreshold)
+                sb.Append(gone).Append(" locations are gone. ");
+            foreach (var c in Pending)
+            {
+                if (c.Appeared && appeared > BatchThreshold) continue;
+                if (!c.Appeared && gone > BatchThreshold) continue;
+                sb.Append(W.Present(c)).Append(' ');
+            }
             SpeechService.Say(sb.ToString().TrimEnd(), Priority.Queued, "census");
             Pending.Clear();
             _pendingSince = -1f;
