@@ -403,30 +403,28 @@ namespace CSAccess
         private float _lastSlottedTime = -10f;
         private float _slottedGlobalAtOpen;
         private float _lastControllerLeftIdle = -10f;
-        private float _outlookAt = -1f;
-        private int _outlookTries;
+        private bool _outlookPending;
+        private float _outlookSince;
 
-        /// <summary>Deferred slot-odds read (A1, dice-lifecycle map): after "Die
-        /// slotted." fires, wait for the Die object to apply its skill boost (a
-        /// "Boost N" state) and speak the odds from the authoritative boosted
-        /// DiceValue. Retries briefly while the boost lands; cancelled if the die is
-        /// retracted (CheckDiceAllocation clears _outlookAt on leaving Slotted).</summary>
+        /// <summary>Slot-odds read (A1): after "Die slotted." fires, WATCH the game's
+        /// own die value each frame and speak the odds the instant it has SETTLED —
+        /// no fixed delay. The value read is the game's DiceValue (boosted for a
+        /// modifier action, the raw face for a zero-modifier one); OutlookLine ciphers
+        /// it to the tutorial percentages via the game's own tier thresholds. Fires
+        /// immediately for zero-modifier actions and the moment the boost lands for
+        /// modifier actions; cancelled if the die is retracted (state leaves Slotted).
+        /// The safety bail stops a stuck read from lingering.</summary>
         private void CheckDiceOutlook()
         {
-            if (_outlookAt < 0 || Time.unscaledTime < _outlookAt) return;
-            // Wait out the boost window first (prefer the boosted "Boost N" value);
-            // after ~8 retries accept the settled "Slotted" value — zero-modifier
-            // actions (ENGINEER 0) never enter Boost N and stay in Slotted.
-            int? v = GameQueries.SlottedDieValue(acceptSlotted: _outlookTries >= 8);
+            if (!_outlookPending) return;
+            if (_diceSystemState != "Slotted") { _outlookPending = false; return; }
+            int? v = GameQueries.SettledSlottedDieValue();
             if (v == null)
             {
-                // Not settled yet — retry briefly, then give up (still slotted).
-                if (++_outlookTries < 20 && _diceSystemState == "Slotted")
-                { _outlookAt = Time.unscaledTime + 0.05f; return; }
-                _outlookAt = -1f;
+                if (Time.unscaledTime - _outlookSince > 0.6f) _outlookPending = false;
                 return;
             }
-            _outlookAt = -1f;
+            _outlookPending = false;
             string outlook = Game.ActionOutcomes.OutlookLine(v.Value);
             if (outlook != null)
                 SpeechService.Say(outlook, Priority.Queued, "dice");
@@ -468,7 +466,7 @@ namespace CSAccess
             switch (state)
             {
                 case "Active":
-                    _outlookAt = -1f; // a retract/reopen cancels any pending odds read
+                    _outlookPending = false; // a retract/reopen cancels a pending odds read
                     if (previous == "Slotted")
                     {
                         // Retract (corrected 2026-07-21): ResolveCancel now sends Reset
@@ -490,12 +488,11 @@ namespace CSAccess
                     // time a die enters the slot including replacements after a retract.
                     _lastSlottedTime = Time.unscaledTime;
                     SpeechService.Say("Die slotted.", Priority.Immediate, "dice");
-                    // A1 (dice-lifecycle map 2026-07-21): odds from the BOOSTED
-                    // Die.DiceValue, not the race-prone SlottedDiceValueGlobal. The
-                    // boost lands ~0.1s after slot, so defer the read (CheckDiceOutlook)
-                    // until the Die reaches a Boost N state.
-                    _outlookAt = Time.unscaledTime + 0.12f;
-                    _outlookTries = 0;
+                    // A1 (owner ruling 2026-07-21): watch for the game's own settled
+                    // die value and speak the odds the instant it settles (CheckDice-
+                    // Outlook) — event-driven, no fixed delay, reads FSM/Unity truth.
+                    _outlookPending = true;
+                    _outlookSince = Time.unscaledTime;
                     break;
 
                 case "Off":

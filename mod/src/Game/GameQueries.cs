@@ -56,16 +56,17 @@ namespace CSAccess.Game
             return v != null ? v.Value : 0f;
         }
 
-        /// <summary>The final face value of the currently slotted die, read from the
-        /// Die object ($SlottedDiceGlobal). Boosted actions settle in a "Boost N" state
-        /// with DiceValue = die + skill modifier (clamped 0..6); ZERO-modifier actions
-        /// (e.g. ENGINEER 0) never enter Boost N and settle in "Slotted" with DiceValue
-        /// = the raw face (live-confirmed on Hull Dissection). Both are authoritative in
-        /// DiceValue. `acceptSlotted` gates whether the un-boosted "Slotted" reading is
-        /// taken yet — the caller waits out the boost window first so a boosted die is
-        /// not read in its transient "Slotted" state before the boost lands.
-        /// Null when nothing is slotted or the value has not settled.</summary>
-        public static int? SlottedDieValue(bool acceptSlotted)
+        /// <summary>The game's own final die value, READ (not computed) from the Die
+        /// object ($SlottedDiceGlobal) — the same DiceValue the game's Dice Chance
+        /// Filter switches on. Boosted actions land it in a "Boost N" state (DiceValue
+        /// already includes the skill modifier); zero-modifier actions settle in
+        /// "Slotted" with DiceValue = the face. Returns the value only once it has
+        /// SETTLED so the caller never speaks the transient raw face a boosted die
+        /// shows for ~0.1s before Die.Boost runs: settled = "Boost N", OR "Slotted"
+        /// when the action's modifier is 0 (no boost coming). Null while still
+        /// settling or when nothing is slotted — the caller watches per frame and
+        /// speaks the instant it settles (no fixed delay).</summary>
+        public static int? SettledSlottedDieValue()
         {
             var g = HutongGames.PlayMaker.FsmVariables.GlobalVariables.GetFsmGameObject("SlottedDiceGlobal");
             var go = g != null ? g.Value : null;
@@ -74,11 +75,20 @@ namespace CSAccess.Game
             foreach (var f in go.GetComponents<PlayMakerFSM>())
                 if (f.FsmVariables.GetFsmFloat("DiceValue") != null) { dieFsm = f; break; }
             if (dieFsm == null) return null;
-            string st = dieFsm.ActiveStateName;
-            bool ready = st.StartsWith("Boost ") || (acceptSlotted && st == "Slotted");
-            if (!ready) return null;
             var dv = dieFsm.FsmVariables.GetFsmFloat("DiceValue");
-            return dv != null ? (int?)Mathf.RoundToInt(dv.Value) : null;
+            if (dv == null) return null;
+            string st = dieFsm.ActiveStateName;
+            bool settled = st.StartsWith("Boost ");
+            if (!settled && st == "Slotted")
+            {
+                // Slotted is final only when no boost is coming (modifier 0); otherwise
+                // DiceValue is still the raw face and Die.Boost is about to overwrite it.
+                var ac = go.transform.parent != null
+                    ? go.transform.parent.GetComponent<PlayMakerFSM>() : null;
+                var mod = ac != null ? ac.FsmVariables.GetFsmFloat("Required Skill Value") : null;
+                settled = mod != null && Mathf.RoundToInt(mod.Value) == 0;
+            }
+            return settled ? (int?)Mathf.RoundToInt(dv.Value) : null;
         }
 
         /// <summary>The action's Gamepad Dice Slot currently in the picker flow —
