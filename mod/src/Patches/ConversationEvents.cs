@@ -33,7 +33,12 @@ namespace CSAccess.Patches
             // run snapshots (zero warnings) and was removed per its retirement condition.
         }
 
-        private static void OnStarted(Transform actor) => ConversationActive = true;
+        private static void OnStarted(Transform actor)
+        {
+            ConversationActive = true;
+            // U2: a fresh window announces its first named speaker once.
+            DialogueState.LastAnnouncedSpeaker = "";
+        }
 
         private static void OnEnded(Transform actor)
         {

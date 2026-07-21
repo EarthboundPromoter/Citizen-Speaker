@@ -13,6 +13,11 @@ namespace CSAccess.Patches
         public static bool MenuOpen;
         public static string LastSubtitle = "";
         public static string LastSpeaker = "";
+        /// <summary>U2 (user report, 0.8): the speaker last ANNOUNCED by name this
+        /// conversation — auto-reads prefix the name only when it changes (window
+        /// open, or a genuine mid-window switch: Toshiro→Sabine exists). Unnamed
+        /// lines (environmental headers) don't clear it. Reset at conversation start.</summary>
+        public static string LastAnnouncedSpeaker = "";
         /// <summary>Incremented per subtitle so the watcher can announce a sole Continue option.</summary>
         public static long SubtitleSeq;
 
@@ -39,11 +44,14 @@ namespace CSAccess.Patches
             DialogueState.SubtitleSeq++;
 
             if (!Plugin.AutoReadDialogue.Value) return;
-            string line = (!string.IsNullOrEmpty(speaker) && Plugin.SpeakSpeakerNames.Value &&
-                           !speaker.Equals("UNKNOWN", System.StringComparison.OrdinalIgnoreCase))
-                ? speaker + ": " + text
-                : text;
-            SpeechService.Say(line, Priority.Queued, "dialogue");
+            bool named = !string.IsNullOrEmpty(speaker) && Plugin.SpeakSpeakerNames.Value &&
+                         !speaker.Equals("UNKNOWN", System.StringComparison.OrdinalIgnoreCase);
+            // U2: name on change only, never on every advance.
+            bool sayName = named && !speaker.Equals(DialogueState.LastAnnouncedSpeaker,
+                System.StringComparison.OrdinalIgnoreCase);
+            if (sayName) DialogueState.LastAnnouncedSpeaker = speaker;
+            SpeechService.Say(sayName ? speaker + ": " + text : text,
+                Priority.Queued, "dialogue");
         }
 
         public static void OnResponses(Response[] responses)

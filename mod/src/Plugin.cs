@@ -33,7 +33,8 @@ namespace CSAccess
             AutoReadDialogue = Config.Bind("Speech", "AutoReadDialogue", true,
                 "Automatically read dialogue lines as they appear.");
             SpeakSpeakerNames = Config.Bind("Speech", "SpeakSpeakerNames", true,
-                "Prefix dialogue lines with the speaker's name.");
+                "Announce the dialogue speaker's name when it changes (window open "
+                + "or a mid-conversation switch), not on every advance.");
             AnnounceFocus = Config.Bind("Speech", "AnnounceFocus", true,
                 "Announce UI elements when they receive focus.");
             ForceGamepadUI = Config.Bind("Input", "ForceGamepadUI", true,
