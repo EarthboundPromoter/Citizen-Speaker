@@ -630,6 +630,14 @@ namespace CSAccess.UI
             return false;
         }
 
+        /// <summary>A2: the game's own localization drops the LEADING straight quote
+        /// from some name/label entries ("WINTER LIGHT'", "Sunbathe'") while effect
+        /// lines are authored fully quoted — names compare and speak quote-free so
+        /// the two authored variants meet. Names only; narrative prose keeps its
+        /// quotes untouched.</summary>
+        public static string TrimQuotes(string s)
+            => s == null ? null : s.Trim().Trim('\'', '"');
+
         public static string TextUnder(Transform root, string childName)
         {
             foreach (var tmp in root.GetComponentsInChildren<TMP_Text>(false))

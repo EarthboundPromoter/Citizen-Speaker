@@ -214,7 +214,7 @@ namespace CSAccess.Game
             var sb = new StringBuilder();
             foreach (var clock in clocks)
             {
-                string name = Describe.TextUnder(clock, "Clock Name") ?? clock.name;
+                string name = Describe.TrimQuotes(Describe.TextUnder(clock, "Clock Name")) ?? clock.name;
                 sb.Append(name);
                 string progress = ClockProgress(clock);
                 if (progress != null) sb.Append(", ").Append(progress);

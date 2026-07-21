@@ -603,7 +603,9 @@ namespace CSAccess
             }
             int delta = gain + loss;
             if (delta == 0) return s;
-            string body = s.Substring(i).Trim();
+            // A2: effect targets are names — quote-normalize so the fully-quoted
+            // authored effect entry matches the half-quoted authored render name.
+            string body = UI.Describe.TrimQuotes(s.Substring(i));
             if (body.Length == 0) return s;
             string sign = gain >= loss ? "plus" : "minus";
             string upper = body.ToUpperInvariant();
@@ -645,13 +647,13 @@ namespace CSAccess
         {
             foreach (var clock in GameQueries.GetClockPanels())
             {
-                string cname = UI.Describe.TextUnder(clock, "Clock Name");
+                string cname = UI.Describe.TrimQuotes(UI.Describe.TextUnder(clock, "Clock Name"));
                 if (cname == null
-                    || !cname.Trim().Equals(name, System.StringComparison.OrdinalIgnoreCase))
+                    || !cname.Equals(name, System.StringComparison.OrdinalIgnoreCase))
                     continue;
                 string now = GameQueries.ClockProgress(clock);
                 if (now == null) return null;
-                return cname.Trim() + " now " + now;
+                return cname + " now " + now;
             }
             return null;
         }

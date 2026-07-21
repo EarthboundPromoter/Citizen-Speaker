@@ -206,7 +206,7 @@ namespace CSAccess.UI
             _activatableSnapshot.Clear();
             foreach (var clock in GameQueries.GetClockPanels())
             {
-                string name = Describe.TextUnder(clock, "Clock Name") ?? clock.name;
+                string name = Describe.TrimQuotes(Describe.TextUnder(clock, "Clock Name")) ?? clock.name;
                 _clockSnapshot[name] = GameQueries.ClockProgress(clock) ?? "";
             }
             foreach (var action in GameQueries.GetActionPanels())
@@ -227,8 +227,8 @@ namespace CSAccess.UI
             bool effectFresh = UnityEngine.Time.unscaledTime - Watchers.RecentEffectClocksAt < 2f;
             foreach (var clock in GameQueries.GetClockPanels())
             {
-                string name = Describe.TextUnder(clock, "Clock Name") ?? clock.name;
-                if (effectFresh && Watchers.RecentEffectClocks.Contains(name.Trim().ToUpperInvariant()))
+                string name = Describe.TrimQuotes(Describe.TextUnder(clock, "Clock Name")) ?? clock.name;
+                if (effectFresh && Watchers.RecentEffectClocks.Contains(name.ToUpperInvariant()))
                     continue;
                 string now = GameQueries.ClockProgress(clock) ?? "";
                 if (_clockSnapshot.TryGetValue(name, out string was) && was != now
@@ -327,7 +327,7 @@ namespace CSAccess.UI
         }
 
         private static string ClockName(Transform clock)
-            => Describe.TextUnder(clock, "Clock Name") ?? clock.name;
+            => Describe.TrimQuotes(Describe.TextUnder(clock, "Clock Name")) ?? clock.name;
 
         private static string ClockNarrative(Transform clock)
             => Describe.TextUnder(clock, "Description")
