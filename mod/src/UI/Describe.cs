@@ -365,7 +365,13 @@ namespace CSAccess.UI
             {
                 if (tmp.color.a < 0.05f) continue;
                 string t = tmp.text != null ? tmp.text.Trim() : null;
-                if (!string.IsNullOrEmpty(t)) texts.Add(Speech.SpeechService.Clean(t));
+                if (string.IsNullOrEmpty(t)) continue;
+                // B3: cull the PERK caption — ten syllables of noise per row; the
+                // column name already says what the cell is (owner ruling).
+                if (t.StartsWith("PERK", System.StringComparison.OrdinalIgnoreCase)) continue;
+                t = TranscodePredictedEntry(tmp, pred);
+                if (!string.IsNullOrEmpty(t) && !texts.Contains(t))
+                    texts.Add(Speech.SpeechService.Clean(t));
             }
             if (texts.Count == 0)
             {
@@ -377,7 +383,50 @@ namespace CSAccess.UI
                 }
                 return null;
             }
-            return string.Join(", ", texts);
+            return string.Join("; ", texts);
+        }
+
+        /// <summary>B3: one Predicted tier entry — glyph runs to counts, tier
+        /// labeled. "++ YARD HAND" → "positive: YARD HAND, 2 segments" (clock
+        /// wording law: NAME, X segments — universal); "- CONDITION" → "negative:
+        /// 1 condition"; "+ 15 CRYO" → "positive: 15 CRYO" (explicit number kept).
+        /// Tier identity from the marker ancestry when it names one, else from the
+        /// glyph sign — resolves the unlabeled pairs ("+ ENERGY, - ENERGY" was
+        /// flatly contradictory as rendered text).</summary>
+        private static string TranscodePredictedEntry(TMPro.TMP_Text tmp, Transform pred)
+        {
+            string t = tmp.text.Trim();
+            int plus = 0, minus = 0, i = 0;
+            while (i < t.Length && (t[i] == '+' || t[i] == '-' || t[i] == ' '))
+            {
+                if (t[i] == '+') plus++;
+                else if (t[i] == '-') minus++;
+                i++;
+            }
+            string body = t.Substring(i).Trim();
+            int count = plus + minus;
+            if (count == 0 || body.Length == 0) return t;
+
+            string tier = null;
+            for (var cur = tmp.transform; cur != null && cur != pred; cur = cur.parent)
+            {
+                string n = cur.name.ToLowerInvariant();
+                if (n.Contains("boon")) { tier = "best"; break; }
+                if (n.Contains("positive")) { tier = "positive"; break; }
+                if (n.Contains("negative")) { tier = "negative"; break; }
+                if (n.Contains("neutral")) { tier = "neutral"; break; }
+            }
+            if (tier == null) tier = plus >= minus ? "positive" : "negative";
+
+            string upper = body.ToUpperInvariant();
+            string spoken;
+            if (upper == "ENERGY" || upper == "CONDITION")
+                spoken = count + " " + body.ToLowerInvariant();
+            else if (char.IsDigit(body[0]))
+                spoken = body; // explicit amount ("15 CRYO") — the count is the marker
+            else
+                spoken = body + ", " + count + (count == 1 ? " segment" : " segments");
+            return tier + ": " + spoken;
         }
 
         private static bool _predictiveLogged;
