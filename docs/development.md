@@ -10,7 +10,7 @@ design in [input-model.md](input-model.md); ground-truth decodes under
 - `mod/` — **CSAccess**, the accessibility mod itself (`CSAccess.dll`).
 - `bridge/` — **CSAccessBridge**, a dev-only localhost HTTP bridge (port 8330)
   used to inspect the running game during development. Observation-only by rule;
-  never part of a user-facing release.
+  local-only and untracked (gitignored) — it never ships.
 - `tools/` — analysis tooling (UnityPy serialized-statics readers, the FSM
   corpus; corpus jsonl files are untracked and regenerable via the bridge's
   `/fsmcensus`).

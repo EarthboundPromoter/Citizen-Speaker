@@ -118,11 +118,6 @@ been verified in live blind play. Two things have **not** been live tested yet:
 feedback yet — opening a node takes one more Enter press than a typical action
 card. Press Enter again if a node seems unresponsive.
 
-## Privacy
-
-The mod makes no network connections and collects nothing. (The repository also
-contains a developer-only debugging bridge; it is not part of releases.)
-
 ## License and credits
 
 This mod is released under the [MIT License](LICENSE). It contains no game
