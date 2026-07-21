@@ -23,6 +23,22 @@ namespace CSAccess.Game
             return null;
         }
 
+        /// <summary>The action's Gamepad Dice Slot currently holding a die (its FSM
+        /// rests in "Select Dice 2" while slotted). The die lives HERE, not in the
+        /// Dice Gamepad System picker — the slot's own Reset event (Select Dice 2 →
+        /// Unslot Die → Select Dice) is the real unslot and refocuses a die cursor,
+        /// bridge-verified 2026-07-21. Null when nothing is slotted.</summary>
+        public static PlayMakerFSM SlottedDiceSlot()
+        {
+            foreach (var fsm in PlayMakerFSM.FsmList)
+            {
+                if (fsm == null || fsm.gameObject == null) continue;
+                if (fsm.gameObject.name != "Gamepad Dice Slot") continue;
+                if (fsm.ActiveStateName == "Select Dice 2") return fsm;
+            }
+            return null;
+        }
+
         public static string PathOf(GameObject go)
         {
             var sb = new StringBuilder(go.name);

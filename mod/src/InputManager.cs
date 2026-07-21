@@ -498,10 +498,18 @@ namespace CSAccess
                     return;
 
                 case Mode.DiceAllocation:
-                    // Designed Back (FSM: Slotted --Back--> Active retracts the die;
-                    // Active --Back--> Reselector --FINISHED--> Off cancels the picker).
-                    // The mode now spans Reselector/Setup too, so this stays routed
-                    // through the whole retract-and-reselect loop (spend-leak fix).
+                    // Retract (bridge-verified 2026-07-21): the die lives in the
+                    // action's Gamepad Dice Slot (state "Select Dice 2"), NOT the
+                    // picker. "Back" to the picker alone re-arms the cursor but never
+                    // unslots the die — the mod's old retract announced "Die removed"
+                    // while the die sat there. Send the slot's own Reset first
+                    // (Select Dice 2 → Unslot Die → Select Dice: unslots AND refocuses
+                    // a live die cursor, killing the dead-end), then "Back" to sync
+                    // the picker Slotted → Active. With no die slotted (picker at
+                    // Active/choosing) the slot lookup is null and "Back" alone
+                    // cancels the picker (Active → Reselector → Off) — the second-
+                    // backspace close is unchanged.
+                    GameQueries.SlottedDiceSlot()?.SendEvent("Reset");
                     GameQueries.DiceSystemFsm()?.SendEvent("Back");
                     return;
 
