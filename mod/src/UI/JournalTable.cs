@@ -86,8 +86,22 @@ namespace CSAccess.UI
             if (rows.Count == 0) { SpeechService.Say(W.NoQuests, Priority.Immediate, "table"); return; }
             _row = Mathf.Clamp(_row, 0, rows.Count - 1);
             _col = Mathf.Clamp(_col + delta, 0, Headers.Length - 1);
+            // Right keeps the row current (owner ruling, session 11): the Track and
+            // Abandon buttons render only inside the pulled-out row — without this,
+            // reaching them by column movement left Enter dead.
+            if (delta > 0) EnsureExpanded(rows[_row]);
             SpeechService.Say(Headers[_col] + ": " + CellText(rows[_row], _col),
                 Priority.Immediate, "table");
+        }
+
+        /// <summary>Pull the quest's row out if it isn't already (the tracking toggle
+        /// renders only inside an expanded row — its presence IS the expanded test).
+        /// Silent: the cell read that follows is the announcement.</summary>
+        private static void EnsureExpanded(string quest)
+        {
+            if (FindRowActionButton(quest, "TRACKING") != null) return;
+            var heading = FindHeadingButton(quest);
+            if (heading != null) Navigator.Click(heading.gameObject);
         }
 
         private static void FullRow()
@@ -193,10 +207,14 @@ namespace CSAccess.UI
 
         private static void ToggleTracking(string quest)
         {
+            EnsureExpanded(quest);
             var toggle = FindRowActionButton(quest, "TRACKING");
             if (toggle == null)
             {
-                Plugin.Log.LogInfo("[Journal] tracking toggle for '" + quest + "' not found — silent.");
+                // The pull-out can render a beat after the heading click — retry
+                // once before refusing (a dead Track press was the owner report).
+                _pendingTrackQuest = quest;
+                _pendingTrackAt = Time.unscaledTime + 0.2f;
                 return;
             }
             Navigator.Click(toggle.gameObject);
@@ -205,9 +223,25 @@ namespace CSAccess.UI
         }
 
         private static float _announceTrackingAt = -1f;
+        private static string _pendingTrackQuest;
+        private static float _pendingTrackAt = -1f;
 
         public static void Tick()
         {
+            if (_pendingTrackQuest != null && Time.unscaledTime >= _pendingTrackAt)
+            {
+                string quest = _pendingTrackQuest;
+                _pendingTrackQuest = null;
+                var toggle = FindRowActionButton(quest, "TRACKING");
+                if (toggle != null)
+                {
+                    Navigator.Click(toggle.gameObject);
+                    _announceTrackingAt = Time.unscaledTime + 0.25f;
+                }
+                else
+                    SpeechService.Say("Track not available.", Priority.Immediate, "table");
+            }
+
             if (_announceTrackingAt < 0 || Time.unscaledTime < _announceTrackingAt) return;
             _announceTrackingAt = -1f;
             string tracked = null;
