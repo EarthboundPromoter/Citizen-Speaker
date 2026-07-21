@@ -203,6 +203,13 @@ namespace CSAccess.UI
         private const float RefreshInterval = 2.0f;
         private static float _nextRefresh;
 
+        // D2 oscillation memory: a row that vanishes is held this long so a blink
+        // back reclaims the cursor (spans a couple of refresh cycles).
+        private const float OscillationWindow = 4.0f;
+        private static string _departedName;
+        private static bool _departedIsChar;
+        private static float _departedAt;
+
         private static void RefreshTick()
         {
             if (Time.unscaledTime < _nextRefresh) return;
@@ -240,7 +247,31 @@ namespace CSAccess.UI
                 else if (keepName != null)
                 {
                     int found = _view.FindIndex(r => r.Name == keepName && r.IsCharacter == keepIsChar);
-                    _row = found >= 0 ? found : Mathf.Clamp(_row, 0, Mathf.Max(0, _view.Count - 1));
+                    if (found >= 0) _row = found;
+                    else
+                    {
+                        // D2: the row we were on vanished this fold. Oscillating
+                        // canvases (a billboard walking scene states, 10->9->10)
+                        // blink out and back within seconds — remember the departed
+                        // identity and hold the index rather than ceding position
+                        // permanently to a neighbor.
+                        _departedName = keepName;
+                        _departedIsChar = keepIsChar;
+                        _departedAt = Time.unscaledTime;
+                        _row = Mathf.Clamp(_row, 0, Mathf.Max(0, _view.Count - 1));
+                    }
+                }
+
+                // D2: a recently-departed row that reappears reclaims the cursor.
+                if (_departedName != null)
+                {
+                    if (Time.unscaledTime - _departedAt < OscillationWindow)
+                    {
+                        int back = _view.FindIndex(r =>
+                            r.Name == _departedName && r.IsCharacter == _departedIsChar);
+                        if (back >= 0) { _row = back; _departedName = null; }
+                    }
+                    else _departedName = null; // window expired: a genuine removal
                 }
                 Plugin.Log.LogInfo("[Table] refresh: rows " + before + " -> " + _rows.Count
                     + " (position " + (keepName ?? keepDrive ?? "start") + ")");
@@ -604,6 +635,10 @@ namespace CSAccess.UI
             {
                 string cell = CellRaw(cols[i]);
                 if (cell == null) continue;
+                // C3: zero counts are not populated facets ("Actions 0 actions.")
+                // — the column visit's terse empty covers them (row rule: report
+                // carries the compression).
+                if (cell.StartsWith("0 ")) continue;
                 sb.Append(' ').Append(cols[i].Header).Append(' ').Append(cell);
                 if (!cell.EndsWith(".")) sb.Append('.');
             }

@@ -110,8 +110,9 @@ namespace CSAccess.Substrate
         private static bool _faultLogged;
 
         /// <summary>Presence-aware numeric read: null means "not available" (no database
-        /// yet, or the variable is unset) — callers must distinguish that from a real 0.</summary>
-        private static int? Num(string name)
+        /// yet, or the variable is unset) — callers must distinguish that from a real 0.
+        /// Public since A3: the atlas reads authored "&lt;Identifier&gt;_OLD" flags.</summary>
+        public static int? Num(string name)
         {
             try
             {

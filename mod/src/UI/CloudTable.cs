@@ -204,8 +204,12 @@ namespace CSAccess.UI
         private static void MoveCardCol(Node node, int delta)
         {
             _cardCol = Mathf.Clamp(_cardCol + delta, 0, CardHeaders.Length - 1);
-            SpeechService.Say(CardHeaders[_cardCol] + ": "
-                + (CardCell(node, _cardCol) ?? "none"), Priority.Immediate, "table");
+            // C2: the demand cell self-labels ("Required dice: 2, 3") — the header
+            // prefix stacked two labels; same suppression the field table has.
+            SpeechService.Say(_cardCol == 1
+                    ? (CardCell(node, _cardCol) ?? W.HeaderDemand + ": none")
+                    : CardHeaders[_cardCol] + ": " + (CardCell(node, _cardCol) ?? "none"),
+                Priority.Immediate, "table");
         }
 
         private static void CommitCard(Node node)
@@ -241,14 +245,26 @@ namespace CSAccess.UI
             }
         }
 
-        /// <summary>Full card read: name, then populated facets in column order.</summary>
+        /// <summary>Full card read: name, then populated facets in column order.
+        /// C1: the generic "a die" Takes drops beside a die demand — the session-12
+        /// cull covered the detail read only and the row composition still spoke
+        /// "Required dice: 2, 3. a die." (column visits stay individually intact).</summary>
         private static string CardRow(Node node)
         {
             var sb = new System.Text.StringBuilder(node.Name);
+            string demand = CardCell(node, 1);
             for (int c = 1; c < CardHeaders.Length; c++)
             {
-                string cell = CardCell(node, c);
-                if (cell != null) sb.Append(". ").Append(cell);
+                string cell = c == 1 ? demand : CardCell(node, c);
+                if (cell == null) continue;
+                if (c == 2 && demand != null
+                    && ((cell == "a die" && demand.IndexOf("die",
+                            System.StringComparison.OrdinalIgnoreCase) >= 0)
+                        // C6: "Takes SOLHEIM CIPHER. an item." — the generic item
+                        // phrase dangles beside a named item demand, same dupe.
+                        || (cell.StartsWith("an item") && demand.StartsWith("Takes "))))
+                    continue;
+                sb.Append(". ").Append(cell);
             }
             return sb.ToString() + ".";
         }

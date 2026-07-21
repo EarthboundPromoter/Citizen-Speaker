@@ -24,10 +24,15 @@ namespace CSAccess.UI
             Substrate.FsmSignals.Subscribe("MAIN MENU", "Landing", (fsm, state) =>
             {
                 _announced = true;
+                Modality.ModeModel.ForcedTitle = true; // D1
                 SpeechService.Say("Main menu. Press Enter to start.", Priority.Queued, "scene");
             });
             Substrate.FsmSignals.Subscribe("MAIN MENU", "Demo Menu", (fsm, state) =>
             {
+                // D1: any Demo Menu arrival means we are at the title — the
+                // quit-to-title path reaches here without a scene change, and the
+                // mode authority must stop reading the ended session's Station.
+                Modality.ModeModel.ForcedTitle = true;
                 // Demo Menu re-enters constantly inside the menu (Back, language,
                 // profile); only the first arrival per scene visit orients.
                 if (_announced) return;
@@ -36,6 +41,10 @@ namespace CSAccess.UI
             });
         }
 
-        public static void OnSceneChanged() => _announced = false;
+        public static void OnSceneChanged()
+        {
+            _announced = false;
+            Modality.ModeModel.ForcedTitle = false; // D1: a real scene owns truth again
+        }
     }
 }

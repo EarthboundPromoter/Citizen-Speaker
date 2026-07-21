@@ -66,9 +66,15 @@ namespace CSAccess.Game
             var container = FindStationChild(containerName);
             if (container == null)
             {
-                Plugin.Log.LogInfo("[Atlas] container '" + containerName + "' not found — silent.");
+                // D1: once per absence episode, not per Build — the save-load window
+                // and title dwells ran this several times a second and flooded the log.
+                if (MissingContainersLogged.Add(containerName))
+                    Plugin.Log.LogInfo("[Atlas] container '" + containerName
+                        + "' not found — silent until it appears.");
                 return;
             }
+            if (MissingContainersLogged.Remove(containerName))
+                Plugin.Log.LogInfo("[Atlas] container '" + containerName + "' recovered.");
             foreach (Transform canvas in container)
                 CollectCanvas(canvas, characters, rows, byName);
         }
@@ -122,7 +128,8 @@ namespace CSAccess.Game
                 Button = button != null ? button.gameObject : null,
                 Interactable = selectable != null && selectable.gameObject.activeInHierarchy
                                && selectable.IsInteractable(),
-                IsNew = shine != null && shine.gameObject.activeInHierarchy,
+                IsNew = IsNewByAuthoredFlag(fsm, varPrefix)
+                        ?? (shine != null && shine.gameObject.activeInHierarchy),
                 Angle = MarkerAngle(button != null ? button.transform : canvas),
             };
             row.Zone = ZoneOf(button != null ? button.transform : canvas, row.Angle);
@@ -349,6 +356,21 @@ namespace CSAccess.Game
             return AngleSign * Vector3.SignedAngle(reference, v, axis);
         }
 
+        /// <summary>A3: the "new" flag from the game's AUTHORED polarity, not the
+        /// New Shine animation — the shine pulses, so activeInHierarchy sampled
+        /// mid-pulse flapped rows between reads (session-13 specimens: BRIGHT
+        /// MARKET, DOCK B-2, DRAGOS'S YARD). The marker button FSM's own check is
+        /// Lua "&lt;Identifier&gt;_OLD" (corpus: BuildString identifier + "_OLD"; unset =
+        /// new, set = old — Set Old writes it on first visit). Null when the canvas
+        /// carries no identifier → caller falls back to the shine.</summary>
+        private static bool? IsNewByAuthoredFlag(PlayMakerFSM canvasFsm, string varPrefix)
+        {
+            string id = StringVar(canvasFsm, varPrefix + " Identifier");
+            if (string.IsNullOrEmpty(id)) return null;
+            int? old = Substrate.LuaStore.Num(id.Trim() + "_OLD");
+            return old == null || old.Value == 0;
+        }
+
         /// <summary>Insurance against the Post-Rim-Gate bug class (zone audit risk 5):
         /// a node the walk bails on (unlisted state / unnamed template) that holds
         /// availability-FSM children of its own would silently drop a whole subtree —
@@ -357,6 +379,7 @@ namespace CSAccess.Game
         /// childless); if a game patch mints one, this logs it instead of losing it.
         /// Once per node name; the child probe only runs until then.</summary>
         private static readonly HashSet<string> WarnedGroups = new HashSet<string>();
+        private static readonly HashSet<string> MissingContainersLogged = new HashSet<string>();
 
         private static void WarnIfGroupingShape(Transform node, string varPrefix)
         {

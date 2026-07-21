@@ -254,14 +254,24 @@ namespace CSAccess.UI
         /// Transcodes to "Takes HAVENAGE CIPHER"; null when the pattern is absent.</summary>
         public static string CloudItemTake(Transform actionRoot)
         {
-            string name = TextUnder(actionRoot, "Action Name")
-                          ?? actionRoot.name.TrimEnd();
+            // A5 (S7 wrong-cipher field row): the OBJECT name is authored per card
+            // from birth and cannot go stale; the rendered Action Name text can lag
+            // or carry a neighbor template's string pre-resolution — it spoke
+            // "Takes HAVENAGE CIPHER" where the detail read and the actual spend
+            // both said SOLHEIM. Object name first, rendered text as fallback, so
+            // the field row and the detail read share one source.
+            string item = SlotItem(actionRoot.name) ?? SlotItem(TextUnder(actionRoot, "Action Name"));
+            return item != null ? "Takes " + item : null;
+        }
+
+        private static string SlotItem(string name)
+        {
             if (string.IsNullOrEmpty(name)) return null;
             name = name.Trim();
             if (name.EndsWith(" Action")) name = name.Substring(0, name.Length - 7);
             if (!name.ToUpperInvariant().StartsWith("SLOT ")) return null;
             string item = name.Substring(5).Trim();
-            return item.Length > 0 ? "Takes " + item : null;
+            return item.Length > 0 ? item : null;
         }
 
         /// <summary>The card's take-kind, structurally distinguished: cryo cards run

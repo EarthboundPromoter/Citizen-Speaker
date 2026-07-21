@@ -84,6 +84,14 @@ namespace CSAccess
             {
                 var autosave = _pauseCanvas.Find("Time SInce Last Autosave");
                 string line = autosave != null ? UI.Describe.JoinTexts(autosave.gameObject, 3) : null;
+                // C6: the render is three fragments ("TIME SINCE LAST AUTOSAVE",
+                // "160", "SECONDS") — join to a sentence instead of comma splices.
+                if (line != null)
+                {
+                    var frag = line.Split(new[] { ", " }, System.StringSplitOptions.None);
+                    if (frag.Length == 3 && int.TryParse(frag[1], out _))
+                        line = frag[1] + " " + frag[2].ToLowerInvariant() + " since last autosave";
+                }
                 SpeechService.Say("Paused." + (line != null ? " " + line + "." : ""),
                     Priority.Queued, "nav");
             }
@@ -307,8 +315,12 @@ namespace CSAccess
             bool firstAnnounce = _lastClass == null;
             _lastClass = centered.name;
             UI.CharacterSelect.ResetReview();
+            // C5: the entry read carries the same ordinal the review read has; the
+            // bare-name Left/Right two-stage stays (mash-safe, owner-kept).
+            int ordinal = System.Array.IndexOf(ClassNames, centered.name) + 1;
             SpeechService.Say(firstAnnounce
-                    ? centered.name + ". Up and Down to review details, Left and Right to change class, Enter to start."
+                    ? centered.name + ", class " + ordinal + " of " + ClassNames.Length
+                      + ". Up and Down to review details, Left and Right to change class, Enter to start."
                     : centered.name,
                 Priority.Immediate, "class");
         }

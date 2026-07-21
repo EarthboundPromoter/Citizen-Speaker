@@ -189,11 +189,12 @@ namespace CSAccess.UI
         {
             switch (RestingState(row))
             {
-                case "-1": return "0, costs 1 point";
+                // C6: bare rung numbers read as counts — "rank" gives them a noun.
+                case "-1": return "rank 0, costs 1 point";
                 case "0": return PerkRung(row, 1, 1);
-                case "Perk 1": return "+1, costs 1 point";
+                case "Perk 1": return "rank +1, costs 1 point";
                 case "+1": return PerkRung(row, 2, 2);
-                case "Perk 2": return "+2, costs 3 points";
+                case "Perk 2": return "rank +2, costs 3 points";
                 case "+2": return W.LadderComplete;
                 case "BROKEN": return "repair, costs 1 point";
                 default: return null; // transient state — no stable fact to speak

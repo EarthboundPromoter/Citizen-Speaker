@@ -180,8 +180,11 @@ namespace CSAccess.UI
                     if (st == QuestState.Unassigned) continue;
                     string text = SpeechService.Clean(QuestLog.GetQuestEntry(quest, i));
                     if (string.IsNullOrEmpty(text)) continue;
-                    if (st == QuestState.Success) text += ", done";
-                    else if (st == QuestState.Failure) text += ", failed";
+                    // C6: dash placeholders are non-entries; trim the entry's own
+                    // terminal period before appending status ("Doctor., done").
+                    if (text.Trim('-', ' ').Length == 0) continue;
+                    if (st == QuestState.Success) text = text.TrimEnd('.') + ", done";
+                    else if (st == QuestState.Failure) text = text.TrimEnd('.') + ", failed";
                     Append(sb, text);
                 }
             }

@@ -53,7 +53,12 @@ namespace CSAccess.UI
                         return;
                     }
                 }
-                SpeechService.Say("Nothing to focus.", Priority.Immediate, "nav");
+                // C4: scene-start auto-reads spoke their empty result at frame 1
+                // (2 of 3 cold boots) — an empty world is boot noise, not news.
+                if (Time.unscaledTime < 8f)
+                    Plugin.Log.LogInfo("[Nav] nothing to focus (boot window, silent).");
+                else
+                    SpeechService.Say("Nothing to focus.", Priority.Immediate, "nav");
                 return;
             }
             var move = new AxisEventData(es)

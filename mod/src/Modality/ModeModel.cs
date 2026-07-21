@@ -40,11 +40,17 @@ namespace CSAccess.Modality
     {
         private static float _bothWindowsLogged = -60f;
 
+        /// <summary>D1: quit-to-title reaches the menu WITHOUT a scene change, so the
+        /// authority kept reading Station from the ended session and the atlas
+        /// retries ran at the main menu. TitleFlow sets this on the MAIN MENU FSM's
+        /// own arrivals; a scene change clears it.</summary>
+        internal static bool ForcedTitle;
+
         public static Mode Current()
         {
             // --- Title scene ---
             string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            if (scene.Contains("MAIN TITLE"))
+            if (scene.Contains("MAIN TITLE") || ForcedTitle)
                 return CharacterSelect.IsActive() ? Mode.CharacterSelect : Mode.Title;
 
             // --- Pause outranks everything ---
