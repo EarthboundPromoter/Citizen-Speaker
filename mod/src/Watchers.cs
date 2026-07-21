@@ -679,6 +679,7 @@ namespace CSAccess
                 // rendered prompt's controller name; die-odds texts prefixed with
                 // the die value(s) their Die group renders.
                 txt = FillPromptGaps(tmp, txt);
+                txt = SubstituteGamepadPhrases(txt);
                 string die = DiePrefix(tmp.transform, panel);
                 if (die != null) txt = die + txt;
                 if (!parts.Contains(txt)) parts.Add(txt);
@@ -692,19 +693,54 @@ namespace CSAccess
 
         // ---------- F4: tutorial glyph + die-odds transcodes ----------
 
-        /// <summary>Controller words for rendered prompt glyph children (render-honest:
-        /// the game shows gamepad glyphs; keyboard equivalents are an input-contract
-        /// design question, not a transcode).</summary>
+        /// <summary>B2 (owner ruling 2026-07-21): prompt glyphs speak the MOD's keys,
+        /// not the gamepad vocabulary — the game believes a controller is present
+        /// because the mod itself holds the flag (load-bearing: the dice picker and
+        /// the whole selection machinery are gamepad-gated, B2 desk check), so its
+        /// prompts can never be right for this player. Semantic mapping per the
+        /// README key table; the F4 calibration logging stays for verification.</summary>
         private static readonly Dictionary<string, string> PromptWords =
             new Dictionary<string, string>
             {
-                { "A Prompt", "the A button" },
-                { "B Prompt", "the B button" },
-                { "X Prompt", "the X button" },
-                { "Y Prompt", "the Y button" },
-                { "DPAD", "the D-pad" },
-                { "Stick", "the stick" },
+                { "A Prompt", "Enter" },
+                { "B Prompt", "Backspace" },
+                { "X Prompt", "the O key" },
+                { "Y Prompt", "the O key" },
+                { "DPAD", "the arrow keys" },
+                { "Stick", "the arrow keys" },
             };
+
+        /// <summary>B2 second layer: gamepad vocabulary the game AUTHORS as words
+        /// (specimens: "the A button and the D-pad", "L1" drives, "R1" character,
+        /// "the X button" cloud). Replaced with the mod's keys at announce time.
+        /// Longest-first order so button phrases beat bare shoulder tokens.</summary>
+        private static readonly string[,] GamepadPhrases =
+        {
+            { "the A button", "Enter" },
+            { "the B button", "Backspace" },
+            { "the X button", "the O key" },
+            { "the Y button", "the O key" },
+            { "the D-pad", "the arrow keys" },
+            { "the left stick", "the arrow keys" },
+            { "the right stick", "the arrow keys" },
+            { "the stick", "the arrow keys" },
+            { "L1", "the J key" },
+            { "R1", "the U key" },
+        };
+
+        private static string SubstituteGamepadPhrases(string txt)
+        {
+            for (int i = 0; i < GamepadPhrases.GetLength(0); i++)
+            {
+                string from = GamepadPhrases[i, 0];
+                if (txt.IndexOf(from, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+                txt = System.Text.RegularExpressions.Regex.Replace(txt,
+                    System.Text.RegularExpressions.Regex.Escape(from),
+                    GamepadPhrases[i, 1],
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            }
+            return txt;
+        }
 
         /// <summary>Fills a prompt-glyph text's whitespace gaps ("select it with
         /// [gap] and [gap]") with its rendered prompt children's controller names,

@@ -35,6 +35,11 @@ namespace CSAccess.Speech
 
         private static readonly Regex TagPattern = new Regex("<[^>]{1,64}?>", RegexOptions.Compiled);
         private static readonly Regex SpacePattern = new Regex("[ \t]{2,}", RegexOptions.Compiled);
+        /// <summary>B2/C6: punctuation stutters — sprite-boundary seams ("action,.
+        /// select") and authored double periods ("actions..") — collapse to the run's
+        /// first mark. Spaces between marks count as part of the run (", ." shapes).</summary>
+        private static readonly Regex StutterPattern =
+            new Regex("([.,])(?:\\s*[.,])+", RegexOptions.Compiled);
 
         public static void Init()
         {
@@ -196,6 +201,7 @@ namespace CSAccess.Speech
             text = text.Replace('�', '\'');
             text = TagPattern.Replace(text, " ");
             text = text.Replace('\n', ' ').Replace('\r', ' ').Replace('\t', ' ');
+            text = StutterPattern.Replace(text, "$1");
             text = SpacePattern.Replace(text, " ").Trim();
             return text.Length == 0 ? null : text;
         }
