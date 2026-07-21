@@ -93,23 +93,33 @@ namespace CSAccess.Game
         public static void OnBeat()
         {
             _beatWindowUntil = Time.unscaledTime + 3f;
+            _flushNotBefore = Time.unscaledTime + 1.5f;
             Diff();
-            TryFlush();
         }
+
+        private static float _flushNotBefore;
 
         public static void Tick()
         {
             if (_known == null) { TryBaseline(); return; }
-            if (_diffDueAt > 0f && Time.unscaledTime >= _diffDueAt)
+            // Signal-due diffs wait for the world to be AT REST (first census ride:
+            // a conversation walks its character canvas through unlisted scene
+            // states — diffing mid-scene recorded a phantom "-C:DRAGOS"; cycle
+            // turnover churns canvases the same way). The due-stamp holds until
+            // rest, so no signal is ever lost.
+            if (_diffDueAt > 0f && Time.unscaledTime >= _diffDueAt && WorldAtRest())
             {
                 _diffDueAt = -1f;
                 Diff();
             }
-            // Flush inside the beat window only: a change the beat's own diff missed
-            // (canvas poll latency) still lands on that beat's tail; outside the
-            // window it waits for the next beat or an N press (owner design — no
-            // dead-air announcements).
-            if (Pending.Count > 0 && Time.unscaledTime < _beatWindowUntil)
+            // Flush inside the beat window only, and not before the settle lead-in:
+            // the beat's own diff can see mid-teardown state (the phantom above);
+            // the lead-in gives the canvases' return-to-listed a moment to cancel
+            // it out of the pending batch before anything speaks. Outside the
+            // window a change waits for the next beat or an N press (owner design
+            // — no dead-air announcements).
+            if (Pending.Count > 0 && Time.unscaledTime < _beatWindowUntil
+                && Time.unscaledTime >= _flushNotBefore)
                 TryFlush();
             if (Pending.Count > 0 && _pendingSince > 0f && !_staleLogged
                 && Time.unscaledTime - _pendingSince > 30f)
@@ -154,9 +164,40 @@ namespace CSAccess.Game
             if (surface != Mode.Station && surface != Mode.ActionView && surface != Mode.Cloud)
                 return;
             var snap = Snapshot();
-            if (snap == null) return;
-            _known = snap;
-            Plugin.Log.LogInfo("[Census] baseline: " + snap.Count + " node(s), silent.");
+            if (snap == null) { _candidate = null; return; }
+            // Stability requirement (first census ride: baselining the first
+            // non-empty snapshot caught the save-load settle at 4 nodes and then
+            // recorded the rest of the station coming up as nine phantom
+            // "appearances"): the baseline locks only when two consecutive
+            // snapshots 2 s apart agree — a station at rest, not one mid-boot.
+            if (_candidate != null && SameKeys(_candidate, snap))
+            {
+                _candidate = null;
+                _known = snap;
+                Plugin.Log.LogInfo("[Census] baseline: " + snap.Count + " node(s), silent (stable x2).");
+                return;
+            }
+            _candidate = snap;
+        }
+
+        private static Dictionary<string, string> _candidate;
+
+        private static bool SameKeys(Dictionary<string, string> a, Dictionary<string, string> b)
+        {
+            if (a.Count != b.Count) return false;
+            foreach (var k in a.Keys)
+                if (!b.ContainsKey(k)) return false;
+            return true;
+        }
+
+        /// <summary>World-truth gate for diffing: conversations walk character
+        /// canvases through unlisted scene states and cycle turnover churns the
+        /// set — mid-flight reads are not story truth.</summary>
+        private static bool WorldAtRest()
+        {
+            if (Patches.ConversationEvents.ConversationActive) return false;
+            var mode = ModeModel.Current();
+            return mode != Mode.CycleTransition && mode != Mode.Autoplay;
         }
 
         /// <summary>Key -> display name off the atlas (camera-independent by

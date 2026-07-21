@@ -154,7 +154,11 @@ namespace CSAccess.UI
             // 2026-07-20): cryo controller / item slot (Item Cost) / die slot; plain
             // activate otherwise. Prefix match fixes the cloud numbered-slot miss
             // ("Gamepad Dice Slot 1" read as plain activate — s8 finding).
-            sb.Append(". ").Append(TakesLine(root) ?? "Enter to activate");
+            // Requires grammar (owner ruling, session-12 ride): the detail read
+            // conforms to the table's Requires cell — "Takes a die" retired.
+            string requiresPhrase = RequiresPhrase(root);
+            sb.Append(". ").Append(requiresPhrase != null
+                ? "Requires " + requiresPhrase : "Enter to activate");
 
             // Cloud node die demand (BL-12): the gating fact, graphics-only on the card.
             string demand = HackingDemand(root);
@@ -258,6 +262,19 @@ namespace CSAccess.UI
         /// Action Cryo Controller (Cryo Cost + rendered Cost Label); item slots carry
         /// Item Cost > 0 (Check Amount reads the INV_* held count); die slots are the
         /// same machinery without a cost; null = plain activate. Wording provisional.</summary>
+        /// <summary>The verb-free requirements phrase (owner ruling, session-12
+        /// ride): TakesLine's decode with the verb normalized away, so headers and
+        /// composers add their own "Requires" exactly once — "a die" / "an item,
+        /// cost 2" / "15 cryo, discounted".</summary>
+        public static string RequiresPhrase(Transform actionRoot)
+        {
+            string takes = TakesLine(actionRoot);
+            if (takes == null) return null;
+            if (takes.StartsWith("Takes ")) return takes.Substring("Takes ".Length);
+            if (takes.StartsWith("Costs ")) return takes.Substring("Costs ".Length);
+            return takes;
+        }
+
         public static string TakesLine(Transform actionRoot)
         {
             foreach (var t in actionRoot.GetComponentsInChildren<Transform>(true))

@@ -39,8 +39,7 @@ namespace CSAccess.UI
             public const string NotActivatable = "Action card disabled.";
             public const string HeaderName = "Name";
             public const string HeaderProgress = "Progress";
-            public const string HeaderSkill = "Skill";
-            public const string HeaderTakes = "Takes";
+            public const string HeaderRequires = "Requires";
             public const string HeaderRisk = "Risk";
             public const string HeaderCost = "Cost";
             public const string HeaderPredicted = "Predicted";
@@ -55,10 +54,13 @@ namespace CSAccess.UI
         private static bool _inClocks;
         // Full facet set as columns (owner ruling: full read on row switch, table
         // broken out by risk, cost, narrative block, ...).
+        // Requires merges the old Skill and Takes cells (owner ruling, session-12
+        // ride: one requirements cell — die/item first, skill rank after, no verb
+        // echo under the header; "Takes: Takes a die" was the heard dupe).
         // Predicted rides between Cost and Narrative (Intuit perk 1: the PREDICTIVE
         // display is render-gated — the cell is silent until the perk is bought).
         private static readonly string[] Headers =
-            { W.HeaderName, W.HeaderSkill, W.HeaderRisk, W.HeaderTakes, W.HeaderCost,
+            { W.HeaderName, W.HeaderRequires, W.HeaderRisk, W.HeaderCost,
               W.HeaderPredicted, W.HeaderNarrative };
         // Clock rows are real rows too (owner ruling, live 2026-07-20): whole row
         // auto-reads on row switch, and the narrative block is its own cell.
@@ -268,15 +270,14 @@ namespace CSAccess.UI
         {
             var sb = new System.Text.StringBuilder(ActionName(root));
             var selectable = FindCardButton(root);
-            string skill = Cell(root, 1);
+            string requires = Cell(root, 1);
             string risk = Cell(root, 2);
-            string takes = Cell(root, 3);
-            string cost = Cell(root, 4);
-            string predicted = Cell(root, 5);
-            string narrative = Cell(root, 6);
-            if (skill != null) sb.Append(". ").Append(skill);
-            if (risk != null) sb.Append(", ").Append(risk);
-            sb.Append(". ").Append(takes ?? W.EnterToActivate).Append('.');
+            string cost = Cell(root, 3);
+            string predicted = Cell(root, 4);
+            string narrative = Cell(root, 5);
+            sb.Append(". ").Append(requires != null
+                ? W.HeaderRequires + " " + requires : W.EnterToActivate).Append('.');
+            if (risk != null) sb.Append(' ').Append(risk).Append('.');
             // Disabled rows carry the reason (owner ruling 2026-07-20).
             if (selectable == null)
                 sb.Append(' ').Append(Describe.DisabledReason(root) ?? W.NotActivatable);
@@ -287,12 +288,25 @@ namespace CSAccess.UI
             return sb.ToString();
         }
 
+        /// <summary>The merged requirements cell (owner ruling): what the action
+        /// takes — die or item — then the skill rank, comma-joined, no verb under
+        /// the header. Cryo costs read as their bare amount ("15 cryo").</summary>
+        private static string RequiresCell(Transform root)
+        {
+            var parts = new List<string>();
+            string takes = Describe.RequiresPhrase(root);
+            if (takes != null) parts.Add(takes);
+            string skill = Describe.SkillLine(root);
+            if (skill != null) parts.Add(skill);
+            return parts.Count > 0 ? string.Join(", ", parts) : null;
+        }
+
         private static string Cell(Transform root, int col)
         {
             switch (col)
             {
                 case 0: return ActionRow(root);
-                case 1: return Describe.SkillLine(root);
+                case 1: return RequiresCell(root);
                 case 2:
                 {
                     // Risk cell carries the type badge too (fresh-run F10):
@@ -306,9 +320,8 @@ namespace CSAccess.UI
                             : badge.ToLowerInvariant();
                     return risk;
                 }
-                case 3: return Describe.TakesLine(root);
-                case 4: return Describe.TextContaining(root, "PER CYCLE");
-                case 5: return Describe.PredictiveLine(root);
+                case 3: return Describe.TextContaining(root, "PER CYCLE");
+                case 4: return Describe.PredictiveLine(root);
                 default: return Describe.TextUnder(root, "Description");
             }
         }
