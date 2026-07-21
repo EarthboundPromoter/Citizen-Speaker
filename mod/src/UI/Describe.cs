@@ -63,7 +63,10 @@ namespace CSAccess.UI
 
             if (name.StartsWith("Slot ") && int.TryParse(name.Substring(5), out int slotNum))
             {
-                string contents = JoinTexts(go, 5);
+                // Owner ruling (session 11): proper order — class, then cycle,
+                // labeled — instead of the prefab's hierarchy order. Raw join
+                // remains the fallback (empty slots, unexpected shapes).
+                string contents = SaveSlotContents(go) ?? JoinTexts(go, 5);
                 return "Save slot " + slotNum + (contents != null ? ", " + contents : "");
             }
 
@@ -459,6 +462,51 @@ namespace CSAccess.UI
             for (var cur = go.transform; cur != null; cur = cur.parent)
                 if (cur.name == name) return true;
             return false;
+        }
+
+        /// <summary>Save-slot contents in proper order (owner ruling, session 11):
+        /// "Class: MACHINIST. Cycle: 8." — the class word is one of the three
+        /// rendered class names, the cycle rides a CYCLE text (inline number or a
+        /// bare label paired with a standalone number); anything else trails in
+        /// render order. Null when neither anchor is found (caller falls back).</summary>
+        private static string SaveSlotContents(GameObject slot)
+        {
+            string cls = null, cycleInline = null, number = null;
+            bool cycleWord = false;
+            var extras = new System.Collections.Generic.List<string>();
+            foreach (var tmp in slot.GetComponentsInChildren<TMP_Text>(false))
+            {
+                string txt = tmp.text?.Trim();
+                if (string.IsNullOrEmpty(txt)) continue;
+                string up = txt.ToUpperInvariant();
+                if (up == "OPERATOR" || up == "EXTRACTOR" || up == "MACHINIST")
+                    cls = txt;
+                else if (up == "CYCLE")
+                    cycleWord = true;
+                else if (up.Contains("CYCLE"))
+                    cycleInline = txt;
+                else if (int.TryParse(txt, out _))
+                    number = txt;
+                else if (!extras.Contains(txt))
+                    extras.Add(txt);
+            }
+            string cycle = cycleInline != null
+                ? cycleInline
+                : cycleWord && number != null ? "CYCLE " + number
+                : null;
+            if (cls == null && cycle == null) return null;
+            var sb = new System.Text.StringBuilder();
+            if (cls != null) sb.Append("Class: ").Append(cls).Append(". ");
+            if (cycle != null)
+            {
+                string upCycle = cycle.ToUpperInvariant();
+                sb.Append("Cycle: ").Append(upCycle.StartsWith("CYCLE")
+                    ? cycle.Substring(5).Trim() : cycle).Append(". ");
+            }
+            else if (number != null)
+                extras.Insert(0, number);
+            foreach (var extra in extras) sb.Append(extra).Append(". ");
+            return sb.ToString().TrimEnd();
         }
 
         /// <summary>Join up to maxParts distinct child texts, e.g. a save slot's contents.</summary>
