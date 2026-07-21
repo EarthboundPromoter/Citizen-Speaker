@@ -200,10 +200,18 @@ namespace CSAccess.UI
 
         private static void RefreshTick()
         {
-            if (!_entered || Modality.NavIdiom.Native) return;
-            if (Modality.ModeModel.Surface() != Modality.Mode.Station) return;
             if (Time.unscaledTime < _nextRefresh) return;
             _nextRefresh = Time.unscaledTime + RefreshInterval;
+            FoldFresh();
+        }
+
+        /// <summary>Rebuild the atlas and fold it in, preserving the current row by
+        /// identity. Shared by the background tick and the per-keypress path; an
+        /// empty scan never degrades the table.</summary>
+        private static void FoldFresh()
+        {
+            if (!_entered || Modality.NavIdiom.Native) return;
+            if (Modality.ModeModel.Surface() != Modality.Mode.Station) return;
             try
             {
                 var fresh = StationAtlas.Build();
@@ -253,6 +261,18 @@ namespace CSAccess.UI
         public static bool HandleKeys()
         {
             if (Tabs.Count == 0) return false; // entry not settled yet
+
+            // Per-keypress freshness (owner ruling, session 11): every table key
+            // operates on a build made at this instant (cloud parity) — the fold
+            // re-anchors the current row by identity first, so the delta below
+            // applies to the live world. Gated on an actual keypress, never per
+            // frame (Build allocates; per-frame would be pure GC churn).
+            bool tableKey = Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.UpArrow)
+                || Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.LeftArrow)
+                || Input.GetKeyDown(KeyCode.Slash) || Input.GetKeyDown(KeyCode.Space)
+                || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+            if (!tableKey) return false;
+            FoldFresh();
 
             if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
             if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
