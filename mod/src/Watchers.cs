@@ -552,6 +552,12 @@ namespace CSAccess
         internal static readonly HashSet<string> RecentEffectClocks = new HashSet<string>();
         internal static float RecentEffectClocksAt = -10f;
 
+        /// <summary>Every effect BODY the last compose spoke (upper) — ResourceWatch's
+        /// stand-down check: an effect line that already voiced a resource means the
+        /// ambient lane stays quiet for it (A4 architecture, owner ruling).</summary>
+        internal static readonly HashSet<string> RecentEffectBodies = new HashSet<string>();
+        internal static float RecentEffectBodiesAt = -10f;
+
         /// <summary>F7 (owner ruling, fresh run 2026-07-20): effect lines compose
         /// STATE, not raw markup. Clocks → "NAME now x of y" (post-tick dial).
         /// ENERGY/CONDITION → delta + present value (condition adds the rendered
@@ -575,6 +581,10 @@ namespace CSAccess
             if (body.Length == 0) return s;
             string sign = gain >= loss ? "plus" : "minus";
             string upper = body.ToUpperInvariant();
+
+            if (Time.unscaledTime - RecentEffectBodiesAt > 2f) RecentEffectBodies.Clear();
+            RecentEffectBodies.Add(upper);
+            RecentEffectBodiesAt = Time.unscaledTime;
 
             // Segments-first (owner ruling): sign counts ARE box counts (-- ENERGY
             // = 2 boxes = 40 pts; - CONDITION = 1 box = 5 pts, live-confirmed);

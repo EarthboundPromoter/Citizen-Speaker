@@ -304,6 +304,10 @@ namespace CSAccess.UI
         // remaining points, then the perk bought when one was, then the skill value
         // after purchase; refusals stay "No change." + points) ----------
 
+        /// <summary>Stamped when the purchase compose speaks — ResourceWatch stands
+        /// down for point changes this interaction already voiced (A4 lane rule).</summary>
+        internal static float LastPurchaseSpokeAt = -10f;
+
         private static string _pointsBefore;
         private static Transform _watchRow;
         private static readonly bool[] _perkWasOwned = new bool[3];
@@ -391,6 +395,7 @@ namespace CSAccess.UI
                 if (after != null) sb.Append(' ').Append(after).Append('.');
             }
             _confirmAnnounced = false;
+            LastPurchaseSpokeAt = Time.unscaledTime;
             SpeechService.Say(sb.ToString(), Priority.Queued, "table");
             _watchRow = null;
         }
