@@ -498,13 +498,17 @@ namespace CSAccess
                     return;
 
                 case Mode.DiceAllocation:
-                    // Designed Back to the picker. KNOWN LIMITATION (2026-07-21): "Back"
-                    // from Slotted re-arms the picker cursor but does NOT unslot the die
-                    // — the die lives in the action's Gamepad Dice Slot, a separate FSM.
-                    // The reverted retract (the SendEvent("Reset") that unslotted it)
-                    // stranded the slot in Select Dice on close, breaking re-activation.
-                    // The full insert/retract/close/boost lifecycle is being mapped from
-                    // the corpus before the real retract is rewritten.
+                    // Retract/close (dice-lifecycle map 2026-07-21): "Reset" to the
+                    // ACTIVE Gamepad Dice Slot is the context-sensitive primitive —
+                    // from Select Dice 2 (die in) it unslots the die (ForceUnslotDice →
+                    // Action Controller); from Select Dice (no die) it returns the slot
+                    // to Idle. Sending it in BOTH states is the fix for the earlier
+                    // stranding — the prior helper matched only Select Dice 2, so the
+                    // close left the slot stuck in Select Dice with the picker Off.
+                    // Paired with "Back" to the picker (Slotted→Active retract, or
+                    // Active→Reselector→Off close). NEVER broadcast ForceUnslotDice —
+                    // that force-closes the whole picker.
+                    GameQueries.ActiveDiceSlot()?.SendEvent("Reset");
                     GameQueries.DiceSystemFsm()?.SendEvent("Back");
                     return;
 

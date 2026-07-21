@@ -50,6 +50,7 @@ namespace CSAccess
             CheckClassCarousel();
             CheckActionOutcomes();
             CheckDiceAllocation();
+            CheckDiceOutlook();
             CheckSoleContinue();
             CheckResponseFocus();
             CheckPauseMenu();
@@ -402,6 +403,31 @@ namespace CSAccess
         private float _lastSlottedTime = -10f;
         private float _slottedGlobalAtOpen;
         private float _lastControllerLeftIdle = -10f;
+        private float _outlookAt = -1f;
+        private int _outlookTries;
+
+        /// <summary>Deferred slot-odds read (A1, dice-lifecycle map): after "Die
+        /// slotted." fires, wait for the Die object to apply its skill boost (a
+        /// "Boost N" state) and speak the odds from the authoritative boosted
+        /// DiceValue. Retries briefly while the boost lands; cancelled if the die is
+        /// retracted (CheckDiceAllocation clears _outlookAt on leaving Slotted).</summary>
+        private void CheckDiceOutlook()
+        {
+            if (_outlookAt < 0 || Time.unscaledTime < _outlookAt) return;
+            int? v = GameQueries.SlottedBoostedDieValue();
+            if (v == null)
+            {
+                // Boost not applied yet — retry briefly, then give up (still slotted).
+                if (++_outlookTries < 20 && _diceSystemState == "Slotted")
+                { _outlookAt = Time.unscaledTime + 0.05f; return; }
+                _outlookAt = -1f;
+                return;
+            }
+            _outlookAt = -1f;
+            string outlook = Game.ActionOutcomes.OutlookLine(v.Value);
+            if (outlook != null)
+                SpeechService.Say(outlook, Priority.Queued, "dice");
+        }
 
         private const string PickerPrompt =
             "Choose a die. Arrows to choose, Enter to slot, Backspace to cancel.";
@@ -439,13 +465,14 @@ namespace CSAccess
             switch (state)
             {
                 case "Active":
+                    _outlookAt = -1f; // a retract/reopen cancels any pending odds read
                     if (previous == "Slotted")
                     {
-                        // Back from Slotted re-arms the picker cursor. It does NOT
-                        // unslot the die by itself (the die lives in the action's
-                        // slot) — so DON'T claim "Die removed" here; that was false.
-                        // Interim honest read until the corpus-mapped retract lands.
-                        SpeechService.Say(PickerPrompt, Priority.Immediate, "dice");
+                        // Retract (corrected 2026-07-21): ResolveCancel now sends Reset
+                        // to the action slot, which genuinely unslots the die — so
+                        // "Die removed" is true again. Then rerun the picker prompt.
+                        SpeechService.Say("Die removed. " + PickerPrompt,
+                            Priority.Immediate, "dice");
                     }
                     else
                     {
@@ -460,12 +487,12 @@ namespace CSAccess
                     // time a die enters the slot including replacements after a retract.
                     _lastSlottedTime = Time.unscaledTime;
                     SpeechService.Say("Die slotted.", Priority.Immediate, "dice");
-                    // A1: outlook rides the real slot, queued behind "Die slotted.",
-                    // never the hover-preview tier states. Odds from the slotted value.
-                    string outlook = Game.ActionOutcomes.OutlookLine(
-                        GameQueries.SlottedDiceValueGlobal());
-                    if (outlook != null)
-                        SpeechService.Say(outlook, Priority.Queued, "dice");
+                    // A1 (dice-lifecycle map 2026-07-21): odds from the BOOSTED
+                    // Die.DiceValue, not the race-prone SlottedDiceValueGlobal. The
+                    // boost lands ~0.1s after slot, so defer the read (CheckDiceOutlook)
+                    // until the Die reaches a Boost N state.
+                    _outlookAt = Time.unscaledTime + 0.12f;
+                    _outlookTries = 0;
                     break;
 
                 case "Off":

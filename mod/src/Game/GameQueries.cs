@@ -47,11 +47,51 @@ namespace CSAccess.Game
         /// "any non-Idle state" poll wrongly included the game's startup walk.</summary>
         public static bool CycleTransitionActive() => CycleGate.Active;
 
-        /// <summary>Durable commit signal: the game writes the slotted die's value here.</summary>
+        /// <summary>Raw/boosted two-phase global — NOT reliable at slot time (written
+        /// raw in Die.Slotted, overwritten boosted in Die.Boost, race with the tier
+        /// read). Prefer SlottedBoostedDieValue (dice-lifecycle map 2026-07-21).</summary>
         public static float SlottedDiceValueGlobal()
         {
             var v = HutongGames.PlayMaker.FsmVariables.GlobalVariables.GetFsmFloat("SlottedDiceValueGlobal");
             return v != null ? v.Value : 0f;
+        }
+
+        /// <summary>The BOOSTED face value of the currently slotted die (die + skill
+        /// modifier, clamped 0..6), read from the Die object ($SlottedDiceGlobal) once
+        /// its FSM has applied the boost (a "Boost N" state). Authoritative odds source
+        /// per the dice-lifecycle map — sidesteps the SlottedDiceValueGlobal race.
+        /// Null when nothing is slotted or the boost has not landed yet.</summary>
+        public static int? SlottedBoostedDieValue()
+        {
+            var g = HutongGames.PlayMaker.FsmVariables.GlobalVariables.GetFsmGameObject("SlottedDiceGlobal");
+            var go = g != null ? g.Value : null;
+            if (go == null) return null;
+            PlayMakerFSM dieFsm = null;
+            foreach (var f in go.GetComponents<PlayMakerFSM>())
+                if (f.FsmVariables.GetFsmFloat("DiceValue") != null) { dieFsm = f; break; }
+            if (dieFsm == null) return null;
+            // Trust the value only after the boost has been applied.
+            if (!dieFsm.ActiveStateName.StartsWith("Boost ")) return null;
+            var dv = dieFsm.FsmVariables.GetFsmFloat("DiceValue");
+            return dv != null ? (int?)Mathf.RoundToInt(dv.Value) : null;
+        }
+
+        /// <summary>The action's Gamepad Dice Slot currently in the picker flow —
+        /// "Select Dice" (choosing) or "Select Dice 2" (die slotted). Its Reset event
+        /// is context-sensitive: from Select Dice 2 it unslots the die (ForceUnslotDice
+        /// → Action Controller); from Select Dice it returns the slot to Idle. One
+        /// Reset therefore handles BOTH retract and close (dice-lifecycle map
+        /// 2026-07-21). Null when idle.</summary>
+        public static PlayMakerFSM ActiveDiceSlot()
+        {
+            foreach (var fsm in PlayMakerFSM.FsmList)
+            {
+                if (fsm == null || fsm.gameObject == null) continue;
+                if (fsm.gameObject.name != "Gamepad Dice Slot") continue;
+                var s = fsm.ActiveStateName;
+                if (s == "Select Dice" || s == "Select Dice 2") return fsm;
+            }
+            return null;
         }
 
         /// <summary>Read a PlayMaker global bool (dial read, invariant 4).</summary>
