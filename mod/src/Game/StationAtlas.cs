@@ -70,52 +70,66 @@ namespace CSAccess.Game
                 return;
             }
             foreach (Transform canvas in container)
+                CollectCanvas(canvas, characters, rows, byName);
+        }
+
+        private static void CollectCanvas(Transform canvas, bool characters,
+            List<Row> rows, Dictionary<string, Row> byName)
+        {
+            var fsm = CanvasFsm(canvas);
+            if (fsm == null)
             {
-                var fsm = CanvasFsm(canvas);
-                if (fsm == null) continue;
-                string state = fsm.ActiveStateName;
-                bool listed = characters ? CharacterListed.Contains(state)
-                                         : LocationListed.Contains(state);
-                if (!listed) continue;
-
-                string varPrefix = characters ? "Character" : "Location";
-                string name = StringVar(fsm, varPrefix + " Name");
-                if (string.IsNullOrEmpty(name)) continue; // graceful silence: unnamed template
-                string tagline = StringVar(fsm, varPrefix + " Description");
-
-                var button = FindDeep(canvas, characters ? "Character Button" : "Location Button");
-                var selectable = button != null ? button.GetComponent<Selectable>() : null;
-                var shine = FindDeep(canvas, "New Shine");
-
-                var row = new Row
-                {
-                    IsCharacter = characters,
-                    Name = Speech.SpeechService.Clean(name),
-                    Tagline = tagline != null ? Speech.SpeechService.Clean(tagline) : null,
-                    State = state,
-                    Canvas = canvas,
-                    Button = button != null ? button.gameObject : null,
-                    Interactable = selectable != null && selectable.gameObject.activeInHierarchy
-                                   && selectable.IsInteractable(),
-                    IsNew = shine != null && shine.gameObject.activeInHierarchy,
-                    Angle = MarkerAngle(button != null ? button.transform : canvas),
-                };
-                row.Zone = ZoneOf(button != null ? button.transform : canvas, row.Angle);
-
-                // Variant dedup by rendered name: the live (non-Off) variant wins; if two
-                // variants both read listed (transitional frame), keep the interactable one.
-                if (byName.TryGetValue((characters ? "C:" : "L:") + row.Name, out var existing))
-                {
-                    if (!existing.Interactable && row.Interactable)
-                    {
-                        rows[rows.IndexOf(existing)] = row;
-                        byName[(characters ? "C:" : "L:") + row.Name] = row;
-                    }
-                    continue;
-                }
-                byName[(characters ? "C:" : "L:") + row.Name] = row;
-                rows.Add(row);
+                // FSM-less grouping transform: Locations/Post Rim Gate holds the
+                // entire far station (Lowend onward, ~70 canvases) one level down
+                // (live find 2026-07-21 — Lowend rendered by the game, invisible to
+                // the whole mod). Canvases all carry the availability FSM, so
+                // recursion stops at real canvases and never walks their interiors.
+                foreach (Transform child in canvas)
+                    CollectCanvas(child, characters, rows, byName);
+                return;
             }
+            string state = fsm.ActiveStateName;
+            bool listed = characters ? CharacterListed.Contains(state)
+                                     : LocationListed.Contains(state);
+            if (!listed) return;
+
+            string varPrefix = characters ? "Character" : "Location";
+            string name = StringVar(fsm, varPrefix + " Name");
+            if (string.IsNullOrEmpty(name)) return; // graceful silence: unnamed template
+            string tagline = StringVar(fsm, varPrefix + " Description");
+
+            var button = FindDeep(canvas, characters ? "Character Button" : "Location Button");
+            var selectable = button != null ? button.GetComponent<Selectable>() : null;
+            var shine = FindDeep(canvas, "New Shine");
+
+            var row = new Row
+            {
+                IsCharacter = characters,
+                Name = Speech.SpeechService.Clean(name),
+                Tagline = tagline != null ? Speech.SpeechService.Clean(tagline) : null,
+                State = state,
+                Canvas = canvas,
+                Button = button != null ? button.gameObject : null,
+                Interactable = selectable != null && selectable.gameObject.activeInHierarchy
+                               && selectable.IsInteractable(),
+                IsNew = shine != null && shine.gameObject.activeInHierarchy,
+                Angle = MarkerAngle(button != null ? button.transform : canvas),
+            };
+            row.Zone = ZoneOf(button != null ? button.transform : canvas, row.Angle);
+
+            // Variant dedup by rendered name: the live (non-Off) variant wins; if two
+            // variants both read listed (transitional frame), keep the interactable one.
+            if (byName.TryGetValue((characters ? "C:" : "L:") + row.Name, out var existing))
+            {
+                if (!existing.Interactable && row.Interactable)
+                {
+                    rows[rows.IndexOf(existing)] = row;
+                    byName[(characters ? "C:" : "L:") + row.Name] = row;
+                }
+                return;
+            }
+            byName[(characters ? "C:" : "L:") + row.Name] = row;
+            rows.Add(row);
         }
 
         // ---------- Facet reads (cells; each cites its source in map-table-design.md) ----------
