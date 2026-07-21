@@ -386,6 +386,15 @@ namespace CSAccess.Game
             if (WarnedGroups.Contains(node.name)) return;
             foreach (Transform child in node)
             {
+                // A genuine hidden location/character ROOT follows the "* Canvas"
+                // naming convention; inner elements (Action Switch, Billboard,
+                // Marker, Clock) do not, even though they can carry a shared
+                // "Location Name" FSM var. The corpus has ZERO canvas-under-canvas
+                // nesting, so a "* Canvas" child under a skipped node is the real
+                // Post-Rim-Gate alarm — anything else (an Off location's own inner
+                // FSM elements, e.g. "Action Switch (Ankhita)") is a false positive
+                // (live 2026-07-21: Bliss's Bay 5 Canvas tripped the loose probe).
+                if (!child.name.TrimEnd().EndsWith("Canvas")) continue;
                 var childFsm = CanvasFsm(child);
                 if (childFsm == null || StringVar(childFsm, varPrefix + " Name") == null)
                     continue;
