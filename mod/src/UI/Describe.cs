@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using CSAccess.Speech;
 using TMPro;
@@ -628,6 +629,39 @@ namespace CSAccess.UI
                 if (cur.name.Contains("Gamepad Prompt") || cur.name.StartsWith("Gamepad Glyph"))
                     return true;
             return false;
+        }
+
+        /// <summary>B1: the END CYCLE effect strip renders as glyph runs and pipes
+        /// ("PER CYCLE | - - ENERGY | - CONDITION", starving variant "STARVING! |
+        /// PER CYCLE | -- CONDITION") — state-dependent survival info, not
+        /// decoration. Transcode: pipes to sentence flow, glyph runs to counts
+        /// ("Per cycle: 2 energy, 1 condition"), the game's own STARVING! word
+        /// kept verbatim. Non-strip text passes through untouched.</summary>
+        public static string TranscodeCycleStrip(string s)
+        {
+            if (s == null || s.IndexOf('|') < 0) return s;
+            var costs = new List<string>();
+            string lead = null;
+            foreach (var seg in s.Split('|'))
+            {
+                string t = seg.Trim();
+                if (t.Length == 0) continue;
+                if (t.Equals("PER CYCLE", System.StringComparison.OrdinalIgnoreCase)) continue;
+                int plus = 0, minus = 0, i = 0;
+                while (i < t.Length && (t[i] == '+' || t[i] == '-' || t[i] == ' '))
+                {
+                    if (t[i] == '+') plus++;
+                    else if (t[i] == '-') minus++;
+                    i++;
+                }
+                string word = t.Substring(i).Trim();
+                if (plus + minus == 0) { lead = t; continue; } // STARVING! and kin
+                costs.Add((plus > 0 ? "plus " : "") + (plus + minus) + " "
+                    + word.ToLowerInvariant());
+            }
+            if (costs.Count == 0) return lead ?? s;
+            return (lead != null ? lead + " " : "")
+                + "Per cycle: " + string.Join(", ", costs);
         }
 
         /// <summary>A2: the game's own localization drops the LEADING straight quote

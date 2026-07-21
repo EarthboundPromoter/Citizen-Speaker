@@ -320,7 +320,8 @@ namespace CSAccess.UI
                             : badge.ToLowerInvariant();
                     return risk;
                 }
-                case 3: return Describe.TextContaining(root, "PER CYCLE");
+                case 3: return Describe.TranscodeCycleStrip(
+                    Describe.TextContaining(root, "PER CYCLE"));
                 case 4: return Describe.PredictiveLine(root);
                 default: return Describe.TextUnder(root, "Description");
             }
