@@ -75,9 +75,26 @@ namespace CSAccess.UI
         {
             var rows = Rows();
             if (rows.Count == 0) { SpeechService.Say(W.NoQuests, Priority.Immediate, "table"); return; }
+            int prev = Mathf.Clamp(_row, 0, rows.Count - 1);
             _row = Mathf.Clamp(_row + delta, 0, rows.Count - 1);
+            // Owner ruling (session 11): the highlighted row IS the expanded row —
+            // expand on arrival, close the one we left. The visual window tracks the
+            // table cursor and Track/Abandon are always live.
+            if (_row != prev) SyncExpansion(rows[prev], rows[_row]);
+            else EnsureExpanded(rows[_row]);
             SpeechService.Say(_col == 0 ? RowReport(rows[_row])
                 : rows[_row] + ". " + CellText(rows[_row], _col), Priority.Immediate, "table");
+        }
+
+        /// <summary>Expand the arriving row; if the departed row is still pulled out
+        /// afterwards (the window is not an accordion), close it via its own heading.</summary>
+        private static void SyncExpansion(string prevQuest, string quest)
+        {
+            EnsureExpanded(quest);
+            if (prevQuest == quest) return;
+            if (FindRowActionButton(prevQuest, "TRACKING") == null) return; // already closed
+            var heading = FindHeadingButton(prevQuest);
+            if (heading != null) Navigator.Click(heading.gameObject);
         }
 
         private static void MoveCol(int delta)
