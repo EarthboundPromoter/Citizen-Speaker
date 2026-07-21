@@ -190,6 +190,64 @@ namespace CSAccess.UI
             EnterStation();
         }
 
+        // ---------- Periodic freshness (owner ruling, session 11): story spawns land
+        // mid-visit (Character: SABINE appeared while browsing and stayed invisible
+        // until the next surface change). A regular silent diff folds the world in;
+        // the current row survives by identity. Spoken appearance callouts remain the
+        // BL-16 census redesign's job.
+        private const float RefreshInterval = 2.0f;
+        private static float _nextRefresh;
+
+        private static void RefreshTick()
+        {
+            if (!_entered || Modality.NavIdiom.Native) return;
+            if (Modality.ModeModel.Surface() != Modality.Mode.Station) return;
+            if (Time.unscaledTime < _nextRefresh) return;
+            _nextRefresh = Time.unscaledTime + RefreshInterval;
+            try
+            {
+                var fresh = StationAtlas.Build();
+                if (fresh.Count == 0) return; // scene hiccup — never degrade to a husk
+                if (!RowsDiffer(fresh)) return;
+
+                string keepName = null;
+                bool keepIsChar = false;
+                int tabId = Tabs.Count > 0 ? Tabs[_tab] : 0;
+                if (tabId != -3 && _view.Count > 0 && _row < _view.Count)
+                { keepName = _view[_row].Name; keepIsChar = _view[_row].IsCharacter; }
+                string keepDrive = tabId == -3 && _row < _driveRows.Count ? _driveRows[_row] : null;
+
+                int before = _rows.Count;
+                _rows = fresh;
+                BuildTabs();
+                _tab = Mathf.Max(0, Tabs.IndexOf(tabId));
+                BuildView();
+                if (keepDrive != null)
+                    _row = Mathf.Max(0, _driveRows.IndexOf(keepDrive));
+                else if (keepName != null)
+                {
+                    int found = _view.FindIndex(r => r.Name == keepName && r.IsCharacter == keepIsChar);
+                    _row = found >= 0 ? found : Mathf.Clamp(_row, 0, Mathf.Max(0, _view.Count - 1));
+                }
+                Plugin.Log.LogInfo("[Table] refresh: rows " + before + " -> " + _rows.Count
+                    + " (position " + (keepName ?? keepDrive ?? "start") + ")");
+            }
+            catch (System.Exception e)
+            {
+                Plugin.Log.LogWarning("[Table] refresh failed: " + e.Message);
+            }
+        }
+
+        private static bool RowsDiffer(List<StationAtlas.Row> fresh)
+        {
+            if (fresh.Count != _rows.Count) return true;
+            for (int i = 0; i < fresh.Count; i++)
+                if (fresh[i].Name != _rows[i].Name || fresh[i].IsCharacter != _rows[i].IsCharacter
+                    || fresh[i].Zone != _rows[i].Zone)
+                    return true;
+            return false;
+        }
+
         // ---------- Input (routed from InputManager at the station surface) ----------
 
         public static bool HandleKeys()
@@ -210,6 +268,7 @@ namespace CSAccess.UI
         public static void Tick()
         {
             EntryTick();
+            RefreshTick();
             TickPendingCommit();
 
             // Session zone observation (Hub tab gate — the Hub has no visited flag).
