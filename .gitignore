@@ -4,4 +4,6 @@ obj/
 *.log
 logs/
 bridge/
+docs/
+tools/
 tools/analysis/corpus/*.jsonl
