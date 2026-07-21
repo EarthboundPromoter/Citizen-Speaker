@@ -235,6 +235,10 @@ namespace CSAccess.UI
 
         private static void MoveRow(int delta)
         {
+            // Moving on withdraws a pending commit (session-11 live: the 2 s timeout
+            // refusal spoke rows later, and a late-enabling target would have clicked
+            // a row the player had left).
+            _pendingCommit = null;
             if (_view.Count == 0 && Tabs[_tab] != -3)
             { SpeechService.Say(W.NoRows, Priority.Immediate, "table"); return; }
 
@@ -264,6 +268,7 @@ namespace CSAccess.UI
         private static void NextTab()
         {
             if (Tabs.Count == 0) return;
+            _pendingCommit = null;
             _tab = (_tab + 1) % Tabs.Count;
             _row = 0; _col = 0;
             int id = Tabs[_tab];
