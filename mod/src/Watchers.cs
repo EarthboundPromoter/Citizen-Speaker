@@ -50,7 +50,6 @@ namespace CSAccess
             CheckClassCarousel();
             CheckActionOutcomes();
             CheckDiceAllocation();
-            CheckPlacementNarration();
             CheckSoleContinue();
             CheckResponseFocus();
             CheckPauseMenu();
@@ -113,44 +112,6 @@ namespace CSAccess
                         Priority.Queued, "nav");
                 }
                 _warningWasOpen[name] = open;
-            }
-        }
-
-        private float _placementNarrateAt = -1f;
-
-        private static readonly string[] SlottedControllerNames =
-            { "Action Controller", "Action Cryo Controller", "Hacking Slots Controller" };
-        private static readonly HashSet<string> SlottedRestingStates = new HashSet<string>
-            { "Slotted", "Slotted Idle", "Slot1", "Slot2", "Slot3" };
-
-        /// <summary>Placement narration (owner design 2026-07-20, Speech.NarrateOnPlacement):
-        /// once the die RESTS on a card (controller settled in a Slotted-family state —
-        /// a cost bounce lands back in Idle and stays silent here; RefusalWatch owns
-        /// that moment), read the card's pre-spend text, then "Enter to start." The
-        /// post-activation resolution strings are unchanged.</summary>
-        private void CheckPlacementNarration()
-        {
-            if (_placementNarrateAt < 0 || Time.unscaledTime < _placementNarrateAt) return;
-            _placementNarrateAt = -1f;
-            if (!Plugin.NarrateOnPlacement.Value) return;
-            foreach (var rootName in new[]
-                { "Letterbox Canvas/1_Action Groups", "Letterbox Canvas/2_Hacking Action Groups" })
-            {
-                var root = GameObject.Find(rootName);
-                if (root == null) continue;
-                foreach (var fsm in root.GetComponentsInChildren<PlayMakerFSM>(false))
-                {
-                    if (System.Array.IndexOf(SlottedControllerNames, fsm.gameObject.name) < 0)
-                        continue;
-                    if (!SlottedRestingStates.Contains(fsm.ActiveStateName)) continue;
-                    var card = UI.Describe.FindActionRoot(fsm.transform);
-                    string narrative = fsm.FsmVariables.GetFsmString("Action Description")?.Value?.Trim();
-                    if (string.IsNullOrEmpty(narrative) && card != null)
-                        narrative = UI.Describe.TextUnder(card, "Description");
-                    SpeechService.Say((string.IsNullOrEmpty(narrative) ? "" : narrative + " ")
-                        + "Enter to start.", Priority.Queued, "dice");
-                    return;
-                }
             }
         }
 
@@ -462,10 +423,15 @@ namespace CSAccess
                     {
                         _lastSlottedTime = Time.unscaledTime;
                         SpeechService.Say("Die slotted.", Priority.Immediate, "dice");
-                        // Placement narration (owner design 2026-07-20, config-gated):
-                        // pre-spend text + "Enter to start." — deferred so a value-check
-                        // bounce (RefusalWatch) wins the moment instead.
-                        _placementNarrateAt = Time.unscaledTime + 0.35f;
+                        // A1 (owner ruling 2026-07-21): outlook speaks HERE, on the
+                        // real commit, queued behind "Die slotted." — never on the
+                        // hover-preview tier states. Odds from the slotted value the
+                        // filter itself switches on. Placement narration retired same
+                        // ruling (the row read already carries the narrative).
+                        string outlook = Game.ActionOutcomes.OutlookLine(
+                            GameQueries.SlottedDiceValueGlobal());
+                        if (outlook != null)
+                            SpeechService.Say(outlook, Priority.Queued, "dice");
                     }
                     else
                     {

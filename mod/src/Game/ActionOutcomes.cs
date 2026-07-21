@@ -41,21 +41,26 @@ namespace CSAccess.Game
             // word: the game renders none (render-honesty).
             Subscribe("Outcome", null);
 
-            // Slot-settle outlook (owner ruling, session 11): after a die lands, the
-            // controller's Dice Chance Filter renders one of four tier markers for
-            // the BOOSTED value (corpus: <=2 Neg, 3-4 Neu, 5 Pos, 6 Boon) — the
-            // retract-or-commit signal the player weighs before starting. Queued so
-            // it lands after "Die slotted." Wording provisional.
-            SubscribeOutlook("Neg", "Negative possible.");
-            SubscribeOutlook("Neu", "Neutral likely.");
-            SubscribeOutlook("Pos", "Positive likely.");
-            SubscribeOutlook("Boon", "Positive, best odds.");
+            // A1 (owner ruling 2026-07-21): NO tier-state subscription — the Dice
+            // Chance Filter runs on hover-preview, so state-entry outlook spoke with
+            // no die slotted and raced "Die slotted." on fast commits. The outlook
+            // now rides the actual slot commit (Watchers' picker-close decision)
+            // via OutlookLine below.
         }
 
-        private static void SubscribeOutlook(string state, string line)
+        /// <summary>A1: the slot-settle outlook as the game's own odds. The roll
+        /// states are hard-coded per boosted die value, uniform across all 119
+        /// controllers (corpus: RandomInt 1-4 + FloatSwitch): 1-2 = 50 neg / 50 neu,
+        /// 3-4 = 25/50/25, 5 = 50 neu / 50 pos, 6 = 100 pos. The dice tutorial
+        /// surfaces these numbers (owner ruling: game-stated, speakable); absent
+        /// tiers are omitted.</summary>
+        internal static string OutlookLine(float slottedValue)
         {
-            FsmSignals.Subscribe("Action Controller", state,
-                (fsm, s) => Speech.SpeechService.Say(line, Speech.Priority.Queued, "dice"));
+            if (slottedValue <= 0f) return null;
+            if (slottedValue <= 2f) return "Negative 50 percent, neutral 50 percent.";
+            if (slottedValue <= 4f) return "Negative 25 percent, neutral 50 percent, positive 25 percent.";
+            if (slottedValue <= 5f) return "Neutral 50 percent, positive 50 percent.";
+            return "Positive 100 percent.";
         }
 
         private static void Subscribe(string state, string spokenTier)
