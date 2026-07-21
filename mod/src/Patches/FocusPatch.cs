@@ -44,6 +44,10 @@ namespace CSAccess.Patches
         private static float _reanchorAt = -1f;
         private static Modality.Mode _reanchorMode = Modality.Mode.ActionView;
 
+        // Dice-allocation focus-steal recovery (owner-reported 2026-07-21).
+        private static float _lastDiceRefocus = -10f;
+        private static float _diceRefocusAt = -1f;
+
         // BL-10 freshness deferral: the Inventory Display populates a beat after the
         // cursor moves — announcing immediately would read the PREVIOUS item's name.
         // Rapid arrowing collapses to the last cursor (natural debounce).
@@ -70,6 +74,17 @@ namespace CSAccess.Patches
             {
                 _reanchorAt = -1f;
                 Modality.FocusModel.ReAnchor(_reanchorMode);
+            }
+
+            if (_diceRefocusAt >= 0 && Time.unscaledTime >= _diceRefocusAt)
+            {
+                _diceRefocusAt = -1f;
+                // Only re-grab if still allocating (the picker may have closed since).
+                if (Modality.ModeModel.Current() == Modality.Mode.DiceAllocation)
+                {
+                    PlayMakerFSM.BroadcastEvent("RefocusUI");
+                    Plugin.Log.LogInfo("[Focus] dice steal recovery: RefocusUI broadcast.");
+                }
             }
 
             if (_pendingFocus != null && Time.unscaledTime >= _pendingFocusAt)
@@ -184,6 +199,29 @@ namespace CSAccess.Patches
                         + "): " + mode + " re-anchor scheduled.");
                     return;
                 }
+            }
+
+            // Dice-allocation focus steal (owner-reported 2026-07-21, live-confirmed):
+            // slotting or retracting a die hands the EventSystem selection to the
+            // action card beneath the picker ("MANUAL SALVAGE") — the spatial
+            // selector's closest-button artifact. It steals the report to the action
+            // table AND collides mid-announce with the Immediate "Die slotted."
+            // ("MANUAL die slotted."). During allocation the picker owns focus (die
+            // cursors live under Dice UI), so mute any game-driven selection OFF the
+            // picker and broadcast the game's own RefocusUI to re-grab a die cursor.
+            // The RefocusUI schedule is rate-limited so it cannot loop; the mute is
+            // unconditional whenever we are off-picker in this mode.
+            if (!userInitiated
+                && Modality.ModeModel.Current() == Modality.Mode.DiceAllocation
+                && !Describe.HasAncestor(selected, "Dice UI"))
+            {
+                if (Time.unscaledTime - _lastDiceRefocus > 1f)
+                {
+                    _lastDiceRefocus = Time.unscaledTime;
+                    _diceRefocusAt = Time.unscaledTime + 0.1f;
+                }
+                Plugin.Log.LogInfo("[Focus] dice steal suppressed (" + selected.name + ").");
+                return;
             }
 
             int id = selected.GetInstanceID();
