@@ -487,10 +487,13 @@ namespace CSAccess
                     // Die placed (Active -> Slotted): standard slot flow, spoken every
                     // time a die enters the slot including replacements after a retract.
                     _lastSlottedTime = Time.unscaledTime;
-                    SpeechService.Say("Die slotted.", Priority.Immediate, "dice");
-                    // A1 (owner ruling 2026-07-21): watch for the game's own settled
-                    // die value and speak the odds the instant it settles (CheckDice-
-                    // Outlook) — event-driven, no fixed delay, reads FSM/Unity truth.
+                    // Owner ruling 2026-07-21: the slot-time strings ("Die slotted." +
+                    // odds) are QUEUED, not Immediate — so they render in order and
+                    // never stomp each other OR the game's own after-strings (START
+                    // ACTION), which are left to work as they always have.
+                    SpeechService.Say("Die slotted.", Priority.Queued, "dice");
+                    // Odds ride the game's own settled die value, spoken the instant it
+                    // settles (CheckDiceOutlook), also queued.
                     _outlookPending = true;
                     _outlookSince = Time.unscaledTime;
                     break;
