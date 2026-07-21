@@ -186,6 +186,22 @@ namespace CSAccess.Patches
                 }
             }
 
+            // Dice-allocation announce mute (owner-approved 2026-07-21): during the
+            // picker, the dice strings ("Die slotted." etc.) own the speech. Game-
+            // driven selection landing OFF the picker — the action card / Dice Slot
+            // Button as the die settles — announces "HULL DISSECTION…" which the
+            // Immediate "Die slotted." then stomps mid-word. Mute those (die cursors
+            // live under Dice UI and still announce). ANNOUNCE-ONLY: this does not move
+            // the EventSystem selection (unlike the reverted RefocusUI approach) — it
+            // only declines to read stray non-picker focus while allocating.
+            if (!userInitiated
+                && Modality.ModeModel.Current() == Modality.Mode.DiceAllocation
+                && !Describe.HasAncestor(selected, "Dice UI"))
+            {
+                Plugin.Log.LogInfo("[Focus] dice-allocation mute (off-picker): " + selected.name);
+                return;
+            }
+
             int id = selected.GetInstanceID();
             float now = Time.unscaledTime;
             // The cooldown exists to de-chatter game-driven reselection ping-pong;

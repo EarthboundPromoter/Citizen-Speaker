@@ -414,10 +414,13 @@ namespace CSAccess
         private void CheckDiceOutlook()
         {
             if (_outlookAt < 0 || Time.unscaledTime < _outlookAt) return;
-            int? v = GameQueries.SlottedBoostedDieValue();
+            // Wait out the boost window first (prefer the boosted "Boost N" value);
+            // after ~8 retries accept the settled "Slotted" value — zero-modifier
+            // actions (ENGINEER 0) never enter Boost N and stay in Slotted.
+            int? v = GameQueries.SlottedDieValue(acceptSlotted: _outlookTries >= 8);
             if (v == null)
             {
-                // Boost not applied yet — retry briefly, then give up (still slotted).
+                // Not settled yet — retry briefly, then give up (still slotted).
                 if (++_outlookTries < 20 && _diceSystemState == "Slotted")
                 { _outlookAt = Time.unscaledTime + 0.05f; return; }
                 _outlookAt = -1f;
