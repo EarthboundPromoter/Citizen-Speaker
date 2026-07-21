@@ -139,8 +139,20 @@ namespace CSAccess.Game
 
         // ---------- Internals ----------
 
+        private static float _nextBaselineTry;
+
         private static void TryBaseline()
         {
+            // Throttled and surface-gated (live finding, first census boot): the
+            // per-frame retry ran StationAtlas.Build at the TITLE scene, where the
+            // containers don't exist — two "[Atlas] container not found" log lines
+            // per frame for the whole menu dwell. Station-side surfaces only, at
+            // most one attempt per 2 s (the save-load window still logs, capped).
+            if (Time.unscaledTime < _nextBaselineTry) return;
+            _nextBaselineTry = Time.unscaledTime + 2f;
+            var surface = ModeModel.Surface();
+            if (surface != Mode.Station && surface != Mode.ActionView && surface != Mode.Cloud)
+                return;
             var snap = Snapshot();
             if (snap == null) return;
             _known = snap;
