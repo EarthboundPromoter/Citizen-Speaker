@@ -471,18 +471,22 @@ namespace CSAccess.UI
         /// render order. Null when neither anchor is found (caller falls back).</summary>
         private static string SaveSlotContents(GameObject slot)
         {
-            string cls = null, cycleInline = null, number = null;
-            bool cycleWord = false;
+            // Straight from the render (owner correction, session 11): the slot's
+            // own CLASS/CYCLE label texts pair with their values and are consumed —
+            // nothing invented, nothing trailing.
+            string cls = null, clsLabel = null, cycleLabel = null, cycleInline = null, number = null;
             var extras = new System.Collections.Generic.List<string>();
             foreach (var tmp in slot.GetComponentsInChildren<TMP_Text>(false))
             {
                 string txt = tmp.text?.Trim();
                 if (string.IsNullOrEmpty(txt)) continue;
                 string up = txt.ToUpperInvariant();
-                if (up == "OPERATOR" || up == "EXTRACTOR" || up == "MACHINIST")
-                    cls = txt;
+                if (up == "CLASS")
+                    clsLabel = txt;
                 else if (up == "CYCLE")
-                    cycleWord = true;
+                    cycleLabel = txt;
+                else if (up == "OPERATOR" || up == "EXTRACTOR" || up == "MACHINIST")
+                    cls = txt;
                 else if (up.Contains("CYCLE"))
                     cycleInline = txt;
                 else if (int.TryParse(txt, out _))
@@ -490,21 +494,15 @@ namespace CSAccess.UI
                 else if (!extras.Contains(txt))
                     extras.Add(txt);
             }
-            string cycle = cycleInline != null
-                ? cycleInline
-                : cycleWord && number != null ? "CYCLE " + number
-                : null;
-            if (cls == null && cycle == null) return null;
+            string cycleValue = cycleInline != null
+                ? cycleInline.Substring(cycleInline.ToUpperInvariant().IndexOf("CYCLE") + 5).Trim()
+                : number;
+            if (cls == null && cycleValue == null) return null;
             var sb = new System.Text.StringBuilder();
-            if (cls != null) sb.Append("Class: ").Append(cls).Append(". ");
-            if (cycle != null)
-            {
-                string upCycle = cycle.ToUpperInvariant();
-                sb.Append("Cycle: ").Append(upCycle.StartsWith("CYCLE")
-                    ? cycle.Substring(5).Trim() : cycle).Append(". ");
-            }
-            else if (number != null)
-                extras.Insert(0, number);
+            if (cls != null)
+                sb.Append(clsLabel ?? "Class").Append(": ").Append(cls).Append(". ");
+            if (!string.IsNullOrEmpty(cycleValue))
+                sb.Append(cycleLabel ?? "Cycle").Append(": ").Append(cycleValue).Append(". ");
             foreach (var extra in extras) sb.Append(extra).Append(". ");
             return sb.ToString().TrimEnd();
         }
