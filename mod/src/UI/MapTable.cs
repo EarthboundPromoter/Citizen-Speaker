@@ -122,6 +122,7 @@ namespace CSAccess.UI
         private static Modality.Mode _prevSurface = Modality.Mode.Title;
         private static float _surfaceAt;
         private static bool _entered;
+        private static bool _emptyAtlasLogged;
 
         private static void EntryTick()
         {
@@ -147,6 +148,22 @@ namespace CSAccess.UI
             try
             {
                 _rows = StationAtlas.Build();
+                // Boot finding (session 11 live): the mode authority reads Station
+                // during the save-load window, before the scene's containers exist —
+                // an empty atlas means "not arrived yet", never "empty station".
+                // Un-claim the entry and re-debounce until rows exist.
+                if (_rows.Count == 0)
+                {
+                    _entered = false;
+                    _surfaceAt = Time.unscaledTime;
+                    if (!_emptyAtlasLogged)
+                    {
+                        _emptyAtlasLogged = true;
+                        Plugin.Log.LogInfo("[Table] station entry deferred: atlas empty (scene still loading).");
+                    }
+                    return;
+                }
+                _emptyAtlasLogged = false;
                 BuildTabs();
                 int zone = StationAtlas.CurrentZone();
                 _tab = Mathf.Max(0, Tabs.IndexOf(zone));
