@@ -288,9 +288,26 @@ namespace CSAccess.UI
                 var itemCost = fsm != null ? fsm.FsmVariables.GetFsmFloat("Item Cost") : null;
                 if (itemCost != null && itemCost.Value > 0f)
                     return "Takes an item, cost " + Mathf.RoundToInt(itemCost.Value);
+                // Item Cost populates LAZILY (owner catches, session 11: DELIVER
+                // DATA and the cloud gates both read "Takes a die" at rest). The
+                // slot's own Check Amount state — the INV_* holdings check — is the
+                // authored marker for an item take and exists from birth.
+                if (fsm != null && HasState(fsm, "Check Amount"))
+                    return "Takes an item";
                 return "Takes a die";
             }
             return null;
+        }
+
+        private static bool HasState(PlayMakerFSM fsm, string stateName)
+        {
+            try
+            {
+                foreach (var s in fsm.FsmStates)
+                    if (s.Name == stateName) return true;
+            }
+            catch { }
+            return false;
         }
 
         /// <summary>Rendered skill word + Lua modifier bucket (public for the location
