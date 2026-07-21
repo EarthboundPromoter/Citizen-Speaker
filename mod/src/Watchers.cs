@@ -441,11 +441,11 @@ namespace CSAccess
                 case "Active":
                     if (previous == "Slotted")
                     {
-                        // Retract (Backspace from Slotted): the die returns to the pool.
-                        // Speak the removal, then rerun the picker prompt — a
-                        // replacement re-enters Slotted and gets the standard flow.
-                        SpeechService.Say("Die removed. " + PickerPrompt,
-                            Priority.Immediate, "dice");
+                        // Back from Slotted re-arms the picker cursor. It does NOT
+                        // unslot the die by itself (the die lives in the action's
+                        // slot) — so DON'T claim "Die removed" here; that was false.
+                        // Interim honest read until the corpus-mapped retract lands.
+                        SpeechService.Say(PickerPrompt, Priority.Immediate, "dice");
                     }
                     else
                     {
