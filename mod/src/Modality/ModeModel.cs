@@ -65,7 +65,7 @@ namespace CSAccess.Modality
             if (TutorialPanelActive()) return Mode.Tutorial;
             if (DialogueState.MenuOpen) return Mode.ResponseMenu;
             if (ConversationActive()) return Mode.Dialogue;
-            if (GameQueries.DiceAllocationActive() || DiceSlottedResting()) return Mode.DiceAllocation;
+            if (GameQueries.DiceAllocationActive()) return Mode.DiceAllocation;
 
             // --- End sequence (session-12 endgame decode): the Ending Controller
             //     out of its END STARTER resting poll. Below dialogue — the ending
@@ -233,13 +233,9 @@ namespace CSAccess.Modality
         /// (ConversationEvents) — reliable by construction, covers every trigger route.</summary>
         private static bool ConversationActive() => ConversationEvents.ConversationActive;
 
-        /// <summary>Dice Gamepad System resting in Slotted (die placed, awaiting activate
-        /// or retract — corpus-verified resting state) counts as allocation too.</summary>
-        private static bool DiceSlottedResting()
-        {
-            var fsm = GameQueries.DiceSystemFsm();
-            return fsm != null && fsm.ActiveStateName == "Slotted";
-        }
+        // DiceSlottedResting folded into GameQueries.DiceAllocationActive (2026-07-21):
+        // Slotted is one of the non-Off dice states that method now covers, along with
+        // Reselector and Setup that the old Active-only test dropped.
 
         /// <summary>Selection inside an Item Cursor — the game's own semi-modal watch uses
         /// exactly this name compare (brief E, inventory constraint).</summary>

@@ -433,10 +433,23 @@ namespace CSAccess.Game
             return FindFsm("Dice Gamepad System", "Dice UI");
         }
 
+        private static float _lastDiceLive = -10f;
+
+        /// <summary>Dice-allocation mode = the Dice Gamepad System doing ANYTHING but
+        /// resting Off (bridge-decoded states: Active / Slotted / Reselector / Setup).
+        /// The old "Active only" test missed Reselector (the Active->Back cancel path)
+        /// and Setup, dropping the mode mid-interaction — a Backspace retract then
+        /// misrouted and a follow-up press leaked to the action commit, spending the
+        /// slotted die (live find 2026-07-21). A short hysteresis holds the mode across
+        /// a one-frame null/empty FSM read while a die rests, so the same leak can't
+        /// open in a transition gap. Covers the whole retract-and-reselect loop.</summary>
         public static bool DiceAllocationActive()
         {
             var fsm = DiceSystemFsm();
-            return fsm != null && fsm.ActiveStateName == "Active";
+            string s = fsm != null ? fsm.ActiveStateName : null;
+            bool live = !string.IsNullOrEmpty(s) && s != "Off";
+            if (live) _lastDiceLive = Time.unscaledTime;
+            return live || Time.unscaledTime - _lastDiceLive < 0.25f;
         }
 
         /// <summary>Spoken description of the die a picker cursor stands for.

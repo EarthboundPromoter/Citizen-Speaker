@@ -403,64 +403,93 @@ namespace CSAccess
         private float _slottedGlobalAtOpen;
         private float _lastControllerLeftIdle = -10f;
 
-        /// <summary>Announce dice-allocation mode transitions. The Dice Gamepad System FSM is
-        /// Off outside the picker and Active inside it; the game selects the cursor Buttons
-        /// into the EventSystem itself, so per-die announcements ride the focus watcher
-        /// (see docs/ui-state-map.md 6b).</summary>
+        private const string PickerPrompt =
+            "Choose a die. Arrows to choose, Enter to slot, Backspace to cancel.";
+
+        /// <summary>Announce dice-allocation transitions by tracking the Dice Gamepad
+        /// System's full state set (bridge-decoded 2026-07-21: Off / Active /
+        /// Reselector / Setup / Slotted — the old "no Slotted state" belief conflated
+        /// this FSM with the Action Controller's Slot Item / Select Dice 2). The
+        /// picker's cursor Buttons are selected into the EventSystem by the game, so
+        /// per-die announcements ride the focus watcher (docs/ui-state-map.md 6b).
+        ///
+        /// Flow (owner ruling 2026-07-21): Active = picker prompt; Active->Slotted =
+        /// "Die slotted." + odds (rerun on every placement, incl. a replacement after
+        /// a retract); Slotted->Active (Backspace) = "Die removed." + picker prompt;
+        /// Slotted->Off = the spend (silent, the outcome carries it) or a bare unslot
+        /// ("Die removed."); Active/Reselector->Off = "Die picker closed.".</summary>
         private void CheckDiceAllocation()
         {
             var system = GameQueries.DiceSystemFsm();
-            if (system == null) return;
-            string state = system.ActiveStateName;
+            // A null/inactive object reads as a closed picker so the Slotted->Off
+            // transition (spend or teardown) is still processed when the UI tears down.
+            string state = system != null ? system.ActiveStateName : "Off";
+            if (string.IsNullOrEmpty(state)) state = "Off";
+
             if (!_diceStateKnown)
             {
                 _diceSystemState = state;
                 _diceStateKnown = true;
+                return; // baseline, silent
             }
-            else if (state != _diceSystemState)
+            if (state == _diceSystemState) return;
+            string previous = _diceSystemState;
+            _diceSystemState = state;
+
+            switch (state)
             {
-                string previous = _diceSystemState;
-                _diceSystemState = state;
-                if (state == "Active")
-                {
-                    _slottedGlobalAtOpen = GameQueries.SlottedDiceValueGlobal();
-                    SpeechService.Say("Choose a die. Arrows to choose, Enter to slot, Backspace to cancel.",
-                        Priority.Immediate, "dice");
-                }
-                else if (previous == "Active" && Time.unscaledTime - _lastSlottedTime > 1.5f)
-                {
-                    // The slot FSM's Slotted state is transient and the poll misses it
-                    // (triage report 13) — decide commit vs cancel from durable signals:
-                    // the slotted-value global changing, or an Action Controller leaving
-                    // Idle just now (tracked by CheckActionOutcomes).
-                    bool committed = GameQueries.SlottedDiceValueGlobal() != _slottedGlobalAtOpen
-                        || Time.unscaledTime - _lastControllerLeftIdle < 1.5f;
-                    if (committed)
+                case "Active":
+                    if (previous == "Slotted")
                     {
-                        _lastSlottedTime = Time.unscaledTime;
-                        SpeechService.Say("Die slotted.", Priority.Immediate, "dice");
-                        // A1 (owner ruling 2026-07-21): outlook speaks HERE, on the
-                        // real commit, queued behind "Die slotted." — never on the
-                        // hover-preview tier states. Odds from the slotted value the
-                        // filter itself switches on. Placement narration retired same
-                        // ruling (the row read already carries the narrative).
-                        string outlook = Game.ActionOutcomes.OutlookLine(
-                            GameQueries.SlottedDiceValueGlobal());
-                        if (outlook != null)
-                            SpeechService.Say(outlook, Priority.Queued, "dice");
+                        // Retract (Backspace from Slotted): the die returns to the pool.
+                        // Speak the removal, then rerun the picker prompt — a
+                        // replacement re-enters Slotted and gets the standard flow.
+                        SpeechService.Say("Die removed. " + PickerPrompt,
+                            Priority.Immediate, "dice");
                     }
                     else
                     {
+                        // Picker opened (Off / Setup / Reselector -> Active).
+                        _slottedGlobalAtOpen = GameQueries.SlottedDiceValueGlobal();
+                        SpeechService.Say(PickerPrompt, Priority.Immediate, "dice");
+                    }
+                    break;
+
+                case "Slotted":
+                    // Die placed (Active -> Slotted): standard slot flow, spoken every
+                    // time a die enters the slot including replacements after a retract.
+                    _lastSlottedTime = Time.unscaledTime;
+                    SpeechService.Say("Die slotted.", Priority.Immediate, "dice");
+                    // A1: outlook rides the real slot, queued behind "Die slotted.",
+                    // never the hover-preview tier states. Odds from the slotted value.
+                    string outlook = Game.ActionOutcomes.OutlookLine(
+                        GameQueries.SlottedDiceValueGlobal());
+                    if (outlook != null)
+                        SpeechService.Say(outlook, Priority.Queued, "dice");
+                    break;
+
+                case "Off":
+                    if (previous == "Slotted")
+                    {
+                        // Slotted -> Off is the spend (action confirmed, UI torn down —
+                        // an Action Controller leaves Idle) or ForceUnslotDice (safety
+                        // unslot, no outcome). The outcome announce carries the spend;
+                        // a bare unslot speaks its own removal.
+                        bool spent = Time.unscaledTime - _lastControllerLeftIdle < 1.5f
+                            || GameQueries.SlottedDiceValueGlobal() != _slottedGlobalAtOpen;
+                        if (!spent)
+                            SpeechService.Say("Die removed.", Priority.Immediate, "dice");
+                    }
+                    else if (previous == "Active" || previous == "Reselector")
+                    {
+                        // Picker cancelled without slotting.
                         SpeechService.Say("Die picker closed.", Priority.Immediate, "dice");
                     }
-                }
-            }
+                    // previous == "Setup": startup teardown, silent.
+                    break;
 
-            // Commit vs cancel is decided above from durable signals; the real commit
-            // states are Slot Item / Select Dice 2 (brief G#1 — a "Slotted" state never
-            // existed; the poll that watched for it here was dead code and is removed).
-            // Migrating this window to FsmSignals on the real states is the W4 wording
-            // item, held with the "Die slotted." calibration family (BL-11/BL-12).
+                // Reselector / Setup: transient, auto-FINISH to Off — no announce.
+            }
         }
 
         private Transform _driveLog;

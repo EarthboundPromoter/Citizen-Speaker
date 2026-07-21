@@ -498,8 +498,10 @@ namespace CSAccess
                     return;
 
                 case Mode.DiceAllocation:
-                    // Designed Back: retracts a resting die (Slotted -> Active) or
-                    // cancels the picker (Active -> teardown) — the FSM resolves depth.
+                    // Designed Back (FSM: Slotted --Back--> Active retracts the die;
+                    // Active --Back--> Reselector --FINISHED--> Off cancels the picker).
+                    // The mode now spans Reselector/Setup too, so this stays routed
+                    // through the whole retract-and-reselect loop (spend-leak fix).
                     GameQueries.DiceSystemFsm()?.SendEvent("Back");
                     return;
 
