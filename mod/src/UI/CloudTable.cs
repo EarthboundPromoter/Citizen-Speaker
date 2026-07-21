@@ -331,7 +331,7 @@ namespace CSAccess.UI
                     : canvas.name.TrimEnd();
                 var descVar = fsm.FsmVariables.GetFsmString("Location Description");
                 string tagline = descVar != null && !string.IsNullOrEmpty(descVar.Value)
-                    ? SpeechService.Clean(descVar.Value.Trim())
+                    ? DropPlaceholder(SpeechService.Clean(descVar.Value.Trim()))
                     : null;
 
                 var buttonT = Game.StationAtlas.FindDeep(canvas, "Location Button");
@@ -404,9 +404,20 @@ namespace CSAccess.UI
             {
                 var v = fsm.FsmVariables.GetFsmString("Action Description");
                 if (v != null && !string.IsNullOrEmpty(v.Value))
-                    return SpeechService.Clean(v.Value.Trim());
+                    return DropPlaceholder(SpeechService.Clean(v.Value.Trim()));
             }
-            return Describe.TextUnder(card, "Description");
+            return DropPlaceholder(Describe.TextUnder(card, "Description"));
+        }
+
+        /// <summary>The authored localization default "Description in text table"
+        /// leaks from unlocalized string variables (session-11 cloud live) — it is
+        /// never rendered; speak nothing instead.</summary>
+        private static string DropPlaceholder(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return null;
+            string t = s.Trim().TrimEnd('.');
+            return t.Equals("Description in text table",
+                System.StringComparison.OrdinalIgnoreCase) ? null : s;
         }
 
         /// <summary>Tracking-gated drive pips on the billboard ("&lt;DRIVE&gt; pip &lt;n&gt;"
