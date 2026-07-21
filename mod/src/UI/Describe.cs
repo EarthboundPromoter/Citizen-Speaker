@@ -285,9 +285,15 @@ namespace CSAccess.UI
         {
             var pred = Game.StationAtlas.FindDeep(actionRoot, "PREDICTIVE");
             if (pred == null || !pred.gameObject.activeInHierarchy) return null;
+            // Live finding (session 11, owner-caught): without the perk the object
+            // stays GameObject-active and hides by alpha — the active+text test spoke
+            // an invisible teaser. Same effective-alpha standard as the notification
+            // watcher and F13; per-text alpha guards color-faded glyph rows too.
+            if (EffectiveAlpha(pred) < 0.5f) return null;
             var texts = new System.Collections.Generic.List<string>();
             foreach (var tmp in pred.GetComponentsInChildren<TMPro.TMP_Text>(false))
             {
+                if (tmp.color.a < 0.05f) continue;
                 string t = tmp.text != null ? tmp.text.Trim() : null;
                 if (!string.IsNullOrEmpty(t)) texts.Add(Speech.SpeechService.Clean(t));
             }
@@ -305,6 +311,17 @@ namespace CSAccess.UI
         }
 
         private static bool _predictiveLogged;
+
+        private static float EffectiveAlpha(Transform t)
+        {
+            float a = 1f;
+            for (var cur = t; cur != null; cur = cur.parent)
+            {
+                var g = cur.GetComponent<CanvasGroup>();
+                if (g != null) a *= g.alpha;
+            }
+            return a;
+        }
 
         /// <summary>Cloud action roots break the " Action" suffix convention freely
         /// ("Yatagan Agent 1 Action " trailing space, "ConSec X3 Hack Action (2)",

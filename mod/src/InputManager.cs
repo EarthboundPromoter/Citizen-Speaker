@@ -430,7 +430,9 @@ namespace CSAccess
             int? perks = Substrate.LuaStore.PerkCount(Substrate.LuaStore.Skill.Intuit);
             if (perks != null && perks < 2)
             {
-                SpeechService.Say("Reroll requires the second Intuit perk.",
+                // Game-sanctioned label (character window, live 2026-07-20): the
+                // perk is INSTANT KARMA, Intuit's second rung.
+                SpeechService.Say("Reroll requires the Instant Karma perk.",
                     Priority.Immediate, "dice");
                 return;
             }

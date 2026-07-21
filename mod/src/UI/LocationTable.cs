@@ -124,17 +124,18 @@ namespace CSAccess.UI
             if (total == 0) return;
             _row = Mathf.Clamp(_row, 0, total - 1);
             _inClocks = ClockRowAt(_row, actions.Count);
+            // Empty cells speak a terse form (session-11 live nit: bare "Cost:").
             if (_inClocks)
             {
                 _col = Mathf.Clamp(_col + delta, 0, ClockHeaders.Length - 1);
                 SpeechService.Say(ClockHeaders[_col] + ": "
-                    + ClockCell(clocks[_row - actions.Count], _col),
+                    + (ClockCell(clocks[_row - actions.Count], _col) ?? "none"),
                     Priority.Immediate, "table");
             }
             else
             {
                 _col = Mathf.Clamp(_col + delta, 0, Headers.Length - 1);
-                SpeechService.Say(Headers[_col] + ": " + Cell(actions[_row], _col),
+                SpeechService.Say(Headers[_col] + ": " + (Cell(actions[_row], _col) ?? "none"),
                     Priority.Immediate, "table");
             }
         }
