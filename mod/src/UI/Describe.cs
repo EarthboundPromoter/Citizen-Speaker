@@ -156,12 +156,17 @@ namespace CSAccess.UI
             // ("Gamepad Dice Slot 1" read as plain activate — s8 finding).
             // Requires grammar (owner ruling, session-12 ride): the detail read
             // conforms to the table's Requires cell — "Takes a die" retired.
+            // Cloud node die demand (BL-12): the gating fact, graphics-only on the
+            // card. A demand names the exact die, so the generic "a die" beside it
+            // is the outlawed dupe ("Required die: 2. Takes a die." heard live) —
+            // the demand speaks alone.
             string requiresPhrase = RequiresPhrase(root);
-            sb.Append(". ").Append(requiresPhrase != null
-                ? "Requires " + requiresPhrase : "Enter to activate");
-
-            // Cloud node die demand (BL-12): the gating fact, graphics-only on the card.
             string demand = HackingDemand(root);
+            if (demand != null && requiresPhrase == "a die") requiresPhrase = null;
+            if (requiresPhrase != null)
+                sb.Append(". ").Append("Requires ").Append(requiresPhrase);
+            else if (demand == null)
+                sb.Append(". ").Append("Enter to activate");
             if (demand != null) sb.Append(". ").Append(demand);
 
             string buttonLabel = TextUnder(root, "Dice Slot Button");

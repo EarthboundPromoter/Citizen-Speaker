@@ -234,7 +234,9 @@ namespace CSAccess.UI
             {
                 case 0: return node.Name;
                 case 1: return node.Card != null ? DemandFor(node.Card) : null;
-                case 2: return node.Card != null ? Describe.TakesLine(node.Card) : null;
+                // Verb-free under the header (owner dupe ruling, session-12 ride:
+                // "Takes: Takes a die" heard in the card table too).
+                case 2: return node.Card != null ? Describe.RequiresPhrase(node.Card) : null;
                 default: return node.Card != null ? NarrativeFor(node.Card) : node.Narrative;
             }
         }
