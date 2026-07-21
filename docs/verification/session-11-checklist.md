@@ -1,100 +1,74 @@
-# Session 11 live checklist — D3/D4 permanent nav, reroll, title flow, perk surface
+# Session 11 checklist — D3/D4 permanent nav, reroll, title flow, perk surface
 
-Builds under test: `adc8ec9` (D3 permanent tables + D4 stacked location grid) and
-`fde6be9` (reroll hook, TitleFlow, PerkWatch, perk cells), plus the still-unverified
-run-3 batch `9fde676` (F11–F14). Deployed DLL hash-verified against `fde6be9`.
-Save: slot 1 fresh MACHINIST (cycle 4+, cloud unlocked, no perks bought yet).
+**Status at session-11 close (2026-07-20, four rides, tip `10726d7`).** Everything
+below reflects live results; the OPEN section is the carry-forward. Deployed DLL
+hash-verified = tip at close.
 
-Play-flow order. Quoted lines are the expected utterances (wording provisional —
-calibration notes welcome on any of them).
+## VERIFIED LIVE (session 11)
 
-## 1. Boot and title
+1. Title flow: no "Main menu." over the crawl; "Main menu. Press Enter to
+   start." at the landing; selection-less Enter starts. (Rides 2–4, every boot.)
+2. Station D3: settled entry announce with real rows; boot deferral while the
+   atlas is empty (fix `b532529`, proven ride 3: deferral → retry → clean entry;
+   a first-row entry self-completes via the freshness fold, "rows 1 -> 10").
+3. Window excursions (I/U/J) suspend silently, position held by identity —
+   hammered repeatedly, ride 3.
+4. F1 table grammar first + "Control X: native navigation." last. No N.
+5. Ctrl+X both directions at the station, multiple round trips; return
+   re-anchors camera-nearest and rebuilds.
+6. Table freshness: 2 s silent diff + per-keypress builds (owner ruling) —
+   mid-visit spawns (SABINE, ORT EXCHANGE, FENG) and removals (BRIGHT MARKET,
+   game-off verified via bridge: Location Contents inactive) fold in live,
+   position preserved. Pending commits withdraw on row/tab moves.
+7. D4 stacked grid: "Action cards."/"Clock cards." both crossing directions,
+   column reset, zero-actions edge (dock: first move announces "Clock cards."),
+   clock Enter display-only, slash dead at locations.
+8. Location→station and cycle-transition re-entries re-anchor and re-announce.
+9. F11 "complete" (Sabine's clock + LOCAL KNOWLEDGE effect line). F14 cryo
+   outcome (ORDER FUNGUS full compose). F13 gated tutorials (DATA ACTIONS
+   presented sanely = an F4 sample too). Starving edge ("Energy 0 of 5,
+   starving." + END CYCLE disabled reason with the game's STARVING! text).
+10. Journal: Right auto-expands, expansion follows the highlighted row,
+    Enter-on-Track live first press, three tracking swaps heard, tracked drive
+    riding the map row ("Drives GET TO KNOW EMPHIS").
+11. Cloud §11 end to end: entry announce, entry census diff ("HAVENAGE AGENT
+    moved."), per-node demands, card table (cipher commit + die nodes), Enter →
+    picker handoff → outcome, reveal callout ("Revealed: SOLHEIM NODE Æ32, …").
+    Hack cadence decoded: match validation → Ready re-arms the button → Hack
+    press → ANIMATION (owner-corrected; hacking controllers have NO tier
+    states — outlook machinery is station-only).
+12. Reroll refusal path exercised at design level; perk names all confirmed
+    against the character window (INSTANT KARMA = the reroll).
+13. Empty-cell "none" fallbacks (column and row-move paths); PREDICTIVE alpha
+    gate ("Predicted: none" while unbought — the invisible teaser silenced).
 
-1. During the company crawl: the mod-load line only ("Citizen Sleeper Access
-   loaded. Press F1 for commands."). **No "Main menu." over the crawl.**
-2. When the crawl ends and the landing fades in: "Main menu. Press Enter to
-   start."
-3. Press Enter immediately, even without touching arrows — it must start
-   (selection-less Enter clicks the landing button). Menu buttons then announce
-   on focus.
-4. Optional, later: quit to title mid-session — expect just "Main menu." (that
-   path skips splash and landing).
+## DEPLOYED, NOT YET HEARD (next boot exercises)
 
-## 2. Station — D3 permanent table
+- Save-slot label from the render: "Save slot 1, CLASS: MACHINIST. CYCLE: 8."
+  (no trailing CLASS).
+- Cloud field columns Name | Required | Drives; "Required die/dice: x, y, z"
+  self-labeled; gates/items honest: "Takes Havenage Cipher" / "Takes an item"
+  (Check Amount marker — covers DELIVER DATA at the station too).
+- "Hacked." on the cloud hack press; station slot-settle outlook ("Die
+  slotted." → "Positive likely." etc.) — wording provisional.
+- Placeholder filter ("Description in text table" spoken as nothing).
 
-5. After load: "On station.", then (~0.6 s settle) "Station table. <zone>.
-   <row>" with no key pressed.
-6. Arrows walk rows/columns, slash tabs, Space full row, Enter commits — as
-   before. **N does nothing.** Backspace speaks the leave refusal, closes
-   nothing.
-7. Excursion test: open inventory (I), move around, close (I). Return is
-   SILENT; first arrow proves the row held. Repeat quickly with U and J.
-8. F1: leads with the table grammar ("Up and Down: rows. Left and Right:
-   columns. Slash: next tab. Space: full row. Enter: activate."), no "N: map
-   table", ends "Control X: native navigation."
-9. Ctrl+X: "Native navigation." — native arrows walk markers WITH focus
-   announcements, Space describes focus. Ctrl+X again: "Station table. …"
-   re-anchored to the camera. F1 while native ends "Control X: table
-   navigation."
-10. Shift+R at station (no Intuit perks): "Reroll requires the second Intuit
-    perk."
+## OPEN (carry-forward)
 
-## 3. Location — D4 stacked grid
-
-11. Enter a location with clocks. Down-arrow through the action cards; crossing
-    into clocks announces "Clock cards. <clock row>"; crossing back announces
-    "Action cards. <action row>".
-12. Column resets at the boundary; Left/Right speak per-section headers
-    (actions: Name, Skill, Risk, Takes, Cost, Predicted, Narrative; clocks:
-    Name, Progress, Narrative).
-13. Slash at a location: nothing (freed). Enter on a clock row: nothing
-    (display-only). Enter on an action row: commits as before.
-14. Excursion at a location (I open/close): row position held (previously it
-    reset).
-15. No "Predicted" spoken anywhere yet (perk not bought — the cell is
-    render-gated).
-
-## 4. Run-3 batch carryovers (deployed last session, still unverified)
-
-16. F11: any full clock speaks "complete", never "9 of 8".
-17. F12: character window purchase — the Confirm? modal is announced with
-    "Enter to confirm, Backspace to cancel."; Backspace speaks "Cancelled.";
-    a real purchase composes points + perk + skill-after.
-18. F13: no tutorial voice mid cycle-end; tutorials speak when presented.
-19. F14: a cryo purchase (Order Fungus style) announces its outcome.
-
-## 5. Cloud — D3 permanent table + card table (§11 first exercise)
-
-20. Enter the cloud (O): settled entry (~1.2 s) "Cloud table. <row>". Census
-    stays silent if nothing changed since the baseline.
-21. Field browse: arrows move rows with camera sync; Space full row; Demand
-    speaks pre-entry ("Matches die N or M" style).
-22. Enter a node: flight quiet, settle speaks the CARD row (Name, Demand,
-    Takes, Narrative). Left/Right walk the card columns; Up/Down repeat the
-    row.
-23. Enter on the card: die picker opens and owns the keys; cancel or place —
-    returning to the card is silent.
-24. Backspace inside a node: leaves; pull-back settle speaks the field row.
-    Backspace at field level: exits the cloud.
-25. Ctrl+X round trip works in the cloud too.
-26. After a hack outcome: "Revealed: …" if reveal edges fire; placing dice via
-    the picker must NOT re-trigger the entry census.
-
-## 6. Deferred until perks are bought (future rides)
-
-- Intuit 1: Predicted cells populate (if icon-only, the log flags
-  "[Describe] PREDICTIVE renders but carries no text" — decode pass then).
-- Intuit 2: Shift+R success — "Rerolled." + new pool ~1 s later; second use
-  same cycle → "Reroll already used this cycle."
-- Engage 2: cryo costs speak the discounted number + "discounted".
-- Endure 2: dice brief appends "Perk: Hard to Kill." at the lowest condition
-  tier.
-- Proc perks (Thrill Seeker / Efficient Extractor / Transfer Intercept /
-  Icebreaker): spoken on proc; watch for double-speak with EnergyWatch on
-  Thrill Seeker.
-
-## Standing observe items (unchanged)
-
-F4 unseen-tutorial transcodes (dice-odds sprite log armed), F7b quoted clock
-names, energy "6 of 5" boost wording if heard, ENGAGE-refusal-with-points
-(likely F12-explained), drive-log alpha divergence samples.
+- F12 purchase confirm flow — needs an upgrade point to spend.
+- Cloud Ctrl+X round trip (station side proven; cloud side untried).
+- Shift+R success path + once-per-cycle refusal — needs INSTANT KARMA bought.
+- Perk-dependent: Predicted cells populated (icon-only? log flags it), Engage
+  discount word, Hard to Kill badge, proc announcements (EFFICIENT EXTRACTOR
+  owned — no proc landed in ride 4's rolls; Thrill Seeker double-speak with
+  EnergyWatch to calibrate when heard).
+- Collect press ("DATA EXTRACTED"): Sequence Complete Button logged absent
+  twice (key node + data node) — observe item stands.
+- BL-16 census redesign now TWICE-motivated (SABINE appearance, BRIGHT MARKET
+  disappearance — both silent; freshness keeps the table honest but nothing
+  announces the change).
+- P8 cost-label nit live again: "Costs INPUT 15 CRYO cryo".
+- Post-excursion native focus leak ("Location: Empty Container" through the
+  user-initiated window) — cosmetic, owner verdict pending.
+- Standing: F4 remaining unseen tutorials, F7b, energy "6 of 5" if heard,
+  drive-log alpha divergence samples.
