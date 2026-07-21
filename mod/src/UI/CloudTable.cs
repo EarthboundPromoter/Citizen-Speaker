@@ -50,12 +50,14 @@ namespace CSAccess.UI
             public const string NotActivatable = "Action card disabled.";
         }
 
-        // Demand + Narrative added on owner override 2026-07-20 ("strictly better
-        // UX"): demand speaks pre-entry from authored constants + the game's own
-        // INTERFACE-bucket count; narrative reads the card's resolved description
-        // (empty until the node's group first activates — natural boundary).
+        // Field columns trimmed to the relevant set (owner ruling, session 11):
+        // Status cut — inclusion is gated on the available family, so every row was
+        // "available" by construction; Narrative cut — un-hacked nodes haven't
+        // populated it (it lives in the card table, where it does). Demand speaks
+        // pre-entry from authored constants + the game's own INTERFACE-bucket count,
+        // self-labeled ("Required die/dice: …" / "Takes <item>").
         private static readonly string[] Headers =
-            { W.HeaderName, W.HeaderStatus, W.HeaderDemand, W.HeaderNarrative, W.HeaderDrives };
+            { W.HeaderName, W.HeaderDemand, W.HeaderDrives };
 
         // The open node's interior is the same card the field marker owns (corpus:
         // node == action, one card per group), so it reads as a ONE-ROW table
@@ -231,8 +233,7 @@ namespace CSAccess.UI
             switch (col)
             {
                 case 0: return node.Name;
-                case 1: return node.Card != null
-                    ? Describe.HackingDemand(node.Card, InterfaceBucketCount()) : null;
+                case 1: return node.Card != null ? DemandFor(node.Card) : null;
                 case 2: return node.Card != null ? Describe.TakesLine(node.Card) : null;
                 default: return node.Card != null ? NarrativeFor(node.Card) : node.Narrative;
             }
@@ -273,7 +274,11 @@ namespace CSAccess.UI
             if (rows.Count == 0) return;
             _row = Mathf.Clamp(_row, 0, rows.Count - 1);
             _col = Mathf.Clamp(_col + delta, 0, Headers.Length - 1);
-            SpeechService.Say(Headers[_col] + ": " + Cell(rows[_row], _col),
+            // The demand cell is self-labeled ("Required die: 2" / "Takes X") —
+            // no header prefix (owner ruling, session 11).
+            SpeechService.Say(_col == 1
+                    ? (Cell(rows[_row], _col) ?? "none")
+                    : Headers[_col] + ": " + (Cell(rows[_row], _col) ?? "none"),
                 Priority.Immediate, "table");
         }
 
@@ -377,11 +382,13 @@ namespace CSAccess.UI
 
         /// <summary>Demand cell (owner override: pre-entry demand is strictly better
         /// UX). Dice cards: authored Required Roll values + the INTERFACE-bucket count
-        /// when the card is dormant. Cipher/item cards: the Takes read.</summary>
+        /// when the card is dormant. Gates/item cards: the item from the card's own
+        /// action name (owner correction, session 11 — the dormant TakesLine lied
+        /// "Takes a die"); TakesLine last.</summary>
         private static string DemandFor(Transform card)
         {
             string demand = Describe.HackingDemand(card, InterfaceBucketCount());
-            return demand ?? Describe.TakesLine(card);
+            return demand ?? Describe.CloudItemTake(card) ?? Describe.TakesLine(card);
         }
 
         private static int InterfaceBucketCount()
@@ -435,14 +442,14 @@ namespace CSAccess.UI
         }
 
         /// <summary>Full read on row switch: name (tagline riding, station ruling) +
-        /// populated facets.</summary>
+        /// populated facets. Narrative and status dropped (owner ruling, session 11
+        /// — see the column registry note).</summary>
         private static string RowRead(Node n)
         {
             var sb = new System.Text.StringBuilder(n.Name);
             if (n.Tagline != null) sb.Append(". ").Append(n.Tagline);
             if (n.Open) sb.Append(". ").Append(W.StatusOpen);
             if (n.Demand != null) sb.Append(". ").Append(n.Demand);
-            if (n.Narrative != null) sb.Append(". ").Append(n.Narrative);
             if (n.Drives != null) sb.Append(". ").Append(W.HeaderDrives).Append(' ').Append(n.Drives);
             return sb.ToString() + ".";
         }
@@ -452,9 +459,7 @@ namespace CSAccess.UI
             switch (col)
             {
                 case 0: return RowRead(n);
-                case 1: return n.Open ? W.StatusOpen : W.StatusAvailable;
-                case 2: return n.Demand;
-                case 3: return n.Narrative;
+                case 1: return n.Demand;
                 default: return n.Drives ?? W.NoDrives;
             }
         }

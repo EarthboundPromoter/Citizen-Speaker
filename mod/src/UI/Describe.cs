@@ -231,9 +231,27 @@ namespace CSAccess.UI
                 values.Add(v.ToString());
             }
             if (values.Count == 0) return null;
-            if (values.Count == 1) return "Matches die " + values[0];
-            return "Matches die " + string.Join(", ", values.GetRange(0, values.Count - 1))
-                + " or " + values[values.Count - 1];
+            // Wording (owner ruling, session 11): "Required die/dice: x, y, z" —
+            // self-labeled, so table columns speak it without a header prefix.
+            if (values.Count == 1) return "Required die: " + values[0];
+            return "Required dice: " + string.Join(", ", values);
+        }
+
+        /// <summary>Cloud gate/item take (owner correction, session 11: gates take
+        /// ITEMS, not dice — "Takes a die" was the dormant-card fallback lying). The
+        /// authored requirement lives in an action parameter we cannot read at rest,
+        /// but the card's own action name carries it: "Slot Havenage Cipher Action".
+        /// Transcodes to "Takes HAVENAGE CIPHER"; null when the pattern is absent.</summary>
+        public static string CloudItemTake(Transform actionRoot)
+        {
+            string name = TextUnder(actionRoot, "Action Name")
+                          ?? actionRoot.name.TrimEnd();
+            if (string.IsNullOrEmpty(name)) return null;
+            name = name.Trim();
+            if (name.EndsWith(" Action")) name = name.Substring(0, name.Length - 7);
+            if (!name.ToUpperInvariant().StartsWith("SLOT ")) return null;
+            string item = name.Substring(5).Trim();
+            return item.Length > 0 ? "Takes " + item : null;
         }
 
         /// <summary>The card's take-kind, structurally distinguished: cryo cards run
