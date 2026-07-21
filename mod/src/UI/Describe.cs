@@ -289,9 +289,18 @@ namespace CSAccess.UI
                     var fsm = t.GetComponent<PlayMakerFSM>();
                     var label = fsm != null ? fsm.FsmVariables.GetFsmString("Cost Label") : null;
                     var cost = fsm != null ? fsm.FsmVariables.GetFsmFloat("Cryo Cost") : null;
-                    string amount = label != null && !string.IsNullOrEmpty(label.Value)
-                        ? label.Value.Trim()
-                        : cost != null ? Mathf.RoundToInt(cost.Value).ToString() : null;
+                    // P8 (heard three rides): the label renders the full prompt text
+                    // ("INPUT 100 CRYO") and our "Costs ... cryo" frame doubled its
+                    // words. The label's own number is the rendered amount — speak
+                    // that; whole label only when it carries no number.
+                    string amount = null;
+                    if (label != null && !string.IsNullOrEmpty(label.Value))
+                    {
+                        var num = System.Text.RegularExpressions.Regex.Match(label.Value, "\\d+");
+                        amount = num.Success ? num.Value : label.Value.Trim();
+                    }
+                    if (amount == null && cost != null)
+                        amount = Mathf.RoundToInt(cost.Value).ToString();
                     string line = amount != null ? "Costs " + amount + " cryo" : "Costs cryo";
                     // ENGAGE perk 2 (corpus): the controller cuts the cost 20%,
                     // rewrites the rendered label with the new number, and shows a
