@@ -419,15 +419,24 @@ namespace CSAccess
             if (!_outlookPending) return;
             if (_diceSystemState != "Slotted") { _outlookPending = false; return; }
             int? v = GameQueries.SettledSlottedDieValue();
-            if (v == null)
-            {
-                if (Time.unscaledTime - _outlookSince > 0.6f) _outlookPending = false;
-                return;
-            }
+            bool timedOut = Time.unscaledTime - _outlookSince > 0.6f;
+            if (v == null && !timedOut) return; // keep watching until it settles
             _outlookPending = false;
-            string outlook = Game.ActionOutcomes.OutlookLine(v.Value);
-            if (outlook != null)
-                SpeechService.Say(outlook, Priority.Queued, "dice");
+            // Compose the odds and the game's own START ACTION prompt as ONE queued
+            // string (owner ruling 2026-07-21): the game's focus announce for the slot
+            // button is muted, so the mod re-emits its useful tail here, guaranteeing
+            // the order "Die slotted." -> odds -> start action with nothing racing.
+            string line = v != null ? Game.ActionOutcomes.OutlookLine(v.Value) : null;
+            string start = GameQueries.SlottedActionButtonText();
+            var sb = new System.Text.StringBuilder();
+            if (!string.IsNullOrEmpty(line)) sb.Append(line);
+            if (!string.IsNullOrEmpty(start))
+            {
+                if (sb.Length > 0) sb.Append(". ");
+                sb.Append(start);
+            }
+            if (sb.Length > 0)
+                SpeechService.Say(sb.ToString(), Priority.Queued, "dice");
         }
 
         private const string PickerPrompt =

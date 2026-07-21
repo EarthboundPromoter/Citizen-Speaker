@@ -186,6 +186,21 @@ namespace CSAccess.Patches
                 }
             }
 
+            // Dice-allocation focus mute (owner ruling 2026-07-21): during the picker,
+            // the mod owns the slot-time speech. Game-driven selection landing OFF the
+            // picker — the action card / Dice Slot Button as the die settles — is muted
+            // entirely; its useful tail (START ACTION) is re-emitted by the mod at the
+            // end of the odds line, in a deterministic order. Scoped to DiceAllocation
+            // AND non-Dice-UI selection, so die cursors still announce and no other
+            // string in any other mode is affected.
+            if (!userInitiated
+                && Modality.ModeModel.Current() == Modality.Mode.DiceAllocation
+                && !Describe.HasAncestor(selected, "Dice UI"))
+            {
+                Plugin.Log.LogInfo("[Focus] dice-allocation mute (off-picker): " + selected.name);
+                return;
+            }
+
             int id = selected.GetInstanceID();
             float now = Time.unscaledTime;
             // The cooldown exists to de-chatter game-driven reselection ping-pong;

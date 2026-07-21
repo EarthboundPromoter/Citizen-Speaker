@@ -91,6 +91,23 @@ namespace CSAccess.Game
             return settled ? (int?)Mathf.RoundToInt(dv.Value) : null;
         }
 
+        /// <summary>The game's own start-action prompt text for the slotted action
+        /// (its Dice Slot Button label — "START ACTION"), read so the mod can append
+        /// it to the odds line in a deterministic order after muting the game's own
+        /// focus announce. The slotted die ($SlottedDiceGlobal) is parented under its
+        /// Action Controller, so the action root is two levels up. Null if not found.</summary>
+        public static string SlottedActionButtonText()
+        {
+            var g = HutongGames.PlayMaker.FsmVariables.GlobalVariables.GetFsmGameObject("SlottedDiceGlobal");
+            var die = g != null ? g.Value : null;
+            if (die == null) return null;
+            var ac = die.transform.parent;                       // Action Controller
+            var actionRoot = ac != null ? ac.parent : null;      // the Action
+            if (actionRoot == null) return null;
+            var btn = StationAtlas.FindDeep(actionRoot, "Dice Slot Button");
+            return btn != null ? UI.Describe.FirstText(btn.gameObject) : null;
+        }
+
         /// <summary>The action's Gamepad Dice Slot currently in the picker flow —
         /// "Select Dice" (choosing) or "Select Dice 2" (die slotted). Its Reset event
         /// is context-sensitive: from Select Dice 2 it unslots the die (ForceUnslotDice
