@@ -98,6 +98,15 @@ namespace CSAccess
                 return;
             }
 
+            // --- Credits skip (session-12 endgame decode): the game's own reveal
+            //     listens to Mouse and Joystick ONLY — keyboard cannot reach the
+            //     skip button natively. Enter mirrors the designed two-step
+            //     (reveal via the FSM's own SKip On, then click). Above the
+            //     input-pause guard: the game itself accepts skip input here. ---
+            if (mode == Mode.Credits
+                && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)))
+            { Game.EndgameWatch.SkipPress(); return; }
+
             // --- Scripted input pause: swallow game-facing keys; speech keys above still
             //     work. Exception: a tutorial continue the game itself selected. ---
             if (GameQueries.InputPaused() && !TutorialContinueFocused()) return;

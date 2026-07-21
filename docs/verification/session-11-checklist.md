@@ -60,6 +60,28 @@ hash-verified = tip at close.
   Detection = canvas availability FSM signals (camera-independent keys) with a
   3 s beat window absorbing canvas poll latency. Wording provisional.
 
+## ENDGAME PROVISIONAL BUILD (session 12, corpus-decoded, UNVERIFIABLE until an
+## ending run — wiring-predicted acceptance, W5)
+
+Decode: the Ending Controller rests in END STARTER polling Lua ENDSCENE; any
+other state = end sequence running (the endgame dial). Narrative rides dialogue
+(already read). Flux Ending Controller = variable bookkeeping only, no UI.
+Credits skip: the game's reveal listens to Mouse/Joystick ONLY — keyboard has
+no native path; Enter mirrors the designed two-step (FSM's own SKip On event,
+then click the revealed Button).
+
+Predicted, in order, on a real ending:
+1. "End sequence." once at the trigger (Music entry), after the conversation.
+2. "Credits. Enter to skip." when credits come up (Fade / Fade 2).
+3. Enter: "Skip shown. Enter again to skip." (button revealed + game-selected;
+   it re-hides after its native 5 s window).
+4. Enter again: "Skipping." then the flow's own exit.
+5. Leave flow: "Returning to the main menu." then the title landing announce.
+6. Continue flow: scene reload, "On station.", normal station re-entry.
+7. Census stands down for the whole sequence (station teardown must NOT speak
+   as removals); it re-baselines after any scene reload.
+8. L during the sequence: "End sequence." F1: the credits help line.
+
 ## OPEN (carry-forward)
 
 - F12 purchase confirm flow — needs an upgrade point to spend.

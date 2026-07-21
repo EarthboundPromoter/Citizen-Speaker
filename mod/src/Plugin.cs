@@ -66,6 +66,7 @@ namespace CSAccess
             Game.ConditionWatch.Init();
             Game.EnergyWatch.Init();
             Game.StationCensus.Init();
+            Game.EndgameWatch.Init();
             Modality.WindowState.Init();
             Modality.CloudFlight.Init();
             Game.PerkWatch.Init();

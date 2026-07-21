@@ -58,6 +58,11 @@ namespace CSAccess.Modality
             // Listening states: game-facing keys quiet; speech and queries remain.
             t[Mode.CycleTransition] = S();
             t[Mode.Autoplay] = S();
+            // End sequence (session-12 endgame decode): Enter = the credits skip
+            // (routed directly in InputManager); speech keys stay, world queries
+            // don't — the station is torn down underneath.
+            t[Mode.Credits] = new HashSet<ModKey>
+                { ModKey.Activate, ModKey.Respeak, ModKey.WhereAmI, ModKey.Help };
 
             // Pause: ReviewArrows added for the options-menu review (focus-model row 16).
             t[Mode.Pause] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.ReviewArrows);
@@ -141,6 +146,8 @@ namespace CSAccess.Modality
         /// escape hatch (an undiscoverable hatch is no hatch).</summary>
         public static string HelpFor(Mode mode)
         {
+            if (mode == Mode.Credits)
+                return "End sequence. Enter: skip credits. Z: repeat speech. L: where am I.";
             bool tableSurface = mode == Mode.ActionView
                 || (!NavIdiom.Native && (mode == Mode.Station || mode == Mode.Cloud));
             var sb = new System.Text.StringBuilder(ModeModel.Name(mode)).Append(". ");

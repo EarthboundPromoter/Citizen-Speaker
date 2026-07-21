@@ -13,6 +13,7 @@ namespace CSAccess.Modality
         Pause,
         CycleTransition,
         Autoplay,
+        Credits,
         Tutorial,
         ResponseMenu,
         Dialogue,
@@ -59,6 +60,11 @@ namespace CSAccess.Modality
             if (DialogueState.MenuOpen) return Mode.ResponseMenu;
             if (ConversationActive()) return Mode.Dialogue;
             if (GameQueries.DiceAllocationActive() || DiceSlottedResting()) return Mode.DiceAllocation;
+
+            // --- End sequence (session-12 endgame decode): the Ending Controller
+            //     out of its END STARTER resting poll. Below dialogue — the ending
+            //     conversations keep their keys — above everything ambient. ---
+            if (Game.EndgameWatch.EndgameActive()) return Mode.Credits;
 
             // --- Windows: event-driven truth (WindowState; incident 7 killed the
             //     alpha polls). One-directional exclusion only; see class doc. ---
@@ -117,6 +123,7 @@ namespace CSAccess.Modality
             Mode.Pause => "Pause menu",
             Mode.CycleTransition => "Cycle ending",
             Mode.Autoplay => "Scene playing",
+            Mode.Credits => "End sequence",
             Mode.Tutorial => "Tutorial",
             Mode.ResponseMenu => "Choosing a response",
             Mode.Dialogue => "In conversation",

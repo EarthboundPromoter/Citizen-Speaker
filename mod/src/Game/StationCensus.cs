@@ -92,6 +92,7 @@ namespace CSAccess.Game
         /// beat writes the flag; the canvas flips a beat later).</summary>
         public static void OnBeat()
         {
+            if (EndgameWatch.EndgameActive()) return; // stand down (see WorldAtRest)
             _beatWindowUntil = Time.unscaledTime + 3f;
             _flushNotBefore = Time.unscaledTime + 1.5f;
             Diff();
@@ -196,6 +197,10 @@ namespace CSAccess.Game
         private static bool WorldAtRest()
         {
             if (Patches.ConversationEvents.ConversationActive) return false;
+            // Endgame teardown deactivates the station wholesale (END CREDITS
+            // turns 2_Erlin's Eye off) — a mass-removal phantom, never story
+            // census. The census stands down for the whole end sequence.
+            if (EndgameWatch.EndgameActive()) return false;
             var mode = ModeModel.Current();
             return mode != Mode.CycleTransition && mode != Mode.Autoplay;
         }
