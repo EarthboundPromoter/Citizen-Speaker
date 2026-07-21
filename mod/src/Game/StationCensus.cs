@@ -281,6 +281,23 @@ namespace CSAccess.Game
             if (Pending.Count == 0) return;
             var mode = ModeModel.Current();
             if (mode != Mode.Station && mode != Mode.ActionView) return;
+            EmitPending();
+        }
+
+        /// <summary>A6 (session-13 ledger): the pause menu is a world-at-rest moment
+        /// and modally quiet. Changes recorded but not yet flushed — no qualifying
+        /// station beat happened before the player paused — are lost on reload (the
+        /// fresh baseline absorbs them, N-replay has no history). Flushing here
+        /// rescues them; the pause mode gate in TryFlush would otherwise never let
+        /// them out. Called on pause-open.</summary>
+        public static void FlushAtPause()
+        {
+            if (Pending.Count == 0) return;
+            EmitPending();
+        }
+
+        private static void EmitPending()
+        {
             var sb = new System.Text.StringBuilder();
             int appeared = 0, gone = 0;
             foreach (var c in Pending) { if (c.Appeared) appeared++; else gone++; }

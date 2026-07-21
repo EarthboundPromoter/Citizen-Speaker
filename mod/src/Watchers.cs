@@ -94,6 +94,10 @@ namespace CSAccess
                 }
                 SpeechService.Say("Paused." + (line != null ? " " + line + "." : ""),
                     Priority.Queued, "nav");
+                // A6: pause is a world-at-rest beat tail — flush unheard census
+                // changes now (queued behind "Paused.") so a quit from here does
+                // not silently lose them.
+                Game.StationCensus.FlushAtPause();
             }
             _pauseWasOpen = open;
         }
