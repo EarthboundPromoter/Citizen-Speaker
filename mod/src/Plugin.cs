@@ -72,8 +72,8 @@ namespace CSAccess
             Game.PerkWatch.Init();
             UI.TitleFlow.Init();
 
-            Log.LogInfo("Citizen Sleeper Access 0.8.0 loaded. Press F1 in game for commands.");
-            SpeechService.Say("Citizen Sleeper Access loaded. Press F1 for commands.", Priority.Queued, "init");
+            Log.LogInfo("Citizen Speaker 0.8.0 loaded. Press F1 in game for commands.");
+            SpeechService.Say("Citizen Speaker 0.8. Press F1 for commands.", Priority.Queued, "init");
         }
 
         private void Update()

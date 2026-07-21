@@ -51,8 +51,8 @@ From the [Steam store page](https://store.steampowered.com/app/1578650/Citizen_S
    [Releases page](https://github.com/EarthboundPromoter/Citizen-Speaker/releases/latest)
    and extract it: put `CSAccess.dll` into `BepInEx/plugins/`, and `Tolk.dll` +
    `nvdaControllerClient64.dll` beside `Citizen Sleeper.exe`.
-3. Launch the game. You'll hear "Citizen Sleeper Access loaded. Press F1 for
-   commands." To update, replace `CSAccess.dll` with the newer one.
+3. Launch the game. You'll hear "Citizen Speaker 0.8. Press F1 for commands."
+   To update, replace `CSAccess.dll` with the newer one.
 
 ## How the mod works
 
