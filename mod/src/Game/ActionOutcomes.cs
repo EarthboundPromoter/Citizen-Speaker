@@ -40,6 +40,22 @@ namespace CSAccess.Game
             // Solheim Data Action corpus decode) — always silent until now. No tier
             // word: the game renders none (render-honesty).
             Subscribe("Outcome", null);
+
+            // Slot-settle outlook (owner ruling, session 11): after a die lands, the
+            // controller's Dice Chance Filter renders one of four tier markers for
+            // the BOOSTED value (corpus: <=2 Neg, 3-4 Neu, 5 Pos, 6 Boon) — the
+            // retract-or-commit signal the player weighs before starting. Queued so
+            // it lands after "Die slotted." Wording provisional.
+            SubscribeOutlook("Neg", "Negative possible.");
+            SubscribeOutlook("Neu", "Neutral likely.");
+            SubscribeOutlook("Pos", "Positive likely.");
+            SubscribeOutlook("Boon", "Positive, best odds.");
+        }
+
+        private static void SubscribeOutlook(string state, string line)
+        {
+            FsmSignals.Subscribe("Action Controller", state,
+                (fsm, s) => Speech.SpeechService.Say(line, Speech.Priority.Queued, "dice"));
         }
 
         private static void Subscribe(string state, string spokenTier)

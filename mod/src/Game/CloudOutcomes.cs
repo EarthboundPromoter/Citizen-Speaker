@@ -47,6 +47,17 @@ namespace CSAccess.Game
                 (fsm, state) => Schedule(fsm, 0.35f));
             FsmSignals.Subscribe("Hacking Slots Controller", "Complete",
                 (fsm, state) => Schedule(fsm, 0.2f));
+
+            // The hack press (owner ruling, session 11): a matched die re-arms the
+            // slot button (Ready state, "Hacking Placed" sound), and pressing it
+            // fires Hack -> ANIMATION — the cloud's designed middle stage between
+            // placing and starting. Acknowledge with the owner's word. Slots 2/3
+            // covered for multi-dice sequence nodes.
+            foreach (var slot in new[]
+                { "Hacking Dice Slot 1", "Hacking Dice Slot 2", "Hacking Dice Slot 3" })
+                FsmSignals.Subscribe(slot, "ANIMATION",
+                    (fsm, state) => Speech.SpeechService.Say("Hacked.",
+                        Speech.Priority.Immediate, "cloud"));
         }
 
         private static void Schedule(PlayMakerFSM controller, float delay)
