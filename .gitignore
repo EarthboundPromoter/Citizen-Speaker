@@ -2,4 +2,5 @@ bin/
 obj/
 *.user
 *.log
+logs/
 tools/analysis/corpus/*.jsonl

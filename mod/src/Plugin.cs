@@ -8,7 +8,7 @@ using Priority = CSAccess.Speech.Priority;
 
 namespace CSAccess
 {
-    [BepInPlugin(Id, "Citizen Sleeper Access", "0.1.0")]
+    [BepInPlugin(Id, "Citizen Sleeper Access", "0.8.0")]
     public class Plugin : BaseUnityPlugin
     {
         public const string Id = "com.sleeperaccess.mod";
@@ -72,7 +72,7 @@ namespace CSAccess
             Game.PerkWatch.Init();
             UI.TitleFlow.Init();
 
-            Log.LogInfo("Citizen Sleeper Access 0.1.0 loaded. Press F1 in game for commands.");
+            Log.LogInfo("Citizen Sleeper Access 0.8.0 loaded. Press F1 in game for commands.");
             SpeechService.Say("Citizen Sleeper Access loaded. Press F1 for commands.", Priority.Queued, "init");
         }
 
