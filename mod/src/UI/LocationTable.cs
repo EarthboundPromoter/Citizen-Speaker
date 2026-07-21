@@ -9,11 +9,16 @@ namespace CSAccess.UI
 {
     /// <summary>
     /// The location (action view) as the third table (owner rulings 2026-07-20):
-    /// always-on while at a location — arrows walk rows, slash swaps the Actions and
-    /// Clocks tabs, Enter = row commit (one native click: die actions open allocation,
-    /// item/cryo actions run their own slot flow), Space = detail. Supersedes the
-    /// native-arrow adjacency idiom at action view and retires K here (the Clocks tab
-    /// IS the clock index — "K becomes unnecessary under a logical nav grammar").
+    /// always-on while at a location — arrows walk rows, Enter = row commit (one
+    /// native click: die actions open allocation, item/cryo actions run their own
+    /// slot flow), Space = detail. Supersedes the native-arrow adjacency idiom at
+    /// action view and retires K here (the clock rows ARE the clock index — "K
+    /// becomes unnecessary under a logical nav grammar").
+    ///
+    /// D4 (owner ruling 2026-07-20): ONE stacked grid, no tab split — action cards
+    /// on top, clock cards below; crossing the section boundary announces the
+    /// section and resets the column (the sections carry different columns). Slash
+    /// is freed at locations.
     ///
     /// The affordance cell distinguishes the three take-kinds structurally (corpus):
     /// die slots = pure dice machinery; item slots carry Item Cost + the INV_* read;
@@ -23,10 +28,9 @@ namespace CSAccess.UI
     {
         private static class W
         {
-            public const string TabActions = "Actions";
-            public const string TabClocks = "Clocks";
+            public const string SectionActions = "Action cards.";
+            public const string SectionClocks = "Clock cards.";
             public const string NoRows = "Nothing here.";
-            public const string NoClocks = "No clocks here.";
             public const string TakesDie = "Takes a die";
             public const string TakesItem = "Takes an item";
             public const string CostPrefix = "Costs ";
@@ -44,8 +48,10 @@ namespace CSAccess.UI
             public const string NowEnabled = "action card enabled";
         }
 
-        private static bool _clocksTab;
         private static int _row, _col;
+        // Section of the current row (crossing announces + resets the column —
+        // the two sections carry different columns).
+        private static bool _inClocks;
         // Full facet set as columns (owner ruling: full read on row switch, table
         // broken out by risk, cost, narrative block, ...).
         private static readonly string[] Headers =
@@ -55,11 +61,10 @@ namespace CSAccess.UI
         private static readonly string[] ClockHeaders =
             { W.HeaderName, W.HeaderProgress, W.HeaderNarrative };
 
-        public static void OnLeftLocation() { _clocksTab = false; _row = 0; _col = 0; }
+        public static void OnLeftLocation() { _inClocks = false; _row = 0; _col = 0; }
 
         public static bool HandleKeys()
         {
-            if (Input.GetKeyDown(KeyCode.Slash)) { SwapTab(); return true; }
             if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
             if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
             if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCol(1); return true; }
@@ -70,91 +75,89 @@ namespace CSAccess.UI
             return false;
         }
 
-        private static void SwapTab()
+        /// <summary>The stacked grid's row space: 0.._actions-1 are action cards,
+        /// the rest are clock cards. Rows are fetched fresh per keypress (live).</summary>
+        private static bool ClockRowAt(int row, int actionCount) => row >= actionCount;
+
+        private static void MoveRow(int delta)
         {
-            _clocksTab = !_clocksTab;
-            _row = 0; _col = 0;
-            if (_clocksTab)
+            var actions = GameQueries.GetActionPanels();
+            var clocks = GameQueries.GetClockPanels();
+            int total = actions.Count + clocks.Count;
+            if (total == 0)
+            { SpeechService.Say(W.NoRows, Priority.Immediate, "table"); return; }
+            _row = Mathf.Clamp(_row + delta, 0, total - 1);
+            bool clockRow = ClockRowAt(_row, actions.Count);
+            string prefix = "";
+            if (clockRow != _inClocks)
             {
-                var clocks = GameQueries.GetClockPanels();
-                SpeechService.Say(W.TabClocks + ". "
-                    + (clocks.Count > 0 ? ClockRow(clocks[0]) : W.NoClocks),
+                // Boundary crossing (D4): announce the section, reset the column.
+                _inClocks = clockRow;
+                _col = 0;
+                prefix = (clockRow ? W.SectionClocks : W.SectionActions) + " ";
+            }
+            if (clockRow)
+            {
+                var clock = clocks[_row - actions.Count];
+                SpeechService.Say(prefix + (_col == 0 ? ClockRow(clock)
+                    : ClockName(clock) + ". " + ClockCell(clock, _col)),
                     Priority.Immediate, "table");
             }
             else
             {
-                var actions = GameQueries.GetActionPanels();
-                SpeechService.Say(W.TabActions + ". "
-                    + (actions.Count > 0 ? ActionRow(actions[0]) : W.NoRows),
+                var action = actions[_row];
+                SpeechService.Say(prefix + (_col == 0 ? ActionRow(action)
+                    : ActionName(action) + ". " + Cell(action, _col)),
                     Priority.Immediate, "table");
             }
-        }
-
-        private static void MoveRow(int delta)
-        {
-            if (_clocksTab)
-            {
-                var clocks = GameQueries.GetClockPanels();
-                if (clocks.Count == 0)
-                { SpeechService.Say(W.NoClocks, Priority.Immediate, "table"); return; }
-                _row = Mathf.Clamp(_row + delta, 0, clocks.Count - 1);
-                SpeechService.Say(_col == 0 ? ClockRow(clocks[_row])
-                    : ClockName(clocks[_row]) + ". " + ClockCell(clocks[_row], _col),
-                    Priority.Immediate, "table");
-                return;
-            }
-            var actions = GameQueries.GetActionPanels();
-            if (actions.Count == 0)
-            { SpeechService.Say(W.NoRows, Priority.Immediate, "table"); return; }
-            _row = Mathf.Clamp(_row + delta, 0, actions.Count - 1);
-            SpeechService.Say(_col == 0 ? ActionRow(actions[_row])
-                : ActionName(actions[_row]) + ". " + Cell(actions[_row], _col),
-                Priority.Immediate, "table");
         }
 
         private static void MoveCol(int delta)
         {
-            if (_clocksTab)
-            {
-                var clocks = GameQueries.GetClockPanels();
-                if (clocks.Count == 0) return;
-                _row = Mathf.Clamp(_row, 0, clocks.Count - 1);
-                _col = Mathf.Clamp(_col + delta, 0, ClockHeaders.Length - 1);
-                SpeechService.Say(ClockHeaders[_col] + ": " + ClockCell(clocks[_row], _col),
-                    Priority.Immediate, "table");
-                return;
-            }
             var actions = GameQueries.GetActionPanels();
-            if (actions.Count == 0) return;
-            _row = Mathf.Clamp(_row, 0, actions.Count - 1);
-            _col = Mathf.Clamp(_col + delta, 0, Headers.Length - 1);
-            SpeechService.Say(Headers[_col] + ": " + Cell(actions[_row], _col),
-                Priority.Immediate, "table");
+            var clocks = GameQueries.GetClockPanels();
+            int total = actions.Count + clocks.Count;
+            if (total == 0) return;
+            _row = Mathf.Clamp(_row, 0, total - 1);
+            _inClocks = ClockRowAt(_row, actions.Count);
+            if (_inClocks)
+            {
+                _col = Mathf.Clamp(_col + delta, 0, ClockHeaders.Length - 1);
+                SpeechService.Say(ClockHeaders[_col] + ": "
+                    + ClockCell(clocks[_row - actions.Count], _col),
+                    Priority.Immediate, "table");
+            }
+            else
+            {
+                _col = Mathf.Clamp(_col + delta, 0, Headers.Length - 1);
+                SpeechService.Say(Headers[_col] + ": " + Cell(actions[_row], _col),
+                    Priority.Immediate, "table");
+            }
         }
 
         private static void Detail()
         {
-            if (_clocksTab)
+            var actions = GameQueries.GetActionPanels();
+            var clocks = GameQueries.GetClockPanels();
+            int total = actions.Count + clocks.Count;
+            if (total == 0) return;
+            _row = Mathf.Clamp(_row, 0, total - 1);
+            if (ClockRowAt(_row, actions.Count))
             {
-                var clocks = GameQueries.GetClockPanels();
-                if (clocks.Count == 0) return;
-                _row = Mathf.Clamp(_row, 0, clocks.Count - 1);
                 // ClockRow already carries the narrative (full-row ruling).
-                SpeechService.Say(ClockRow(clocks[_row]), Priority.Immediate, "table");
+                SpeechService.Say(ClockRow(clocks[_row - actions.Count]),
+                    Priority.Immediate, "table");
                 return;
             }
-            var actions = GameQueries.GetActionPanels();
-            if (actions.Count == 0) return;
-            _row = Mathf.Clamp(_row, 0, actions.Count - 1);
             SpeechService.Say(Describe.DescribeAction(actions[_row].gameObject, detailed: true),
                 Priority.Immediate, "table");
         }
 
         private static void Commit()
         {
-            if (_clocksTab) return; // clocks are display-only (corpus: no selection machinery)
             var actions = GameQueries.GetActionPanels();
-            if (actions.Count == 0) return;
+            if (actions.Count == 0 || _row >= actions.Count)
+                return; // clocks are display-only (corpus: no selection machinery)
             _row = Mathf.Clamp(_row, 0, actions.Count - 1);
             var root = actions[_row];
             // Skill-locked cards keep an interactable button and open a DOOMED picker

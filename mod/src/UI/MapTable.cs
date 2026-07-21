@@ -14,7 +14,14 @@ namespace CSAccess.UI
     /// game's own input accumulator; its FSM clamps and damps natively) and the native
     /// highlight lands via the game's own closest-claim; game-driven focus is muted
     /// while the camera settles (CloudFlight pattern). Enter anywhere in a row = one
-    /// native click. N opens/closes; Station mode only.
+    /// native click.
+    ///
+    /// D3 (owner ruling 2026-07-20): the table IS station navigation, permanently —
+    /// no open/close state, N is dead. Key routing is a plain mode gate (the
+    /// location-table shape); overlays (windows, dialogue, dice) suspend it with
+    /// position intact and no re-announcement (ModeModel.Surface); a genuine
+    /// surface entry rebuilds and announces. Ctrl+X (NavIdiom) is the sole escape
+    /// hatch to fully native navigation.
     /// </summary>
     internal static class MapTable
     {
@@ -22,7 +29,6 @@ namespace CSAccess.UI
         private static class W
         {
             public const string Opened = "Station table.";
-            public const string Closed = "Table closed.";
             public const string RowNew = "new";
             public const string RowDisabled = "disabled";
             public const string CharacterPrefix = "Character: ";
@@ -83,7 +89,11 @@ namespace CSAccess.UI
 
         // ---------- State ----------
 
-        public static bool IsOpen { get; private set; }
+        /// <summary>The permanent-nav gate (D3): table keys route whenever we are at
+        /// the station surface and the Ctrl+X escape hatch is off.</summary>
+        public static bool Active()
+            => !Modality.NavIdiom.Native
+               && Modality.ModeModel.Current() == Modality.Mode.Station;
 
         private static List<StationAtlas.Row> _rows = new List<StationAtlas.Row>();
         private static readonly List<int> Tabs = new List<int>(); // 0/1/2 zones, -2 chars, -3 drives
@@ -100,22 +110,44 @@ namespace CSAccess.UI
         private static float _pendingZoneAt = -1f;
 
         public static bool SuppressingFocus()
-            => IsOpen || Time.unscaledTime < _muteUntil;
+            => Active() || Time.unscaledTime < _muteUntil;
 
-        // ---------- Open / close ----------
+        // ---------- Surface entry (D3: rebuild + announce on a genuine arrival) ----------
+        // Overlay excursions (windows, dialogue, dice picker) never pass through
+        // here — ModeModel.Surface holds Station across them, so position and rows
+        // survive and the return is silent. A real arrival (from a location, the
+        // cloud, a cycle transition, or boot) rebuilds and announces. U/O/I/J and
+        // query keys pass through regardless (HandleKeys never consumes them).
 
-        public static void Open()
+        private static Modality.Mode _prevSurface = Modality.Mode.Title;
+        private static float _surfaceAt;
+        private static bool _entered;
+
+        private static void EntryTick()
+        {
+            var surface = Modality.ModeModel.Surface();
+            if (surface != _prevSurface)
+            {
+                _prevSurface = surface;
+                _surfaceAt = Time.unscaledTime;
+                _entered = false;
+                return;
+            }
+            if (surface != Modality.Mode.Station || _entered || Modality.NavIdiom.Native)
+                return;
+            // Settle debounce: transitional mode flickers (flights, teardown)
+            // must not announce mid-flight.
+            if (Time.unscaledTime - _surfaceAt < 0.6f) return;
+            _entered = true;
+            EnterStation();
+        }
+
+        private static void EnterStation()
         {
             try
             {
                 _rows = StationAtlas.Build();
-                if (_rows.Count == 0)
-                {
-                    SpeechService.Say(W.NoRows, Priority.Immediate, "table");
-                    return;
-                }
                 BuildTabs();
-                IsOpen = true;
                 int zone = StationAtlas.CurrentZone();
                 _tab = Mathf.Max(0, Tabs.IndexOf(zone));
                 BuildView();
@@ -127,58 +159,25 @@ namespace CSAccess.UI
             }
             catch (System.Exception e)
             {
-                // Never open silently: a failure closes clean and says so.
-                IsOpen = false;
-                Plugin.Log.LogWarning("[Table] open failed: " + e);
+                Plugin.Log.LogWarning("[Table] station entry failed: " + e);
                 SpeechService.Say("Table unavailable.", Priority.Immediate, "table");
             }
         }
 
-        public static void Close(bool announce = true)
+        /// <summary>Ctrl+X return path: re-anchor to the camera and re-announce —
+        /// native browsing moved the world under us, so a fresh build is the honest
+        /// position.</summary>
+        public static void AnnouncePosition()
         {
-            IsOpen = false;
-            _muteUntil = -1f;
-            _pendingZone = -1;
-            // D2: a close at station sticks for THIS station visit; leaving and
-            // re-entering Station mode re-arms the auto-open.
-            if (Modality.ModeModel.Current() == Modality.Mode.Station)
-                _closedThisVisit = true;
-            if (announce) SpeechService.Say(W.Closed, Priority.Immediate, "table");
+            _entered = true;
+            EnterStation();
         }
 
-        // ---------- D2 (owner ruling, run 3): the table IS the station idiom ----------
-        // Auto-open on a settled Station mode entry — no N step. N/Backspace still
-        // close (escape hatch to raw WASD + native arrows); the close holds until
-        // the next station entry. U/O/I/J and query keys pass through regardless
-        // (HandleKeys never consumes them).
-
-        private static Modality.Mode _autoPrevMode;
-        private static float _autoStableAt;
-        private static bool _closedThisVisit;
-
-        private static void AutoOpenTick()
-        {
-            var mode = Modality.ModeModel.Current();
-            if (mode != _autoPrevMode)
-            {
-                _autoPrevMode = mode;
-                _autoStableAt = Time.unscaledTime;
-                if (mode != Modality.Mode.Station) _closedThisVisit = false;
-                return;
-            }
-            if (mode != Modality.Mode.Station || IsOpen || _closedThisVisit) return;
-            // Settle debounce: transitional mode flickers (flights, teardown)
-            // must not pop the table.
-            if (Time.unscaledTime - _autoStableAt < 0.6f) return;
-            Open();
-        }
-
-        // ---------- Input (routed from InputManager while open) ----------
+        // ---------- Input (routed from InputManager at the station surface) ----------
 
         public static bool HandleKeys()
         {
-            if (Input.GetKeyDown(KeyCode.N) || Input.GetKeyDown(KeyCode.Backspace))
-            { Close(); return true; }
+            if (Tabs.Count == 0) return false; // entry not settled yet
 
             if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
             if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
@@ -193,7 +192,7 @@ namespace CSAccess.UI
 
         public static void Tick()
         {
-            AutoOpenTick();
+            EntryTick();
             TickPendingCommit();
 
             // Session zone observation (Hub tab gate — the Hub has no visited flag).
@@ -296,7 +295,6 @@ namespace CSAccess.UI
             var row = Current();
             if (LiveInteractable(row))
             {
-                Close(announce: false);
                 Navigator.Click(row.Button);
                 return;
             }
@@ -313,12 +311,11 @@ namespace CSAccess.UI
         private static void TickPendingCommit()
         {
             if (_pendingCommit == null) return;
-            if (!IsOpen) { _pendingCommit = null; return; }
+            if (!Active()) { _pendingCommit = null; return; }
             if (LiveInteractable(_pendingCommit))
             {
                 var row = _pendingCommit;
                 _pendingCommit = null;
-                Close(announce: false);
                 Navigator.Click(row.Button);
                 return;
             }

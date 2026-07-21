@@ -78,6 +78,10 @@ namespace CSAccess.Modality
 
             if (_announceAt < 0 || Time.unscaledTime < _announceAt) return;
             _announceAt = -1f;
+            // Table idiom (D3): the settled announcement is the card row (zoom-in)
+            // or the field row (pull-back), not the native focus description. The
+            // native path below survives for Ctrl+X native mode and cloud exits.
+            if (CloudTable.AnnounceSettled()) return;
             var current = Navigator.Current();
             if (current == null || !current.activeInHierarchy) return;
             Patches.FocusPatch.ClearCooldown(current);

@@ -46,7 +46,8 @@ namespace CSAccess.UI
             public const string NoDrives = "No marked nodes.";
             public const string Revealed = "Revealed: ";
             public const string Moved = " moved.";
-            public const string Closed = "Cloud table closed.";
+            public const string HeaderTakes = "Takes";
+            public const string NotActivatable = "Action card disabled.";
         }
 
         // Demand + Narrative added on owner override 2026-07-20 ("strictly better
@@ -56,8 +57,17 @@ namespace CSAccess.UI
         private static readonly string[] Headers =
             { W.HeaderName, W.HeaderStatus, W.HeaderDemand, W.HeaderNarrative, W.HeaderDrives };
 
-        public static bool IsOpen { get; private set; }
+        // The open node's interior is the same card the field marker owns (corpus:
+        // node == action, one card per group), so it reads as a ONE-ROW table
+        // (owner ruling 2026-07-20): columns over the card's facets, Enter = the
+        // card's own live button (dice slot or collect), Backspace falls through
+        // to the designed Leave.
+        private static readonly string[] CardHeaders =
+            { W.HeaderName, W.HeaderDemand, W.HeaderTakes, W.HeaderNarrative };
+
         private static int _row, _col;
+        private static string _cardNode;
+        private static int _cardCol;
 
         private struct Node
         {
@@ -66,20 +76,52 @@ namespace CSAccess.UI
             public float Z;
             public Transform Canvas;
             public GameObject Button;
+            public Transform Card;
             public bool Open;
             public string Drives;
             public string Demand;
             public string Narrative;
         }
 
-        // ---------- Open / close / keys (MapTable pattern) ----------
+        // ---------- Permanent nav (D3, MapTable pattern) ----------
 
-        public static void Open()
+        /// <summary>The permanent-nav gate: table keys route whenever we are at the
+        /// cloud surface and the Ctrl+X escape hatch is off.</summary>
+        public static bool Active()
+            => !Modality.NavIdiom.Native
+               && Modality.ModeModel.Current() == Modality.Mode.Cloud;
+
+        private static Modality.Mode _prevSurface = Modality.Mode.Title;
+        private static float _surfaceAt;
+        private static bool _entered;
+
+        private static void EntryTick()
+        {
+            var surface = Modality.ModeModel.Surface();
+            if (surface != _prevSurface)
+            {
+                _prevSurface = surface;
+                _surfaceAt = Time.unscaledTime;
+                _entered = false;
+                return;
+            }
+            if (surface != Modality.Mode.Cloud || _entered || Modality.NavIdiom.Native)
+                return;
+            // 1.2s: land AFTER the entry census's own 0.8s Text Setup settle so
+            // row names are populated and the silent baseline has run.
+            if (Time.unscaledTime - _surfaceAt < 1.2f) return;
+            // Camera flights inside the cloud keep their own mute; don't announce
+            // mid-flight.
+            if (Modality.CloudFlight.Suppressing()) return;
+            _entered = true;
+            EnterCloud();
+        }
+
+        private static void EnterCloud()
         {
             var rows = Rows();
-            IsOpen = true;
-            // Auto-select the open node's row (owner: narrative review from inside a
-            // node — N inside one lands on it).
+            // Auto-select the open node's row (owner: entering with a node already
+            // open lands on it).
             _row = 0; _col = 0;
             for (int i = 0; i < rows.Count; i++)
                 if (rows[i].Open) { _row = i; break; }
@@ -88,46 +130,41 @@ namespace CSAccess.UI
                 Priority.Immediate, "table");
         }
 
-        public static void Close(bool announce)
+        /// <summary>Ctrl+X return path: re-announce the field position.</summary>
+        public static void AnnouncePosition()
         {
-            IsOpen = false;
-            // D2: a close in the cloud sticks for THIS cloud visit; leaving and
-            // re-entering Cloud mode re-arms the auto-open.
-            if (Modality.ModeModel.Current() == Modality.Mode.Cloud)
-                _closedThisVisit = true;
-            if (announce) SpeechService.Say(W.Closed, Priority.Immediate, "table");
+            _entered = true;
+            EnterCloud();
         }
 
-        // D2 (owner ruling, run 3, MapTable pattern): the table IS the cloud idiom —
-        // auto-open on a settled Cloud entry; N/Backspace close for this visit.
-        private static Modality.Mode _autoPrevMode;
-        private static float _autoStableAt;
-        private static bool _closedThisVisit;
-
-        private static void AutoOpenTick()
+        /// <summary>Called by CloudFlight at a settled camera flight in place of its
+        /// native focus announcement: a zoom-in speaks the open node's card row, a
+        /// pull-back re-anchors on the field row. False = not ours (native mode or
+        /// cloud already gone) — CloudFlight keeps its own announcement.</summary>
+        public static bool AnnounceSettled()
         {
-            var mode = Modality.ModeModel.Current();
-            if (mode != _autoPrevMode)
+            if (!Active()) return false;
+            var rows = Rows();
+            if (rows.Count == 0) return false;
+            int open = OpenIndex(rows);
+            if (open >= 0)
             {
-                _autoPrevMode = mode;
-                _autoStableAt = Time.unscaledTime;
-                if (mode != Modality.Mode.Cloud) _closedThisVisit = false;
-                return;
+                _row = open;
+                SpeechService.Say(CardRow(rows[open]), Priority.Immediate, "table");
+                return true;
             }
-            if (mode != Modality.Mode.Cloud || IsOpen || _closedThisVisit) return;
-            // 1.2s: land AFTER the entry census's own 0.8s Text Setup settle so
-            // row names are populated and the silent baseline has run.
-            if (Time.unscaledTime - _autoStableAt < 1.2f) return;
-            // Camera flights inside the cloud keep their own mute; don't pop the
-            // table mid-flight.
-            if (Modality.CloudFlight.Suppressing()) return;
-            Open();
+            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
+            SpeechService.Say(RowRead(rows[_row]), Priority.Immediate, "table");
+            return true;
         }
 
         public static bool HandleKeys()
         {
-            if (Input.GetKeyDown(KeyCode.N) || Input.GetKeyDown(KeyCode.Backspace))
-            { Close(announce: true); return true; }
+            var rows = Rows();
+            int open = OpenIndex(rows);
+            if (open >= 0) return HandleCardKeys(rows[open]);
+            _cardNode = null;
+
             if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
             if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
             if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCol(1); return true; }
@@ -136,6 +173,81 @@ namespace CSAccess.UI
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
             { Commit(); return true; }
             return false;
+        }
+
+        // ---------- The open-node card table (one row) ----------
+
+        private static int OpenIndex(List<Node> rows)
+        {
+            for (int i = 0; i < rows.Count; i++)
+                if (rows[i].Open) return i;
+            return -1;
+        }
+
+        private static bool HandleCardKeys(Node node)
+        {
+            if (_cardNode != node.Name) { _cardNode = node.Name; _cardCol = 0; }
+
+            // One row: vertical moves are a bare repeat (dead-end idiom).
+            if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.UpArrow)
+                || Input.GetKeyDown(KeyCode.Space))
+            { SpeechService.Say(CardRow(node), Priority.Immediate, "table"); return true; }
+            if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCardCol(node, 1); return true; }
+            if (Input.GetKeyDown(KeyCode.LeftArrow)) { MoveCardCol(node, -1); return true; }
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            { CommitCard(node); return true; }
+            return false;
+        }
+
+        private static void MoveCardCol(Node node, int delta)
+        {
+            _cardCol = Mathf.Clamp(_cardCol + delta, 0, CardHeaders.Length - 1);
+            SpeechService.Say(CardHeaders[_cardCol] + ": "
+                + (CardCell(node, _cardCol) ?? "none"), Priority.Immediate, "table");
+        }
+
+        private static void CommitCard(Node node)
+        {
+            var button = CardButton(node);
+            if (button != null) { Navigator.Click(button.gameObject); return; }
+            SpeechService.Say(
+                (node.Card != null ? Describe.DisabledReason(node.Card) : null)
+                ?? W.NotActivatable, Priority.Immediate, "table");
+        }
+
+        private static Button CardButton(Node node)
+        {
+            if (node.Card == null) return null;
+            var slot = Game.StationAtlas.FindDeep(node.Card, "Dice Slot Button");
+            var b = slot != null ? slot.GetComponent<Button>() : null;
+            if (b != null && b.gameObject.activeInHierarchy && b.IsInteractable()) return b;
+            foreach (var candidate in node.Card.GetComponentsInChildren<Button>(false))
+                if (candidate.IsInteractable()) return candidate;
+            return null;
+        }
+
+        private static string CardCell(Node node, int col)
+        {
+            switch (col)
+            {
+                case 0: return node.Name;
+                case 1: return node.Card != null
+                    ? Describe.HackingDemand(node.Card, InterfaceBucketCount()) : null;
+                case 2: return node.Card != null ? Describe.TakesLine(node.Card) : null;
+                default: return node.Card != null ? NarrativeFor(node.Card) : node.Narrative;
+            }
+        }
+
+        /// <summary>Full card read: name, then populated facets in column order.</summary>
+        private static string CardRow(Node node)
+        {
+            var sb = new System.Text.StringBuilder(node.Name);
+            for (int c = 1; c < CardHeaders.Length; c++)
+            {
+                string cell = CardCell(node, c);
+                if (cell != null) sb.Append(". ").Append(cell);
+            }
+            return sb.ToString() + ".";
         }
 
         private static void MoveRow(int delta)
@@ -184,8 +296,7 @@ namespace CSAccess.UI
                 SpeechService.Say(node.Name + " is not clickable.", Priority.Immediate, "table");
                 return;
             }
-            Close(announce: false);
-            Navigator.Click(node.Button); // native camera flight; CloudFlight announces the settle
+            Navigator.Click(node.Button); // native camera flight; the settle speaks the card row
         }
 
         // ---------- Rows / cells ----------
@@ -241,6 +352,7 @@ namespace CSAccess.UI
                     Z = canvas.localPosition.z,
                     Canvas = canvas,
                     Button = buttonT != null ? buttonT.gameObject : null,
+                    Card = card,
                     Open = open,
                     Drives = DrivesFor(canvas),
                     Demand = card != null ? DemandFor(card) : null,
@@ -347,11 +459,12 @@ namespace CSAccess.UI
 
         public static void Tick()
         {
-            AutoOpenTick();
-            bool cloud = Modality.ModeModel.Current() == Modality.Mode.Cloud;
+            EntryTick();
+            // Surface-based (D3): the die picker and other overlays are excursions,
+            // not exits — the census runs only on a genuine cloud entry.
+            bool cloud = Modality.ModeModel.Surface() == Modality.Mode.Cloud;
             if (cloud && !_wasCloud)
                 _entryCensusAt = Time.unscaledTime + 0.8f; // let Text Setup settle
-            if (!cloud && IsOpen) Close(announce: false);
             _wasCloud = cloud;
 
             if (_entryCensusAt > 0 && Time.unscaledTime >= _entryCensusAt)

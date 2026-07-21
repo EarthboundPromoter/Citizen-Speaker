@@ -268,3 +268,47 @@ numbered-slot miss (cards said "Enter to activate" though they take dice).
 
 All design calls made (owner walks, 2026-07-20). Remaining before build:
 the prerequisites above, then wording calibration on first live build.
+
+## D3 — Table nav is THE idiom (owner rulings, 2026-07-20, session 11)
+
+Station and cloud tables stop being a toggleable state and become the
+permanent navigation grammar — the location-table shape applied everywhere:
+
+- **No open/close.** Key routing is a plain mode gate (`Mode.Station` /
+  `Mode.Cloud`); the D2 auto-open machinery, N-toggle, and Backspace-close
+  are deleted. **N is dead.** Backspace falls through to the designed cancel
+  (cloud: leave node / exit scan; station: the Leave refusal).
+- **Overlays are excursions, not exits** (`ModeModel.Surface()`): windows
+  (I/U/J), the die picker, dialogue, tutorials and pause suspend the table
+  with row/column/tab intact and return SILENTLY. Only a genuine surface
+  change (location↔station↔cloud, cycle transition, boot) rebuilds and
+  re-announces ("Station table. …" / "Cloud table. …"). The cloud entry
+  census is likewise surface-keyed now (die-picker returns no longer
+  re-census).
+- **Cloud node interior = a one-row table** (owner: node == action, one card
+  per group). Zoom-in settle speaks the card row (replacing CloudFlight's
+  native focus announcement); columns Name | Demand | Takes | Narrative;
+  Enter = the card's own live button (dice slot or collect); Up/Down/Space =
+  bare row repeat; Backspace = the designed Leave. Pull-back settle re-anchors
+  on the field row. Field vs card dispatch keys off the marker's own Open
+  states — the same states the flight mute clocks.
+- **Ctrl+X = the escape hatch** (deliberately buried, station + cloud, one
+  global toggle, session-only): reverts to fully native navigation — the
+  game's arrow graph through the focus fence, Space describes focus, focus
+  announcements unmuted (`SuppressingFocus` keys off the gate). Toggling back
+  re-anchors to the camera and re-announces the table. F1 lists it last
+  ("Control X: native navigation" / "… table navigation") — an
+  undiscoverable hatch is no hatch. Location table is NOT gated by it.
+- **F1 rebuilt**: station/cloud/location help leads with the table grammar as
+  the default ("Up and Down: rows. Left and Right: columns. …"), generic
+  Navigate/Activate/Describe lines dropped there.
+
+## D4 — Stacked location table (owner ruling, 2026-07-20, session 11)
+
+The Actions/Clocks tab split is gone: ONE grid, action cards on top, clock
+cards below. Crossing the boundary announces the section ("Action cards." /
+"Clock cards.") and resets the column (the sections carry different columns:
+Name|Skill|Risk|Takes|Cost|Narrative vs Name|Progress|Narrative). Slash is
+freed at locations. Clock rows stay display-only; commit on a clock row is a
+silent no-op. Rows fetch live per keypress, so counts track card
+enable/disable naturally.

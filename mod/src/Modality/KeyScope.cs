@@ -23,7 +23,6 @@ namespace CSAccess.Modality
         TutorialContinue,  // T
         NumberChoices,     // 1-9
         ReviewArrows,      // review-cursor movement in cursor-owning modes
-        MapTable,          // N — station map table (map-table-design.md)
     }
 
     /// <summary>
@@ -91,15 +90,14 @@ namespace CSAccess.Modality
             // Active -> Camera Transition 2). Without it, an open node is a trap:
             // the game disables the Scan toggle while a node is open.
             t[Mode.Cloud] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks, ModKey.Reroll,
-                ModKey.ScanToggle, ModKey.MapTable);
+                ModKey.ScanToggle);
             // K retired at action view (owner 2026-07-20): the location table's Clocks
             // tab is the clock index — "K becomes unnecessary under a logical nav
             // grammar." Arrows/Enter/Space route to LocationTable in InputManager.
             t[Mode.ActionView] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Reroll,
                 ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle);
             t[Mode.Station] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks,
-                ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle,
-                ModKey.MapTable);
+                ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle);
             return t;
         }
 
@@ -117,7 +115,6 @@ namespace CSAccess.Modality
             (ModKey.NumberChoices, "Number keys: pick a response"),
             (ModKey.TutorialContinue, "T: focus continue"),
             (ModKey.Reroll, "Shift R: reroll dice"),
-            (ModKey.MapTable, "N: map table"), // station or cloud, mode-scoped
             (ModKey.InventoryToggle, "I: inventory"),
             (ModKey.CharacterToggle, "U: character window"),
             (ModKey.DriveLogToggle, "J: drive log"),
@@ -131,13 +128,33 @@ namespace CSAccess.Modality
             (ModKey.Describe, "Space: describe focus"),
         };
 
-        /// <summary>Only the keys live on the current screen — the console glyph-bar idiom.</summary>
+        /// <summary>Only the keys live on the current screen — the console glyph-bar idiom.
+        /// D3: station, cloud and location help lead with the table grammar — the
+        /// DEFAULT navigation, not a mode — and station/cloud close with the Ctrl+X
+        /// escape hatch (an undiscoverable hatch is no hatch).</summary>
         public static string HelpFor(Mode mode)
         {
+            bool tableSurface = mode == Mode.ActionView
+                || (!NavIdiom.Native && (mode == Mode.Station || mode == Mode.Cloud));
             var sb = new System.Text.StringBuilder(ModeModel.Name(mode)).Append(". ");
+            if (tableSurface)
+            {
+                sb.Append("Up and Down: rows. Left and Right: columns. ");
+                if (mode == Mode.Station) sb.Append("Slash: next tab. ");
+                sb.Append("Space: full row. Enter: activate. ");
+            }
             foreach (var (key, help) in HelpOrder)
-                if (Allows(mode, key))
-                    sb.Append(help).Append(". ");
+            {
+                if (!Allows(mode, key)) continue;
+                // The table grammar above replaces the generic movement lines.
+                if (tableSurface && (key == ModKey.Navigate || key == ModKey.Activate
+                    || key == ModKey.Describe)) continue;
+                sb.Append(help).Append(". ");
+            }
+            if (mode == Mode.Station || mode == Mode.Cloud)
+                sb.Append(NavIdiom.Native
+                    ? "Control X: table navigation. "
+                    : "Control X: native navigation. ");
             return sb.ToString().TrimEnd();
         }
     }

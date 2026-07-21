@@ -97,40 +97,44 @@ namespace CSAccess
             //     work. Exception: a tutorial continue the game itself selected. ---
             if (GameQueries.InputPaused() && !TutorialContinueFocused()) return;
 
-            // --- Station map table (map-table-design.md): while open it owns arrows,
-            //     slash, Space, Enter, Backspace and N; speech/query keys above still
-            //     answer. Closes itself on mode change via IsOpen+mode gate. ---
-            if (MapTable.IsOpen)
+            // --- Ctrl+X (D3 escape hatch, owner ruling 2026-07-20): the deliberately
+            //     buried toggle between the permanent table idiom and fully native
+            //     navigation, station and cloud only. The return path re-anchors and
+            //     re-announces the table position (native browsing moved the world). ---
+            if (Input.GetKeyDown(KeyCode.X)
+                && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+                && (mode == Mode.Station || mode == Mode.Cloud))
             {
-                if (mode != Mode.Station) MapTable.Close(announce: false);
-                else if (MapTable.HandleKeys()) return;
+                NavIdiom.Native = !NavIdiom.Native;
+                if (NavIdiom.Native)
+                    SpeechService.Say("Native navigation.", Priority.Immediate, "nav");
+                else if (mode == Mode.Station) MapTable.AnnouncePosition();
+                else CloudTable.AnnouncePosition();
+                return;
             }
-            if (Input.GetKeyDown(KeyCode.N) && mode == Mode.Station
-                && Allowed(mode, ModKey.MapTable))
-            { MapTable.Open(); return; }
 
-            // --- Cloud table (same registry, owner walk 2026-07-20): N in cloud mode;
-            //     corridor-sorted node rows; census/reveal callouts live in its Tick. ---
-            if (CloudTable.IsOpen)
-            {
-                if (mode != Mode.Cloud) CloudTable.Close(announce: false);
-                else if (CloudTable.HandleKeys()) return;
-            }
-            if (Input.GetKeyDown(KeyCode.N) && mode == Mode.Cloud
-                && Allowed(mode, ModKey.MapTable))
-            { CloudTable.Open(); return; }
+            // --- Permanent table nav (D3): the tables ARE the station and cloud
+            //     idiom — a plain mode gate, no open/close state, N dead. Overlay
+            //     modes (windows, dialogue, dice) route past this block naturally;
+            //     U/O/I/J and query keys pass through untouched. Backspace falls
+            //     through to the designed cancel. ---
+            if (mode == Mode.Station && !NavIdiom.Native && MapTable.HandleKeys()) return;
+            if (mode == Mode.Cloud && !NavIdiom.Native && CloudTable.HandleKeys()) return;
 
-            // --- Location table (always-on at a location): arrows walk rows, slash
-            //     swaps Actions/Clocks tabs, Enter = row commit, Space = detail.
-            //     Supersedes native arrow adjacency at action view; K retired here
-            //     (owner ruling — the Clocks tab is the clock index now). ---
+            // --- Location table (always-on at a location, D4 stacked grid): arrows
+            //     walk one grid — action cards, then clock cards, section announced
+            //     at the boundary; Enter = row commit, Space = detail. Supersedes
+            //     native arrow adjacency at action view; K retired here (owner
+            //     ruling — the clock rows are the clock index now). ---
             if (mode == Mode.ActionView)
             {
                 _wasActionView = true;
                 if (LocationTable.HandleKeys()) return;
             }
-            else if (_wasActionView)
+            else if (_wasActionView && ModeModel.Surface() != Mode.ActionView)
             {
+                // Surface-based (D3): windows and dialogue at a location are
+                // excursions — position survives them; a real departure resets.
                 _wasActionView = false;
                 LocationTable.OnLeftLocation();
             }

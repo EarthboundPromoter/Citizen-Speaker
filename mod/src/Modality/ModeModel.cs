@@ -83,6 +83,32 @@ namespace CSAccess.Modality
             return Mode.Station;
         }
 
+        /// <summary>
+        /// Camera-level surface memory (D3, owner ruling 2026-07-20): overlays —
+        /// windows, the dice picker, dialogue, tutorials, pause, response menus,
+        /// autoplay — SUSPEND a surface without leaving it, so the permanent tables
+        /// keep their position across them and only rebuild/announce on a genuine
+        /// surface change (Station / ActionView / Cloud / cycle transition / title).
+        /// </summary>
+        private static Mode _surface = Mode.Title;
+
+        public static Mode Surface()
+        {
+            var m = Current();
+            switch (m)
+            {
+                case Mode.Station:
+                case Mode.ActionView:
+                case Mode.Cloud:
+                case Mode.CycleTransition:
+                case Mode.Title:
+                case Mode.CharacterSelect:
+                    _surface = m;
+                    break;
+            }
+            return _surface;
+        }
+
         /// <summary>Spoken name for refusals and the L query. Wording provisional.</summary>
         public static string Name(Mode mode) => mode switch
         {
