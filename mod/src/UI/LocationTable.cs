@@ -104,14 +104,14 @@ namespace CSAccess.UI
             {
                 var clock = clocks[_row - actions.Count];
                 SpeechService.Say(prefix + (_col == 0 ? ClockRow(clock)
-                    : ClockName(clock) + ". " + ClockCell(clock, _col)),
+                    : ClockName(clock) + ". " + (ClockCell(clock, _col) ?? "none")),
                     Priority.Immediate, "table");
             }
             else
             {
                 var action = actions[_row];
                 SpeechService.Say(prefix + (_col == 0 ? ActionRow(action)
-                    : ActionName(action) + ". " + Cell(action, _col)),
+                    : ActionName(action) + ". " + (Cell(action, _col) ?? "none")),
                     Priority.Immediate, "table");
             }
         }

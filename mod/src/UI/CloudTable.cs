@@ -263,7 +263,7 @@ namespace CSAccess.UI
             MapTable.CameraToAngle(Game.StationAtlas.MarkerAngle(
                 n.Button != null ? n.Button.transform : n.Canvas));
             SpeechService.Say(_col == 0 ? RowRead(n)
-                : n.Name + ". " + Cell(n, _col),
+                : n.Name + ". " + (Cell(n, _col) ?? "none"),
                 Priority.Immediate, "table");
         }
 
