@@ -34,6 +34,13 @@ namespace CSAccess.Patches
         }
 
         private static void OnStarted(Transform actor) => ConversationActive = true;
-        private static void OnEnded(Transform actor) => ConversationActive = false;
+
+        private static void OnEnded(Transform actor)
+        {
+            ConversationActive = false;
+            // A conversation's end is a census beat: dialogue is the canonical writer
+            // of the story flags that spawn/remove station markers (SABINE case).
+            Game.StationCensus.OnBeat();
+        }
     }
 }

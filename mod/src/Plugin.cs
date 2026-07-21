@@ -65,6 +65,7 @@ namespace CSAccess
             Game.RefusalWatch.Init();
             Game.ConditionWatch.Init();
             Game.EnergyWatch.Init();
+            Game.StationCensus.Init();
             Modality.WindowState.Init();
             Modality.CloudFlight.Init();
             Game.PerkWatch.Init();
@@ -83,6 +84,7 @@ namespace CSAccess
             Game.RefusalWatch.Tick();
             Game.ConditionWatch.Tick();
             Game.EnergyWatch.Tick();
+            Game.StationCensus.Tick();
             UI.CharacterTable.Tick();
             UI.MapTable.Tick();
             UI.JournalTable.Tick();

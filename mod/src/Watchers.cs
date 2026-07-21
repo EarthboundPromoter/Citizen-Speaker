@@ -32,7 +32,7 @@ namespace CSAccess
                 _seenPanels.Clear();
                 Patches.FocusPatch.OnSceneChanged();
                 Modality.WindowState.OnSceneChanged();
-                Game.NodeCensus.OnSceneChanged();
+                Game.StationCensus.OnSceneChanged();
                 UI.TitleFlow.OnSceneChanged();
                 // Title arrival speaks from the MAIN MENU FSM's own states (TitleFlow)
                 // — the scene loads while the engine splash still owns the screen, so

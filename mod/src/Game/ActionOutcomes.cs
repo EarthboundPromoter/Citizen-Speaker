@@ -109,6 +109,8 @@ namespace CSAccess.Game
                 // Location table post-roll callouts (clock ticks, cards flipping
                 // activatable) — owner ruling: all changes announced automatically.
                 UI.LocationTable.AfterOutcome();
+                // An outcome's tail is a census beat (outcomes write story flags).
+                StationCensus.OnBeat();
             }
         }
 

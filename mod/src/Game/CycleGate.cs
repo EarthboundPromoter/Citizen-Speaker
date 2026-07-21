@@ -33,9 +33,10 @@ namespace CSAccess.Game
                 string dice = GameQueries.DescribeDiceBrief();
                 SpeechService.Say("Cycle ended. " + (vitals ?? "") + (dice != null ? " " + dice : ""),
                     Priority.Queued, "cycle");
-                // Node additions/removals speak at the first full-control station
-                // moment (after any leading scene-beat dialogue), not here.
-                NodeCensus.MarkCycleBoundary();
+                // Cycle turnover is a census beat: population changes it caused speak
+                // at this tail (queued behind the cycle string; any leading scene-beat
+                // dialogue holds the flush until its own ended-beat).
+                StationCensus.OnBeat();
             });
         }
     }

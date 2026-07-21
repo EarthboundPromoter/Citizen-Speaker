@@ -45,10 +45,6 @@ namespace CSAccess
             // decision, so a swallowed or misrouted key still leaves a trace (Diag).
             Diag.CaptureKeys(shift);
 
-            // Node census: announces additions/removals at the first full-control
-            // station moment per cycle (focus-model row 3; cheap no-op otherwise).
-            Game.NodeCensus.Tick(mode);
-
             // Pending reroll result: the new pool speaks once the dice re-render.
             TickRerollRead();
 
@@ -82,6 +78,12 @@ namespace CSAccess
 
             if (Input.GetKeyDown(KeyCode.L) && Query(mode, ModKey.WhereAmI))
             { SpeechService.Say(ModeModel.WhereAmI(), Priority.Immediate, "query"); return; }
+
+            // Station census replay (BL-16 redesign, owner design: N = the last
+            // recorded change, past tense, unconditionally; notifications speak
+            // present tense at beat tails — tense is the freshness marker).
+            if (Input.GetKeyDown(KeyCode.N) && Query(mode, ModKey.Census))
+            { Game.StationCensus.SpeakLast(); return; }
 
             if (Input.GetKeyDown(KeyCode.R) && !shift && Allowed(mode, ModKey.RereadDialogue))
             {

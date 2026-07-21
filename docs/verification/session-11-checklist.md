@@ -52,6 +52,13 @@ hash-verified = tip at close.
 - "Hacked." on the cloud hack press; station slot-settle outlook ("Die
   slotted." → "Positive likely." etc.) — wording provisional.
 - Placeholder filter ("Description in text table" spoken as nothing).
+- Station census (BL-16 redesign, built post-close): appearance/disappearance
+  callouts at beat tails, present tense ("SABINE has appeared." / "BRIGHT MARKET
+  is gone."), queued behind the beat's own speech; N = last recorded change,
+  past tense ("Last change: ..."), "No changes recorded." when none. Beats:
+  conversation end, outcome tail, cycle settle, genuine station arrival.
+  Detection = canvas availability FSM signals (camera-independent keys) with a
+  3 s beat window absorbing canvas poll latency. Wording provisional.
 
 ## OPEN (carry-forward)
 
@@ -64,9 +71,10 @@ hash-verified = tip at close.
   EnergyWatch to calibrate when heard).
 - Collect press ("DATA EXTRACTED"): Sequence Complete Button logged absent
   twice (key node + data node) — observe item stands.
-- BL-16 census redesign now TWICE-motivated (SABINE appearance, BRIGHT MARKET
-  disappearance — both silent; freshness keeps the table honest but nothing
-  announces the change).
+- ~~BL-16 census redesign~~ BUILT post-close (see deployed batch above) —
+  verification rides the next spawn/removal the story serves, or a synthetic
+  bridge check; N replay testable immediately ("No changes recorded." on a
+  fresh boot).
 - P8 cost-label nit live again: "Costs INPUT 15 CRYO cryo".
 - Post-excursion native focus leak ("Location: Empty Container" through the
   user-initiated window) — cosmetic, owner verdict pending.

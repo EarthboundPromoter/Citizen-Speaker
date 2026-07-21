@@ -20,6 +20,7 @@ namespace CSAccess.Modality
         DriveLogToggle,    // J
         ScanToggle,        // O (s5 keymap reorder; S/D are native camera keys)
         Reroll,            // Shift+R
+        Census,            // N — last recorded station change (BL-16 redesign)
         TutorialContinue,  // T
         NumberChoices,     // 1-9
         ReviewArrows,      // review-cursor movement in cursor-owning modes
@@ -95,13 +96,14 @@ namespace CSAccess.Modality
             // tab is the clock index — "K becomes unnecessary under a logical nav
             // grammar." Arrows/Enter/Space route to LocationTable in InputManager.
             t[Mode.ActionView] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Reroll,
-                ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle);
+                ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle,
+                ModKey.Census);
             // Reroll in scope at the station (perk decode 2026-07-20): the REROLL
             // DICE button renders in the Top UI there; availability is the FSM's own
             // perk/once-per-cycle gate, which the key path can never bypass.
             t[Mode.Station] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Clocks,
                 ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle, ModKey.ScanToggle,
-                ModKey.Reroll);
+                ModKey.Reroll, ModKey.Census);
             return t;
         }
 
@@ -126,6 +128,7 @@ namespace CSAccess.Modality
             (ModKey.Vitals, "C: vitals"),
             (ModKey.Dice, "V: dice"),
             (ModKey.Clocks, "K: clocks"),
+            (ModKey.Census, "N: last station change"),
             (ModKey.WhereAmI, "L: where am I"),
             (ModKey.RereadDialogue, "R: reread dialogue"),
             (ModKey.Respeak, "Z: repeat speech"),

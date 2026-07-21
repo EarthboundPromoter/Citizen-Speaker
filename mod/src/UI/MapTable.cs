@@ -173,6 +173,11 @@ namespace CSAccess.UI
                 SpeechService.Say(W.Opened + " " + TabName(Tabs[_tab]) + ". "
                     + (_view.Count > 0 ? RowReport() : W.NoRows),
                     Priority.Immediate, "table");
+                // A genuine station arrival is a census beat: changes that landed
+                // while away (cloud, cycle turnover, a location) speak here, queued
+                // behind the entry announce — the return stays silent EXCEPT when
+                // the world changed underneath.
+                StationCensus.OnBeat();
             }
             catch (System.Exception e)
             {
