@@ -216,6 +216,24 @@ subscribe the same outcome states (tiers + bare Outcome) on Action Cryo
 Controller — restores name + card content incl. the cryo effect line (F7
 form). BL-14's bare-outcome family remains otherwise unexercised.
 
+**F7b — Clock-name match misses quoted names: "plus 'WINTER LIGHT'" (run 3,
+f45490).** The effect line quotes the clock name ('WINTER LIGHT') while the
+rendered Clock Name carries its own quote artifact — ComposeEffect's exact
+match fails and the line falls through to value-resource form instead of
+"WINTER LIGHT now 1 of 8". Fix: normalize both sides (strip quote/apostrophe
+characters, trim) in ClockNow and the RecentEffectClocks dedupe keys.
+
+**D3 — OWNER PRIORITY (set at S10 close): table nav is THE navigation method.**
+Table navigation becomes the absolute, enforced method for cloud and station
+(D2's default-on was the first step); F1 help is rebuilt to describe the table
+idiom as the primary/only navigation model, not an overlay on native nav.
+
+**D4 — OWNER PRIORITY (set at S10 close): stacked location table.** The
+location table becomes ONE full grid: action cards on top, clock cards below —
+no Actions/Clocks tab split. Crossing the boundary between sections announces
+the section header (e.g. "Clocks.") so the location reads as a single
+continuous grid of options.
+
 ## Wording/polish samples (park in polish queue)
 
 - **P1** Overwrite warning read runs body + both button labels in one utterance:
