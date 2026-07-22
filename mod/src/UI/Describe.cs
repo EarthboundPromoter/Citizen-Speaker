@@ -300,6 +300,36 @@ namespace CSAccess.UI
                     var fsm = t.GetComponent<PlayMakerFSM>();
                     var label = fsm != null ? fsm.FsmVariables.GetFsmString("Cost Label") : null;
                     var cost = fsm != null ? fsm.FsmVariables.GetFsmFloat("Cryo Cost") : null;
+                    // The "Cryo" controller is the game's GENERIC cost controller
+                    // (corpus 2026-07-22, 25 instances): its "Cryo" STRING localizes
+                    // from field "CRYO" on 24 and from an item-specific key on the
+                    // Unit 207-F passkey card (INV_SabinesPasskey in Value Check) —
+                    // the unchecked assumption spoke "Requires 1 cryo" for a card
+                    // demanding the passkey. The string CONTENT is the functional
+                    // discriminator; the "Item" float is authored scratch for the
+                    // Outcome relationship-adjust (never branched on — corpus), so it
+                    // serves only as a weak hint while the string is still unlocalized.
+                    var cryoStr = fsm != null ? fsm.FsmVariables.GetFsmString("Cryo") : null;
+                    string cryoVal = cryoStr != null && cryoStr.Value != null
+                        ? cryoStr.Value.Trim() : null;
+                    bool isItemCost;
+                    if (!string.IsNullOrEmpty(cryoVal))
+                        isItemCost = !cryoVal.Equals("CRYO",
+                            System.StringComparison.OrdinalIgnoreCase);
+                    else
+                    {
+                        var itemFlag = fsm != null ? fsm.FsmVariables.GetFsmFloat("Item") : null;
+                        isItemCost = itemFlag != null && itemFlag.Value >= 0.5f;
+                    }
+                    if (isItemCost)
+                    {
+                        string nm = !string.IsNullOrEmpty(cryoVal)
+                            ? cryoVal : ItemDemandName(actionRoot);
+                        int n = cost != null ? Mathf.RoundToInt(cost.Value) : 1;
+                        if (nm != null)
+                            return "Takes " + (n > 1 ? n + " " : "") + nm;
+                        return "Takes an item" + (n > 1 ? ", cost " + n : "");
+                    }
                     // P8 (heard three rides): the label renders the full prompt text
                     // ("INPUT 100 CRYO") and our "Costs ... cryo" frame doubled its
                     // words. The label's own number is the rendered amount — speak
@@ -328,15 +358,67 @@ namespace CSAccess.UI
                 if (!t.name.StartsWith("Gamepad Dice Slot")) continue;
                 var fsm = t.GetComponent<PlayMakerFSM>();
                 var itemCost = fsm != null ? fsm.FsmVariables.GetFsmFloat("Item Cost") : null;
-                if (itemCost != null && itemCost.Value > 0f)
-                    return "Takes an item, cost " + Mathf.RoundToInt(itemCost.Value);
-                // Item Cost populates LAZILY (owner catches, session 11: DELIVER
-                // DATA and the cloud gates both read "Takes a die" at rest). The
-                // slot's own Check Amount state — the INV_* holdings check — is the
-                // authored marker for an item take and exists from birth.
-                if (fsm != null && HasState(fsm, "Check Amount"))
-                    return "Takes an item";
+                bool isItem = (itemCost != null && itemCost.Value > 0f)
+                    // Item Cost populates LAZILY (owner catches, session 11: DELIVER
+                    // DATA and the cloud gates both read "Takes a die" at rest). The
+                    // slot's own Check Amount state — the INV_* holdings check — is
+                    // the authored marker for an item take and exists from birth.
+                    || (fsm != null && HasState(fsm, "Check Amount"));
+                if (isItem)
+                {
+                    // The demanded item's identity lives on the sibling Action
+                    // Controller (Item Name / Cost Label / Item Required), never on
+                    // the slot itself — 341 generic "an item" reads in one overnight
+                    // session while the name sat authored beside them.
+                    string nm = ItemDemandName(actionRoot);
+                    int n = itemCost != null ? Mathf.RoundToInt(itemCost.Value) : 0;
+                    if (nm != null)
+                        return "Takes " + (n > 1 ? n + " " : "") + nm;
+                    return n > 0 ? "Takes an item, cost " + n : "Takes an item";
+                }
                 return "Takes a die";
+            }
+            return null;
+        }
+
+        /// <summary>The demanded item's name from the card's own Action Controller,
+        /// in source order: (1) "Item Name" — the game's display name, populates
+        /// lazily on first render then sticks (faithful, authored typos kept);
+        /// (2) "Cost Label" ("INPUT 1 YATAGAN DATA") minus the INPUT-count prefix —
+        /// also rendered truth, also lazy; (3) "Item Required" — the INV_* Lua
+        /// variable name, authored from birth on EVERY item card (33/33 live),
+        /// de-camelCased (INV_GirolleCaps -> "Girolle Caps"). PROVISIONAL (owner
+        /// ruling pending): source 3 derives a name instead of reading a render and
+        /// silently normalizes authored typos ("Greeenway" -> "Greenway"); flip the
+        /// order or drop source 3 per the ruling when it lands. Null when no source
+        /// resolves — callers keep their generic form.</summary>
+        public static string ItemDemandName(Transform actionRoot)
+        {
+            PlayMakerFSM ac = null;
+            foreach (Transform child in actionRoot)
+                if (child.name == "Action Controller")
+                { ac = child.GetComponent<PlayMakerFSM>(); break; }
+            if (ac == null) return null;
+            var v = ac.FsmVariables;
+            var itemName = v.GetFsmString("Item Name");
+            if (itemName != null && !string.IsNullOrEmpty(itemName.Value))
+                return itemName.Value.Trim();
+            var label = v.GetFsmString("Cost Label");
+            if (label != null && !string.IsNullOrEmpty(label.Value))
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    label.Value.Trim(), @"^INPUT\s+\d+\s+(.+)$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (m.Success) return m.Groups[1].Value.Trim();
+            }
+            var req = v.GetFsmString("Item Required");
+            if (req != null && !string.IsNullOrEmpty(req.Value))
+            {
+                string s = req.Value.Trim();
+                if (s.StartsWith("INV_")) s = s.Substring(4);
+                s = System.Text.RegularExpressions.Regex.Replace(
+                    s, "(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Za-z])(?=[0-9])", " ");
+                return s.Length > 0 ? s : null;
             }
             return null;
         }

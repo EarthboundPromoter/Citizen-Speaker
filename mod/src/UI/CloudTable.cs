@@ -400,13 +400,19 @@ namespace CSAccess.UI
 
         /// <summary>Demand cell (owner override: pre-entry demand is strictly better
         /// UX). Dice cards: authored Required Roll values + the INTERFACE-bucket count
-        /// when the card is dormant. Gates/item cards: the item from the card's own
-        /// action name (owner correction, session 11 — the dormant TakesLine lied
-        /// "Takes a die"); TakesLine last.</summary>
+        /// when the card is dormant. Gates/item cards (2026-07-22): the item name from
+        /// the card's OWN Action Controller (Item Name / Cost Label / Item Required —
+        /// authored from birth, 10/10 cloud gates live), which unifies the cloud read
+        /// with the station Requires cell and retires the A5 class (the positional
+        /// action-name derivation spoke a neighbor's cipher at field level). Name
+        /// derivation kept only as fallback; TakesLine last.</summary>
         private static string DemandFor(Transform card)
         {
             string demand = Describe.HackingDemand(card, InterfaceBucketCount());
-            return demand ?? Describe.CloudItemTake(card) ?? Describe.TakesLine(card);
+            if (demand != null) return demand;
+            string item = Describe.ItemDemandName(card);
+            if (item != null) return "Takes " + item;
+            return Describe.CloudItemTake(card) ?? Describe.TakesLine(card);
         }
 
         private static int InterfaceBucketCount()
