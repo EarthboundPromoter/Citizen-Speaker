@@ -6,29 +6,35 @@ using UnityEngine;
 namespace CSAccess.UI
 {
     /// <summary>
-    /// The station map table (docs/map-table-design.md, all rulings owner-made
-    /// 2026-07-20). Zone tabs on slash (tab = native zone transit, visited zones
-    /// only), rows = rendered locations/characters in corridor order, columns from a
-    /// registry, stable geometry with terse empties, row report on vertical movement,
-    /// header+cell on horizontal. Browsing drives the camera (Focus Z write — the
-    /// game's own input accumulator; its FSM clamps and damps natively) and the native
-    /// highlight lands via the game's own closest-claim; game-driven focus is muted
-    /// while the camera settles (CloudFlight pattern). Enter anywhere in a row = one
-    /// native click.
+    /// The ZONE table (owner redesign 2026-07-22, replacing the tabbed station map
+    /// table): ONE table per zone, loaded when the player takes a zone transition
+    /// themselves (ferry, ascender/descender, tolls). No tabs, no slash — the tab
+    /// machinery died with the redesign; the character and tracked-drives tabs died
+    /// with it (characters interleave in corridor order — the game converts them
+    /// in place over locations; drives read from the Drives column and the journal).
+    /// Titles are the bare region name. Rows = rendered locations/characters of the
+    /// CURRENT zone in corridor order, columns from a registry, stable geometry with
+    /// terse empties, row report on vertical movement, header+cell on horizontal.
     ///
-    /// D3 (owner ruling 2026-07-20): the table IS station navigation, permanently —
-    /// no open/close state, N is dead. Key routing is a plain mode gate (the
-    /// location-table shape); overlays (windows, dialogue, dice) suspend it with
-    /// position intact and no re-announcement (ModeModel.Surface); a genuine
-    /// surface entry rebuilds and announces. Ctrl+X (NavIdiom) is the sole escape
-    /// hatch to fully native navigation.
+    /// Camera contract (owner ruling 2026-07-22): browsing writes the camera ONCE
+    /// per row change, to the row's calibrated angle — never on rebuilds, folds, or
+    /// position restores (the fold-time re-assert fought every native camera move —
+    /// the "jitter in place" ride finding). Zone membership comes from
+    /// StationAtlas.ResolveZone: calibration-baked seed + live frustum stamping,
+    /// geometry only as last resort (zone is NOT authored anywhere in the game —
+    /// corpus Z1). The Hub is a fixed single view (live finding: no clamp, no
+    /// scroll; every available marker in frustum at once) — no camera writes there.
+    ///
+    /// D3 (owner ruling 2026-07-20) still holds: the table IS station navigation,
+    /// permanently — no open/close state. Overlays (windows, dialogue, dice)
+    /// suspend it with position intact and no re-announcement (ModeModel.Surface);
+    /// a genuine surface entry rebuilds and announces.
     /// </summary>
     internal static class MapTable
     {
         // ---------- Wording block (ALL table phrases; owner calibration lands here) ----------
         private static class W
         {
-            public const string Opened = "Station table.";
             public const string RowNew = "new";
             public const string RowDisabled = "disabled";
             public const string CharacterPrefix = "Character: ";
@@ -41,12 +47,8 @@ namespace CSAccess.UI
             public const string HeaderDrives = "Drives";
             public const string HeaderActions = "Actions";
             public const string HeaderTagline = "Description";
-            public const string HeaderWhere = "Where";
-            public const string TabCharacters = "Characters";
-            public const string TabDrives = "Tracked drives";
             public const string NoRows = "Nothing here.";
             public const string CommitDisabled = "Not open yet.";
-            public const string NoObjective = "No marked locations.";
             public static string Zone(int z) => z == 0 ? "The Rim" : z == 1 ? "Greenway" : z == 2 ? "The Hub" : "Station";
         }
 
@@ -77,16 +79,6 @@ namespace CSAccess.UI
                 } },
         };
 
-        // The characters tab appends the Where column (ruling 7).
-        private static readonly Column WhereColumn = new Column
-        {
-            Header = W.HeaderWhere, EmptyForm = null, Cell = r =>
-            {
-                var near = StationAtlas.NearestLocation(r, _rows);
-                return near != null ? "near " + near.Name + ", " + W.Zone(r.Zone) : W.Zone(r.Zone);
-            }
-        };
-
         // ---------- State ----------
 
         /// <summary>The permanent-nav gate (D3): table keys route whenever we are at
@@ -96,18 +88,16 @@ namespace CSAccess.UI
                && Modality.ModeModel.Current() == Modality.Mode.Station;
 
         private static List<StationAtlas.Row> _rows = new List<StationAtlas.Row>();
-        private static readonly List<int> Tabs = new List<int>(); // 0/1/2 zones, -2 chars, -3 drives
-        private static int _tab, _row, _col;
+        private static int _row, _col;
         private static List<StationAtlas.Row> _view = new List<StationAtlas.Row>();
-        private static List<string> _driveRows = new List<string>();
-        private static bool _hubSeen;
+        /// <summary>The zone this table is built for — rebuilt + re-announced when the
+        /// player's own transition settles (the ONLY way zones change now).</summary>
+        private static int _zone = -1;
 
         // Camera settle machinery (CloudFlight pattern: mute game focus, no announce —
         // the row report IS the announcement; the highlight lands silently).
         private static float _muteUntil = -1f;
         private static StationAtlas.Row _cameraTarget;
-        private static int _pendingZone = -1;
-        private static float _pendingZoneAt = -1f;
 
         public static bool SuppressingFocus()
             => Active() || Time.unscaledTime < _muteUntil;
@@ -164,13 +154,12 @@ namespace CSAccess.UI
                     return;
                 }
                 _emptyAtlasLogged = false;
-                BuildTabs();
-                int zone = StationAtlas.CurrentZone();
-                _tab = Mathf.Max(0, Tabs.IndexOf(zone));
+                _zone = StationAtlas.CurrentZone();
                 BuildView();
                 _row = NearestRowToCamera();
                 _col = 0;
-                SpeechService.Say(W.Opened + " " + TabName(Tabs[_tab]) + ". "
+                // Title = the bare region name (owner ruling 2026-07-22).
+                SpeechService.Say(W.Zone(_zone) + ". "
                     + (_view.Count > 0 ? RowReport() : W.NoRows),
                     Priority.Immediate, "table");
                 // A genuine station arrival is a census beat: changes that landed
@@ -232,19 +221,13 @@ namespace CSAccess.UI
 
                 string keepName = null;
                 bool keepIsChar = false;
-                int tabId = Tabs.Count > 0 ? Tabs[_tab] : 0;
-                if (tabId != -3 && _view.Count > 0 && _row < _view.Count)
+                if (_view.Count > 0 && _row < _view.Count)
                 { keepName = _view[_row].Name; keepIsChar = _view[_row].IsCharacter; }
-                string keepDrive = tabId == -3 && _row < _driveRows.Count ? _driveRows[_row] : null;
 
                 int before = _rows.Count;
                 _rows = fresh;
-                BuildTabs();
-                _tab = Mathf.Max(0, Tabs.IndexOf(tabId));
                 BuildView();
-                if (keepDrive != null)
-                    _row = Mathf.Max(0, _driveRows.IndexOf(keepDrive));
-                else if (keepName != null)
+                if (keepName != null)
                 {
                     int found = _view.FindIndex(r => r.Name == keepName && r.IsCharacter == keepIsChar);
                     if (found >= 0) _row = found;
@@ -274,7 +257,7 @@ namespace CSAccess.UI
                     else _departedName = null; // window expired: a genuine removal
                 }
                 Plugin.Log.LogInfo("[Table] refresh: rows " + before + " -> " + _rows.Count
-                    + " (position " + (keepName ?? keepDrive ?? "start") + ")");
+                    + " (position " + (keepName ?? "start") + ")");
             }
             catch (System.Exception e)
             {
@@ -296,16 +279,17 @@ namespace CSAccess.UI
 
         public static bool HandleKeys()
         {
-            if (Tabs.Count == 0) return false; // entry not settled yet
+            if (_zone < 0) return false; // entry not settled yet
 
             // Per-keypress freshness (owner ruling, session 11): every table key
             // operates on a build made at this instant (cloud parity) — the fold
             // re-anchors the current row by identity first, so the delta below
             // applies to the live world. Gated on an actual keypress, never per
             // frame (Build allocates; per-frame would be pure GC churn).
+            // Slash freed (owner redesign 2026-07-22: tabs are dead).
             bool tableKey = Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.UpArrow)
                 || Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.LeftArrow)
-                || Input.GetKeyDown(KeyCode.Slash) || Input.GetKeyDown(KeyCode.Space)
+                || Input.GetKeyDown(KeyCode.Space)
                 || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
             if (!tableKey) return false;
             FoldFresh();
@@ -314,7 +298,6 @@ namespace CSAccess.UI
             if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
             if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCol(1); return true; }
             if (Input.GetKeyDown(KeyCode.LeftArrow)) { MoveCol(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.Slash)) { NextTab(); return true; }
             if (Input.GetKeyDown(KeyCode.Space)) { SpeakFullRow(); return true; }
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
             { Commit(); return true; }
@@ -326,24 +309,38 @@ namespace CSAccess.UI
             EntryTick();
             RefreshTick();
             TickPendingCommit();
+            ZoneWatch();
+        }
 
-            // Session zone observation (Hub tab gate — the Hub has no visited flag).
-            if (!_hubSeen && Time.frameCount % 120 == 0 && StationAtlas.CurrentZone() == 2)
-                _hubSeen = true;
-
-            // Two-step zone transit chain (Greenway<->Hub route via Rim).
-            if (_pendingZone >= 0 && Time.unscaledTime >= _pendingZoneAt)
-            {
-                var controller = StationAtlas.LocationController();
-                if (controller != null && IsZoneRest(controller.ActiveStateName))
-                {
-                    int target = _pendingZone;
-                    _pendingZone = -1;
-                    FireTransit(target);
-                }
-                else if (Time.unscaledTime > _pendingZoneAt + 6f)
-                    _pendingZone = -1; // transit never settled; give up silently, log
-            }
+        /// <summary>Player-taken zone transitions load the new zone's table (owner
+        /// redesign 2026-07-22): watch Lua LOCATION, and when it changes AND the
+        /// Location Controller has settled at a zone rest (its own Transition-to-*
+        /// states are the in-flight signal), rebuild for the new zone and announce
+        /// the region name. The camera is NOT written here — the game's transit
+        /// lands it at the authored point (ferry 275, Hub->Rim snap 240) and the
+        /// table adopts position from it instead (NearestRowToCamera).</summary>
+        private static void ZoneWatch()
+        {
+            if (!_entered || Modality.NavIdiom.Native) return;
+            if (Modality.ModeModel.Surface() != Modality.Mode.Station) return;
+            int now = StationAtlas.CurrentZone();
+            if (now < 0 || now == _zone) return;
+            var controller = StationAtlas.LocationController();
+            if (controller == null || !IsZoneRest(controller.ActiveStateName)) return;
+            _zone = now;
+            _pendingCommit = null;
+            _rows = StationAtlas.Build();
+            BuildView();
+            _row = NearestRowToCamera();
+            _col = 0;
+            SpeechService.Say(W.Zone(_zone) + ". "
+                + (_view.Count > 0 ? RowReport() : W.NoRows),
+                Priority.Queued, "table");
+            // Arrival in a zone is a census beat (changes that landed while away
+            // speak behind the region announce).
+            StationCensus.OnBeat();
+            Plugin.Log.LogInfo("[Table] zone table loaded: " + W.Zone(_zone)
+                + " (" + _view.Count + " rows)");
         }
 
         // ---------- Movement ----------
@@ -354,66 +351,30 @@ namespace CSAccess.UI
             // refusal spoke rows later, and a late-enabling target would have clicked
             // a row the player had left).
             _pendingCommit = null;
-            if (_view.Count == 0 && Tabs[_tab] != -3)
+            if (_view.Count == 0)
             { SpeechService.Say(W.NoRows, Priority.Immediate, "table"); return; }
 
-            if (Tabs[_tab] == -3) // drives tab: simple list rows
-            {
-                if (_driveRows.Count == 0)
-                { SpeechService.Say(W.NoRows, Priority.Immediate, "table"); return; }
-                _row = Mathf.Clamp(_row + delta, 0, _driveRows.Count - 1);
-                SpeechService.Say(DriveRowReport(_driveRows[_row]), Priority.Immediate, "table");
-                return;
-            }
-
+            int prev = _row;
             _row = Mathf.Clamp(_row + delta, 0, _view.Count - 1);
             SpeechService.Say(_col == 0 ? RowReport() : Current().Name + ". " + CellText(_col),
                 Priority.Immediate, "table");
-            CameraTo(Current());
+            // Camera contract: write ONLY when the row actually changed (edge
+            // bare-repeats never re-write; nothing else in the table writes at all).
+            if (_row != prev) CameraTo(Current());
         }
 
         private static void MoveCol(int delta)
         {
-            if (Tabs[_tab] == -3 || _view.Count == 0) return;
-            var cols = ActiveColumns();
+            if (_view.Count == 0) return;
+            var cols = Columns;
             _col = Mathf.Clamp(_col + delta, 0, cols.Count - 1);
             SpeechService.Say(cols[_col].Header + ": " + CellText(_col), Priority.Immediate, "table");
         }
 
-        private static void NextTab()
-        {
-            if (Tabs.Count == 0) return;
-            _pendingCommit = null;
-            _tab = (_tab + 1) % Tabs.Count;
-            _row = 0; _col = 0;
-            int id = Tabs[_tab];
-            if (id >= 0)
-            {
-                BuildView();
-                if (id != StationAtlas.CurrentZone()) RequestZone(id);
-                _row = _view.Count > 0 ? 0 : 0;
-                SpeechService.Say(TabName(id) + ". "
-                    + (_view.Count > 0 ? RowReport() : W.NoRows), Priority.Immediate, "table");
-            }
-            else if (id == -2)
-            {
-                BuildView();
-                SpeechService.Say(W.TabCharacters + ". "
-                    + (_view.Count > 0 ? RowReport() : W.NoRows), Priority.Immediate, "table");
-            }
-            else
-            {
-                BuildDriveRows();
-                SpeechService.Say(W.TabDrives + ". "
-                    + (_driveRows.Count > 0 ? DriveRowReport(_driveRows[0]) : W.NoRows),
-                    Priority.Immediate, "table");
-            }
-        }
-
         private static void SpeakFullRow()
         {
-            if (Tabs[_tab] == -3 || _view.Count == 0) return;
-            var cols = ActiveColumns();
+            if (_view.Count == 0) return;
+            var cols = Columns;
             var sb = new System.Text.StringBuilder();
             for (int i = 0; i < cols.Count; i++)
             {
@@ -428,7 +389,7 @@ namespace CSAccess.UI
 
         private static void Commit()
         {
-            if (Tabs[_tab] == -3 || _view.Count == 0) return;
+            if (_view.Count == 0) return;
             var row = Current();
             if (LiveInteractable(row))
             {
@@ -469,14 +430,11 @@ namespace CSAccess.UI
         private static void CameraTo(StationAtlas.Row row)
         {
             if (!Plugin.MapTableCamera.Value || row == null) return;
+            // The Hub is a fixed single view (live 2026-07-22: no clamp, no scroll
+            // input, every available marker in frustum at once) — never write there.
+            if (_zone == 2) return;
             _cameraTarget = row;
-            int zone = StationAtlas.CurrentZone();
-            if (row.Zone != zone && row.Zone >= 0 && row.Zone <= 2)
-            {
-                RequestZone(row.Zone);
-                return; // angle write follows on a later row move once zoned; v1 keeps it simple
-            }
-            WriteAngle(row.Angle);
+            WriteAngle(StationAtlas.UnwrapForZone(_zone, row.Angle));
         }
 
         /// <summary>Camera write for other tables riding the same one-axis rig — the
@@ -507,87 +465,18 @@ namespace CSAccess.UI
                 Plugin.Log.LogInfo("[Table] camera -> " + angle.ToString("0.0"));
         }
 
-        private static void RequestZone(int targetZone)
-        {
-            int current = StationAtlas.CurrentZone();
-            if (current == targetZone) return;
-            // Gate: only zones the player has reached natively (story safety, ruling 8).
-            if (targetZone == 1 && !StationAtlas.GreenwayVisited()) return;
-            if (targetZone == 2 && !_hubSeen) return;
-            // Topology: Greenway<->Hub route via Rim (controller decode).
-            if ((current == 1 && targetZone == 2) || (current == 2 && targetZone == 1))
-            {
-                FireTransit(0);
-                _pendingZone = targetZone;
-                _pendingZoneAt = Time.unscaledTime + 1.5f;
-                return;
-            }
-            FireTransit(targetZone);
-        }
-
-        private static void FireTransit(int zone)
-        {
-            var controller = StationAtlas.LocationController();
-            if (controller == null) return;
-            string ev = zone == 0 ? "RimTransit" : zone == 1 ? "GreenwayTransit" : "HubTransit";
-            _muteUntil = Time.unscaledTime + 3f;
-            controller.SendEvent(ev);
-            Plugin.Log.LogInfo("[Table] zone transit fired: " + ev);
-        }
-
         private static bool IsZoneRest(string state)
             => state == "Rim" || state == "Greenway" || state == "Hub";
 
-        // ---------- Rows / tabs / cells ----------
+        // ---------- Rows / cells ----------
 
-        private static void BuildTabs()
-        {
-            Tabs.Clear();
-            int current = StationAtlas.CurrentZone();
-            for (int z = 0; z <= 2; z++)
-            {
-                // The CURRENT zone always gets its tab (even row-less — an honest
-                // "Nothing here." beats landing the player in a drives-only trap);
-                // other zones need rows AND native reachability (story safety).
-                bool hasRows = _rows.Exists(r => !r.IsCharacter && r.Zone == z);
-                bool reachable = z == current
-                    || (z == 0)                                  // Rim: the start zone
-                    || (z == 1 && StationAtlas.GreenwayVisited())
-                    || (z == 2 && _hubSeen);
-                if (z == current || (hasRows && reachable)) Tabs.Add(z);
-            }
-            if (_rows.Exists(r => r.IsCharacter)) Tabs.Add(-2);
-            BuildDriveRows();
-            if (_driveRows.Count > 0) Tabs.Add(-3);
-            if (Tabs.Count == 0) Tabs.Add(current >= 0 ? current : 0);
-        }
-
+        /// <summary>The view = the current zone's rows, characters interleaved in
+        /// corridor order (owner ruling 2026-07-22: the game converts characters in
+        /// place over locations, so they are ordinary rows).</summary>
         private static void BuildView()
         {
-            int id = Tabs[_tab];
-            _view = id == -2
-                ? _rows.FindAll(r => r.IsCharacter)
-                : _rows.FindAll(r => r.Zone == id); // zone tabs interleave characters (ruling 7)
+            _view = _rows.FindAll(r => r.Zone == _zone);
             _row = Mathf.Clamp(_row, 0, Mathf.Max(0, _view.Count - 1));
-        }
-
-        private static void BuildDriveRows()
-        {
-            _driveRows.Clear();
-            try
-            {
-                foreach (var quest in PixelCrushers.DialogueSystem.QuestLog.GetAllQuests())
-                    if (PixelCrushers.DialogueSystem.QuestLog.IsQuestTrackingEnabled(quest))
-                        _driveRows.Add(quest);
-            }
-            catch (System.Exception e) { Plugin.Log.LogWarning("[Table] quest list: " + e.Message); }
-        }
-
-        private static List<Column> ActiveColumns()
-        {
-            if (Tabs[_tab] != -2) return Columns;
-            var cols = new List<Column>(Columns) { WhereColumn };
-            return cols;
         }
 
         private static StationAtlas.Row Current() => _view[_row];
@@ -619,7 +508,7 @@ namespace CSAccess.UI
 
         private static string CellText(int colIndex)
         {
-            var col = ActiveColumns()[colIndex];
+            var col = Columns[colIndex];
             return CellRaw(col) ?? col.EmptyForm ?? "none";
         }
 
@@ -628,7 +517,7 @@ namespace CSAccess.UI
         /// here).</summary>
         private static string RowReport()
         {
-            var cols = ActiveColumns();
+            var cols = Columns;
             var sb = new System.Text.StringBuilder(CellRaw(cols[0]));
             sb.Append('.');
             for (int i = 1; i < cols.Count; i++)
@@ -645,36 +534,6 @@ namespace CSAccess.UI
             return sb.ToString();
         }
 
-        private static string DriveRowReport(string quest)
-        {
-            var sb = new System.Text.StringBuilder(quest).Append('.');
-            try
-            {
-                int entries = PixelCrushers.DialogueSystem.QuestLog.GetQuestEntryCount(quest);
-                for (int i = 1; i <= entries; i++)
-                {
-                    if (PixelCrushers.DialogueSystem.QuestLog.GetQuestEntryState(quest, i)
-                        != PixelCrushers.DialogueSystem.QuestState.Active) continue;
-                    string text = PixelCrushers.DialogueSystem.QuestLog.GetQuestEntry(quest, i);
-                    if (!string.IsNullOrEmpty(text))
-                    {
-                        string clean = SpeechService.Clean(text).TrimEnd();
-                        sb.Append(' ').Append(clean);
-                        if (!clean.EndsWith(".") && !clean.EndsWith("!") && !clean.EndsWith("?"))
-                            sb.Append('.');
-                    }
-                }
-            }
-            catch { }
-            var places = new List<string>();
-            foreach (var r in _rows)
-                if (StationAtlas.DriveCell(r).Contains(quest))
-                    places.Add(r.Name);
-            sb.Append(places.Count > 0 ? " At: " + string.Join(", ", places) + "."
-                                       : " " + W.NoObjective);
-            return sb.ToString();
-        }
-
         private static int NearestRowToCamera()
         {
             var fsm = StationAtlas.FocusFsm();
@@ -688,8 +547,5 @@ namespace CSAccess.UI
             }
             return best;
         }
-
-        private static string TabName(int id)
-            => id == -2 ? W.TabCharacters : id == -3 ? W.TabDrives : W.Zone(id);
     }
 }

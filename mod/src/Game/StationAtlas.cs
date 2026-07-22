@@ -132,7 +132,9 @@ namespace CSAccess.Game
                         ?? (shine != null && shine.gameObject.activeInHierarchy),
                 Angle = MarkerAngle(button != null ? button.transform : canvas),
             };
-            row.Zone = ZoneOf(button != null ? button.transform : canvas, row.Angle);
+            if (!characters) MaybeStampZone(row.Name, state);
+            row.Zone = ResolveZone(row.Name,
+                button != null ? button.transform : canvas, row.Angle);
             row.Angle = UnwrapForZone(row.Zone, row.Angle);
 
             // Variant dedup by rendered name: the live (non-Off) variant wins; if two
@@ -311,21 +313,6 @@ namespace CSAccess.Game
             return n;
         }
 
-        /// <summary>Nearest available non-character row by corridor angle (the character
-        /// tab's "where are they" cell).</summary>
-        public static Row NearestLocation(Row character, List<Row> rows)
-        {
-            Row best = null;
-            float bestDist = float.MaxValue;
-            foreach (var r in rows)
-            {
-                if (r.IsCharacter || r.Zone != character.Zone) continue;
-                float d = Mathf.Abs(Mathf.DeltaAngle(r.Angle, character.Angle));
-                if (d < bestDist) { bestDist = d; best = r; }
-            }
-            return best;
-        }
-
         // ---------- Rig geometry ----------
 
         /// <summary>Corridor angle in the rig's Damped Z domain, self-calibrating: the
@@ -436,6 +423,73 @@ namespace CSAccess.Game
             return angle >= RimFrom && angle <= RimTo ? 0 : 1; // Rim : Greenway
         }
 
+        // ---------- Zone resolution (owner redesign 2026-07-22) ----------
+        // Zone is NOT authored anywhere in the game — corpus Z1: all 173 canvas FSMs
+        // are structurally identical, and membership is emergent (marker position vs
+        // the camera's current zone framing; IsVisibleInCameraFrustrum is the only
+        // camera gate). Resolution order:
+        //  (1) session STAMP — observed live: the canvas hit its in-frustum state
+        //      while the Location Controller rested at a zone (transition tweens
+        //      sweep foreign canvases through frustum — Founder's Gap flipped
+        //      Variables Met mid-ascent — so in-flight observations are ignored);
+        //  (2) BAKED calibration — the 2026-07-22 sweep ride: Focus Z driven across
+        //      each zone's live clamp band over the bridge, every frustum flip
+        //      recorded (Rim [135,258] 19 members; Greenway [275,390] 6; Hub fixed
+        //      view 4). Dev-side tool, baked as authored data (owner ruling);
+        //  (3) geometric heuristic (ZoneOf) for never-observed canvases only.
+        private static readonly Dictionary<string, int> StampedZones = new Dictionary<string, int>();
+        private static readonly Dictionary<string, int> BakedZones = new Dictionary<string, int>
+        {
+            // Rim (sweep 2026-07-22, first-seen 140-250)
+            {"UNIT ASSEMBLY",0},{"HAVENAGE OFFICES",0},{"EMPTY CONTAINER",0},
+            {"MERCHANT FREIGHTER",0},{"OVERLOOK BAR",0},{"SCRAP FREIGHTER",0},
+            {"ORT EXCHANGE",0},{"YATAGAN DISPENSARY",0},{"ORT FABRICATOR",0},
+            {"EMPHIS'S STALL",0},{"TAMBOUR TEAHOUSE",0},{"REPAIRED UNIT",0},
+            {"MIN-GI EXPRESS",0},{"CASTOR'S TABLE",0},{"RABIAH'S WARD",0},
+            {"MIDLINE FREIGHT HUB",0},{"ASCENDER CAR",0},{"PAZ IMPORT/EXPORT",0},
+            {"FOUNDER'S GAP",0},
+            // Greenway (sweep 2026-07-22, first-seen 275-355)
+            {"FOUNDER'S FERRY",1},{"GREENWAY",1},{"HYPHA COMMUNE",1},
+            {"WILD MARGINS",1},{"THE WASTES",1},{"CLIMBING BRIAR",1},
+            // Hub (fixed arrival view 2026-07-22)
+            {"DESCENDER CAR",2},{"GIMBAL LOUNGE",2},{"CAPSULE 0451",2},
+            {"BLISS'S BAY",2},
+        };
+
+        public static int ResolveZone(string name, Transform marker, float angle)
+        {
+            int z;
+            if (!string.IsNullOrEmpty(name))
+            {
+                if (StampedZones.TryGetValue(name, out z)) return z;
+                if (BakedZones.TryGetValue(name, out z)) return z;
+            }
+            return ZoneOf(marker, angle);
+        }
+
+        /// <summary>Live zone observation: a location canvas in its IN-FRUSTUM state
+        /// ("Variables Met"/"Selected" — "Off Camera" is listed but out of frame)
+        /// while the Location Controller rests at a zone IS a member of that zone,
+        /// by the game's own behavior. Stamps override the baked seed and log any
+        /// correction; mid-transition sightings are ignored.</summary>
+        private static void MaybeStampZone(string name, string canvasState)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            if (canvasState != "Variables Met" && canvasState != "Selected") return;
+            var controller = LocationController();
+            string st = controller != null ? controller.ActiveStateName : null;
+            if (st != "Rim" && st != "Greenway" && st != "Hub") return;
+            int zone = CurrentZone();
+            if (zone < 0 || zone > 2) return;
+            if (StampedZones.TryGetValue(name, out int prev) && prev == zone) return;
+            StampedZones[name] = zone;
+            if (BakedZones.TryGetValue(name, out int baked) && baked != zone)
+                Plugin.Log.LogInfo("[Atlas] zone stamp CORRECTS baked: " + name
+                    + " " + baked + " -> " + zone);
+            else if (!BakedZones.ContainsKey(name))
+                Plugin.Log.LogInfo("[Atlas] zone stamped: " + name + " -> " + zone);
+        }
+
         /// <summary>Greenway angles past 360 normalize to 30–70 (Flotilla band) —
         /// unwrap so sort order stays physically adjacent and camera-follow writes
         /// land in the game's own 275–430 clamp domain instead of flying to the
@@ -475,18 +529,6 @@ namespace CSAccess.Game
                 return r.hasReturnValue && r.isNumber ? Mathf.RoundToInt(r.asFloat) : -1;
             }
             catch { return -1; }
-        }
-
-        /// <summary>Greenway visited flag (clock-tier gate for its zone tab; the Hub has
-        /// no flag — its tab gates on availability + session observation).</summary>
-        public static bool GreenwayVisited()
-        {
-            try
-            {
-                var r = PixelCrushers.DialogueSystem.DialogueLua.GetVariable("GREENWAYVISITED");
-                return r.hasReturnValue && r.isNumber && r.asFloat >= 1f;
-            }
-            catch { return false; }
         }
 
         // ---------- Plumbing ----------

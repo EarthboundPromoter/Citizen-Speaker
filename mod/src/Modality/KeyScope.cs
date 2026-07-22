@@ -153,8 +153,9 @@ namespace CSAccess.Modality
             var sb = new System.Text.StringBuilder(ModeModel.Name(mode)).Append(". ");
             if (tableSurface)
             {
+                // Slash freed at the station (owner redesign 2026-07-22: zone tables
+                // load on the player's own transitions; tabs are dead).
                 sb.Append("Up and Down: rows. Left and Right: columns. ");
-                if (mode == Mode.Station) sb.Append("Slash: next tab. ");
                 sb.Append("Space: full row. Enter: activate. ");
             }
             foreach (var (key, help) in HelpOrder)
