@@ -405,6 +405,7 @@ namespace CSAccess
         private float _lastControllerLeftIdle = -10f;
         private bool _outlookPending;
         private float _outlookSince;
+        private Transform _slottedActionRoot; // captured at Slotted entry (corpus Q5 guard)
 
         /// <summary>Slot-odds read (A1): after "Die slotted." fires, WATCH the game's
         /// own die value each frame and speak the odds the instant it has SETTLED —
@@ -421,6 +422,10 @@ namespace CSAccess
             int? v = GameQueries.SettledSlottedDieValue();
             bool timedOut = Time.unscaledTime - _outlookSince > 0.6f;
             if (v == null && !timedOut) return; // keep watching until it settles
+            // Bail fallback (2026-07-22): when the settle detection misses (14/118
+            // slots overnight spoke a bare start prompt), the value itself is final
+            // by 0.6s — read it unconditionally rather than dropping the odds.
+            if (v == null) v = GameQueries.SlottedDieValueUnsettled();
             _outlookPending = false;
             // Compose the odds and the game's own START ACTION prompt as ONE queued
             // string (owner ruling 2026-07-21): the game's focus announce for the slot
@@ -481,8 +486,13 @@ namespace CSAccess
                         // Retract (corrected 2026-07-21): ResolveCancel now sends Reset
                         // to the action slot, which genuinely unslots the die — so
                         // "Die removed" is true again. Then rerun the picker prompt.
-                        SpeechService.Say("Die removed. " + PickerPrompt,
-                            Priority.Immediate, "dice");
+                        // Commit guard (2026-07-22, corpus Q5): the slot's cleanup Reset
+                        // fires identically on retract and on a resolved action — the
+                        // game's own discriminator is the action controller sitting in
+                        // its Outcome family. A commit re-arm is not a removal.
+                        if (!GameQueries.ActionResolving(_slottedActionRoot))
+                            SpeechService.Say("Die removed. " + PickerPrompt,
+                                Priority.Immediate, "dice");
                     }
                     else
                     {
@@ -496,6 +506,10 @@ namespace CSAccess
                     // Die placed (Active -> Slotted): standard slot flow, spoken every
                     // time a die enters the slot including replacements after a retract.
                     _lastSlottedTime = Time.unscaledTime;
+                    // Capture the action root NOW — after a commit or unslot the
+                    // SlottedDiceGlobal clears and the teardown transitions can no
+                    // longer tell whose action just resolved (corpus Q5 guard).
+                    _slottedActionRoot = GameQueries.SlottedActionRoot();
                     // Owner ruling 2026-07-21: the slot-time strings ("Die slotted." +
                     // odds) are QUEUED, not Immediate — so they render in order and
                     // never stomp each other OR the game's own after-strings (START
@@ -510,11 +524,16 @@ namespace CSAccess
                 case "Off":
                     if (previous == "Slotted")
                     {
-                        // Slotted -> Off is the spend (action confirmed, UI torn down —
-                        // an Action Controller leaves Idle) or ForceUnslotDice (safety
-                        // unslot, no outcome). The outcome announce carries the spend;
-                        // a bare unslot speaks its own removal.
-                        bool spent = Time.unscaledTime - _lastControllerLeftIdle < 1.5f
+                        // Slotted -> Off is the spend (action resolved, UI torn down)
+                        // or ForceUnslotDice (safety unslot, no outcome). The old 1.5s
+                        // controller-left-Idle window missed real spends 26 times in
+                        // one overnight session (the picker teardown lags the commit by
+                        // the outcome animation, ~3-5s). The game's own discriminator
+                        // (corpus Q5): the action controller in its Outcome family =
+                        // spend — the outcome announce carries it; only a genuine bare
+                        // unslot speaks its removal.
+                        bool spent = GameQueries.ActionResolving(_slottedActionRoot)
+                            || Time.unscaledTime - _lastControllerLeftIdle < 1.5f
                             || GameQueries.SlottedDiceValueGlobal() != _slottedGlobalAtOpen;
                         if (!spent)
                             SpeechService.Say("Die removed.", Priority.Immediate, "dice");
