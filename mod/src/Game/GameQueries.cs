@@ -91,6 +91,63 @@ namespace CSAccess.Game
             return settled ? (int?)Mathf.RoundToInt(dv.Value) : null;
         }
 
+        /// <summary>Bail-time odds read (2026-07-22): the settle conditions above can
+        /// miss (unexpected die state, parent lookup failure) and the 0.6s bail then
+        /// spoke a bare start prompt with no odds — 14 of 118 slots overnight. By bail
+        /// time the boost animation (~0.4s) is long done, so the die's DiceValue is
+        /// final in practice; read it unconditionally. Null only when no die is
+        /// slotted or the variable is missing.</summary>
+        public static int? SlottedDieValueUnsettled()
+        {
+            var g = HutongGames.PlayMaker.FsmVariables.GlobalVariables.GetFsmGameObject("SlottedDiceGlobal");
+            var go = g != null ? g.Value : null;
+            if (go == null) return null;
+            foreach (var f in go.GetComponents<PlayMakerFSM>())
+            {
+                var dv = f.FsmVariables.GetFsmFloat("DiceValue");
+                if (dv != null) return Mathf.RoundToInt(dv.Value);
+            }
+            return null;
+        }
+
+        /// <summary>The action root that currently holds the slotted die (die object's
+        /// parent = its Action Controller; the controller's parent = the card root).
+        /// Capture this WHILE the die is slotted — after a commit or unslot the global
+        /// clears and the answer is gone.</summary>
+        public static Transform SlottedActionRoot()
+        {
+            var g = HutongGames.PlayMaker.FsmVariables.GlobalVariables.GetFsmGameObject("SlottedDiceGlobal");
+            var die = g != null ? g.Value : null;
+            if (die == null) return null;
+            var ac = die.transform.parent;
+            return ac != null ? ac.parent : null;
+        }
+
+        /// <summary>True when the card's controller (Action Controller or Action Cryo
+        /// Controller) sits in its resolution family — the game's OWN commit-vs-retract
+        /// discriminator (corpus 2026-07-22, Q5): the slot's cleanup Reset fires
+        /// identically on a manual retract and on a completed action, and the game's
+        /// own FsmStateSwitch disambiguates by watching the sibling controller for
+        /// "Outcome"/outcome-tier states. Mirrors that check: any state containing
+        /// "Outcome" (Outcome, Outcome Setup, Outcome Animation, the three tiers),
+        /// plus Working / Temp Complete / Action Completed / Not Repeatable.</summary>
+        public static bool ActionResolving(Transform actionRoot)
+        {
+            if (actionRoot == null) return false;
+            foreach (Transform child in actionRoot)
+            {
+                if (child.name != "Action Controller" && child.name != "Action Cryo Controller")
+                    continue;
+                var fsm = child.GetComponent<PlayMakerFSM>();
+                string st = fsm != null ? fsm.ActiveStateName : null;
+                if (string.IsNullOrEmpty(st)) continue;
+                if (st.Contains("Outcome") || st == "Working" || st == "Temp Complete"
+                    || st == "Action Completed" || st == "Not Repeatable")
+                    return true;
+            }
+            return false;
+        }
+
         /// <summary>The game's own start-action prompt text for the slotted action
         /// (its Dice Slot Button label — "START ACTION"), read so the mod can append
         /// it to the odds line in a deterministic order after muting the game's own
@@ -241,6 +298,62 @@ namespace CSAccess.Game
 
         // ---------- Actions at the current location ----------
 
+        /// <summary>STRUCTURAL card typing (2026-07-22, replacing the name-suffix filters).
+        /// Card object names break the " Action"/" Clock" conventions freely: decorated
+        /// variants ("Sabines Passkey Action Template", "... Action (1)", "... Action 2",
+        /// "Ethan's Tab Clock (1)"), cards with no token at all ("Buy A Spacer Meal",
+        /// "Overlook Regular"), an ACTION card named "... Clock" ("Emergency Repairs
+        /// Clock"), and a game-side misspelling ("Repair Bid Click"). The name filters
+        /// silently dropped all of these — the Unit 207-F passkey card was a progression
+        /// blocker, ETHAN'S TAB never spoke across a whole session. Durable markers,
+        /// live-verified across the full 1_Action Groups tree (zero overlap, zero false
+        /// positives on 115 non-card children): action cards carry an "Action Name"
+        /// element or a controller ("Action Controller" / "Action Cryo Controller" /
+        /// "Gamepad Dice Slot*" / "Hacking Slots Controller"); clock cards carry a
+        /// "Clock Name" element or a "* Step [Accruing] Clock" dial. Clock identity is
+        /// checked FIRST wherever both could match (they never do today — belt only).
+        /// Name suffixes are kept as a union so nothing that resolved before regresses.</summary>
+        internal static bool IsClockCard(Transform t)
+        {
+            if (HasDirectChild(t, "Clock Name")) return true;
+            foreach (Transform child in t)
+            {
+                string n = child.name.TrimEnd();
+                if (n.EndsWith(" Step Clock") || n.EndsWith(" Step Accruing Clock"))
+                    return true;
+            }
+            return t.name.TrimEnd().EndsWith(" Clock") && !HasActionMarker(t);
+        }
+
+        internal static bool IsActionCard(Transform t)
+        {
+            if (IsClockCard(t)) return false;
+            return t.name.TrimEnd().EndsWith(" Action") || HasActionMarker(t);
+        }
+
+        private static bool HasActionMarker(Transform t)
+        {
+            foreach (Transform child in t)
+            {
+                string n = child.name;
+                if (n == "Action Name" || n == "Action Controller"
+                    || n == "Action Cryo Controller" || n == "Hacking Slots Controller"
+                    || n.StartsWith("Gamepad Dice Slot"))
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>Presence test only — the elements are structural type markers, so they
+        /// count whether or not they are currently rendering. Render-honesty is enforced
+        /// by the callers' activeInHierarchy checks on the card itself.</summary>
+        internal static bool HasDirectChild(Transform t, string childName)
+        {
+            foreach (Transform child in t)
+                if (child.name == childName) return true;
+            return false;
+        }
+
         public static List<Transform> GetActionPanels()
         {
             var results = new List<Transform>();
@@ -252,9 +365,7 @@ namespace CSAccess.Game
                 foreach (Transform child in group)
                 {
                     if (!child.gameObject.activeInHierarchy) continue;
-                    // TrimEnd: card names ship with trailing spaces
-                    // ("Ask for Directions Action " — fresh-run F9).
-                    if (child.name.TrimEnd().EndsWith(" Action"))
+                    if (IsActionCard(child))
                         results.Add(child);
                 }
             }
@@ -272,7 +383,7 @@ namespace CSAccess.Game
                 foreach (Transform child in group)
                 {
                     if (!child.gameObject.activeInHierarchy) continue;
-                    if (child.name.TrimEnd().EndsWith(" Clock"))
+                    if (IsClockCard(child))
                         results.Add(child);
                 }
             }

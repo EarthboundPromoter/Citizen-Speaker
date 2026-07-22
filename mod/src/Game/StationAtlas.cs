@@ -302,8 +302,11 @@ namespace CSAccess.Game
             var groupGo = group != null ? group.Value : null;
             if (groupGo == null) return -1;
             int n = 0;
+            // Structural card typing (2026-07-22): the name-suffix test dropped decorated
+            // and unconventionally-named cards from row facets (GIMBAL LOUNGE read with
+            // no Actions facet all session while BUY A SPACER MEAL was playable inside).
             foreach (Transform child in groupGo.transform)
-                if (child.gameObject.activeSelf && child.name.TrimEnd().EndsWith(" Action"))
+                if (child.gameObject.activeSelf && GameQueries.IsActionCard(child))
                     n++;
             return n;
         }
