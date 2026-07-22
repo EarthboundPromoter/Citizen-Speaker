@@ -1,6 +1,6 @@
 # Citizen Speaker
 
-**Version 0.9 — beta**
+**Version 0.9.3 — beta**
 
 A screen-reader mod for **Citizen Sleeper**: it speaks the game's interface, dice,
 clocks, and story through NVDA or JAWS (via [Tolk](https://github.com/dkager/tolk))
@@ -51,7 +51,7 @@ From the [Steam store page](https://store.steampowered.com/app/1578650/Citizen_S
    [Releases page](https://github.com/EarthboundPromoter/Citizen-Speaker/releases/latest)
    and extract it: put `CSAccess.dll` into `BepInEx/plugins/`, and `Tolk.dll` +
    `nvdaControllerClient64.dll` beside `Citizen Sleeper.exe`.
-3. Launch the game. You'll hear "Citizen Speaker 0.9. Press F1 for commands."
+3. Launch the game. You'll hear "Citizen Speaker 0.9.3. Press F1 for commands."
    To update, replace `CSAccess.dll` with the newer one.
 
 ## How the mod works
@@ -60,14 +60,16 @@ Everything the game shows, it speaks: dialogue reads automatically with numbered
 choices, dice, clocks, meters and outcomes are announced as they change, and menus
 talk as you move through them.
 
-The station and the cloud are browsed as **tables**. Up and Down walk the rows
-(locations, characters, or network nodes — the camera follows), Left and Right
-step through a row's columns, Space reads the whole row, and Enter goes there.
-At the station, Slash switches tabs (station zones, characters, tracked drives).
-At a location, the same grammar continues: rows are the action cards and clocks,
-and Enter on an action starts it — pick a die with the arrows, Enter to slot it,
-and Enter again to begin. Results, clock ticks, and anything newly unlocked are
-spoken as they happen; press N anytime to replay the last station change.
+The station and the cloud are browsed as **tables**. Each station region (the
+Rim, the Greenway, the Hub) is one table: Up and Down walk the rows — locations
+and characters together, in physical order, with the camera following — Left
+and Right step through a row's columns, Space reads the whole row, and Enter
+goes there. Taking a transition (the ferry, the Hub elevators) loads the new
+region's table automatically. At a location, the same grammar continues: rows
+are the action cards and clocks, and Enter on an action starts it — pick a die
+with the arrows, Enter to slot it, and Enter again to begin. Results, clock
+ticks, and anything newly unlocked are spoken as they happen; press N anytime
+to replay the last station change.
 
 F1 always speaks the keys that work on the current screen.
 
@@ -78,7 +80,6 @@ F1 always speaks the keys that work on the current screen.
 | **Arrows** | Move through rows and columns (tables, dialogue, menus, die picker). |
 | **Enter** | Activate / commit the current row / skip credits. |
 | **Space** | Read the full current row or focused element. |
-| **Slash** | Next tab (station table). |
 | **Backspace** | Back / cancel. |
 | **1–9** | Pick a dialogue response. |
 | **C** | Vitals — cycle, energy, condition, cryo. |
@@ -94,7 +95,6 @@ F1 always speaks the keys that work on the current screen.
 | **J** | Drive log (quests). |
 | **O** | Toggle the cloud scan. |
 | **T** | Continue a tutorial popup. |
-| **Ctrl + X** | Switch between table navigation and the game's native focus navigation. |
 | **F1** | Contextual help. |
 | **F3** | Write a diagnostic snapshot to the log (useful in bug reports). |
 | **Esc** | Pause (the game's own). |
@@ -102,12 +102,13 @@ F1 always speaks the keys that work on the current screen.
 ## What's tested and what isn't
 
 Everything should work: the full station loop, dialogue, dice, locations, clocks,
-the cloud, hacking, skills and perks, the journal, and the save slots have all
-been verified in live blind play. Two things have **not** been live tested yet:
+the cloud, hacking, skills and perks, the journal, the save slots, and the zone
+transitions (the Hub elevators and the Greenway ferry) have all been exercised
+in live play. Notes:
 
-- **Zone transitions** — the tabs that carry you between station zones later in
-  the game (the machinery is built and the rules are conservative, but no live
-  run has crossed them yet).
+- **The zone tables** — the per-region navigation in this release is a fresh
+  rebuild; region membership was calibrated against the live game and corrects
+  itself from what the game shows, but expect rough edges and report them.
 - **The endings** — the end-of-game sequences speak provisionally ("End
   sequence", then "Credits. Enter to skip"), and the credits themselves are a
   placeholder announcement rather than a full reading. Enter reveals and presses
