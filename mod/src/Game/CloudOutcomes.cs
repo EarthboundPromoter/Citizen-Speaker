@@ -24,40 +24,54 @@ namespace CSAccess.Game
         {
             public PlayMakerFSM Controller;
             public float Due;
-            public bool RetryUsed;
-        }
-
-        private sealed class LabelWatch
-        {
-            public Transform Button;
-            public string LastLabel;
         }
 
         private static readonly List<PendingRead> Pending = new List<PendingRead>();
-        private static readonly List<LabelWatch> Watches = new List<LabelWatch>();
         private static readonly Dictionary<int, (string Text, float Time)> LastAnnounced =
             new Dictionary<int, (string, float)>();
 
+        // Flow affordances (owner composition 2026-07-23): each Enter press announces
+        // what it will do — the three-step chain (slot die / hack / extract) was
+        // opaque, and the extract press carries the payout, despawn and hunter tick.
+        private static float _hackComposeAt = -1f;
+        private static float _perkProcAt = -10f;
+        private static float _trackerLineAt = -1f;
+
+        /// <summary>Stamped when the hack compose voiced the cryo proc — the rendered
+        /// perk notification stands down for it (A4 lane rule; Watchers).</summary>
+        internal static float LastCryoComposedAt = -10f;
+
         public static void Init()
         {
-            // Postfix signal: the state's OnEnter actions (incl. the Complete state's
-            // button activation) have already run when these fire. Content still animates
-            // in, so reads are deferred slightly and Complete is the authoritative pass.
+            // Postfix signal: the state's OnEnter actions have already run when these
+            // fire. Content still animates in, so reads are deferred slightly and
+            // Complete is the authoritative pass. Complete is also the payout state
+            // (corpus 2026-07-23) — the tracker tick lands there, spoken as a queued
+            // tail after the outcome read.
             FsmSignals.Subscribe("Hacking Slots Controller", "Outcome Animation",
                 (fsm, state) => Schedule(fsm, 0.35f));
             FsmSignals.Subscribe("Hacking Slots Controller", "Complete",
-                (fsm, state) => Schedule(fsm, 0.2f));
+                (fsm, state) => { Schedule(fsm, 0.2f); _trackerLineAt = Time.unscaledTime + 0.6f; });
 
-            // The hack press (owner ruling, session 11): a matched die re-arms the
-            // slot button (Ready state, "Hacking Placed" sound), and pressing it
-            // fires Hack -> ANIMATION — the cloud's designed middle stage between
-            // placing and starting. Acknowledge with the owner's word. Slots 2/3
-            // covered for multi-dice sequence nodes.
             foreach (var slot in new[]
                 { "Hacking Dice Slot 1", "Hacking Dice Slot 2", "Hacking Dice Slot 3" })
+            {
+                // A matched die re-arms the slot button (Ready, "Hacking Placed"
+                // sound): queue the affordance behind the picker's "Die slotted.".
+                FsmSignals.Subscribe(slot, "Ready",
+                    (fsm, state) => Speech.SpeechService.Say("Enter to hack.",
+                        Speech.Priority.Queued, "cloud"));
+                // The hack press fires Hack -> ANIMATION. The acknowledgment defers
+                // one beat so the Transfer Intercept proc (same-beat Perk Manager
+                // notify) can ride the SAME composed string — no overlap.
                 FsmSignals.Subscribe(slot, "ANIMATION",
-                    (fsm, state) => Speech.SpeechService.Say("Hacked.",
-                        Speech.Priority.Immediate, "cloud"));
+                    (fsm, state) => _hackComposeAt = Time.unscaledTime + 0.3f);
+            }
+
+            // The INTERFACE perk's success state is the proc clock (corpus: chance
+            // gate -> PERK SUCCESS adds 5 to Player_Bits).
+            FsmSignals.Subscribe("INTERFACE - Transfer Intercept", "PERK SUCCESS",
+                (fsm, state) => _perkProcAt = Time.unscaledTime);
         }
 
         private static void Schedule(PlayMakerFSM controller, float delay)
@@ -68,28 +82,34 @@ namespace CSAccess.Game
 
         public static void Tick()
         {
+            // The hack acknowledgment, composed one beat after ANIMATION: proc line
+            // folded in when Transfer Intercept fired this beat, affordance tail
+            // always (owner composition 2026-07-23; wording provisional).
+            if (_hackComposeAt > 0 && Time.unscaledTime >= _hackComposeAt)
+            {
+                _hackComposeAt = -1f;
+                bool proc = Time.unscaledTime - _perkProcAt < 1.5f;
+                if (proc) LastCryoComposedAt = Time.unscaledTime;
+                SpeechService.Say("Hacked." + (proc ? " Plus 5 cryo." : "")
+                    + " Enter to extract data.", Priority.Immediate, "cloud");
+            }
+
+            // The tracker tick, after the extract's outcome read: the post-increment
+            // value the dial renders, in the clock idiom. Silent when no tracker
+            // renders (retired, or the district has none).
+            if (_trackerLineAt > 0 && Time.unscaledTime >= _trackerLineAt)
+            {
+                _trackerLineAt = -1f;
+                string line = GameQueries.TrackerLine();
+                if (line != null) SpeechService.Say(line, Priority.Queued, "cloud");
+            }
+
             for (int i = Pending.Count - 1; i >= 0; i--)
             {
                 var p = Pending[i];
                 if (Time.unscaledTime < p.Due) continue;
                 Pending.RemoveAt(i);
                 ReadOutcome(p);
-            }
-
-            for (int i = Watches.Count - 1; i >= 0; i--)
-            {
-                var w = Watches[i];
-                if (w.Button == null || !w.Button.gameObject.activeInHierarchy)
-                {
-                    Watches.RemoveAt(i);
-                    continue;
-                }
-                string label = UI.Describe.FirstText(w.Button.gameObject);
-                if (label == null || label == w.LastLabel) continue;
-                w.LastLabel = label;
-                // The collect press re-renders the button label ("DATA EXTRACTED").
-                SpeechService.Say(label + ".", Priority.Queued, "cloud");
-                Watches.RemoveAt(i);
             }
         }
 
@@ -125,43 +145,15 @@ namespace CSAccess.Game
                 }
             }
 
-            AnnounceCollectButton(root, p);
+            // The old post-outcome collect-button announcer is gone (2026-07-23): the
+            // button's lifetime is BEFORE the outcome (controller Active -> press ->
+            // Hacking deactivates it), so the check here could only ever log "never
+            // came up" — the wrong-clock artifact behind session-13's mistaken
+            // "vestigial" closure. The press affordance now rides the hack compose.
             // Reveal callout (cloud table two-channel design): diff the rendered node
             // set a beat after resolve — gate hacks reveal their corridor neighborhood.
             UI.CloudTable.AfterOutcome();
             if (LastAnnounced.Count > 100) LastAnnounced.Clear();
-        }
-
-        /// <summary>The Sequence Complete Button is a required, previously-unannounced
-        /// press (BL-13). Announce its rendered label when it is up, then watch that
-        /// label for the post-press re-render.</summary>
-        private static void AnnounceCollectButton(Transform root, PendingRead p)
-        {
-            var button = root.Find("Action Elements/Sequence Complete Button");
-            if (button == null) return;
-            var selectable = button.GetComponent<Selectable>();
-            bool up = button.gameObject.activeInHierarchy
-                && (selectable == null || selectable.IsInteractable());
-            if (!up)
-            {
-                // Complete's activation may still be animating in — one retry, then
-                // graceful silence with a log line (invariant 5).
-                if (!p.RetryUsed)
-                    Pending.Add(new PendingRead
-                        { Controller = p.Controller, Due = Time.unscaledTime + 1f, RetryUsed = true });
-                else
-                    Plugin.Log.LogInfo("[Cloud] Sequence Complete Button never came up ("
-                        + root.name.TrimEnd() + ") — silent.");
-                return;
-            }
-
-            foreach (var w in Watches)
-                if (w.Button == button) return; // already announced + watching
-
-            string label = UI.Describe.FirstText(button.gameObject);
-            if (label == null) return;
-            SpeechService.Say(label + " button.", Priority.Queued, "cloud");
-            Watches.Add(new LabelWatch { Button = button, LastLabel = label });
         }
 
         /// <summary>The rendered outcome tier text ("NEUTRAL OUTCOME", ...) — the OUTCOMES

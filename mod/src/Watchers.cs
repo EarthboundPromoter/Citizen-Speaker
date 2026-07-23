@@ -270,7 +270,15 @@ namespace CSAccess
                         continue;
                     }
                     if (_visibleNotifications.Add(id) && _notificationsBaselined)
+                    {
+                        // The cloud hack compose already voiced this proc as part of
+                        // its own string (owner composition 2026-07-23) — the rendered
+                        // notification stands down (A4 lane rule).
+                        if (notification.name.StartsWith("INTERFACE - Transfer Intercept")
+                            && Time.unscaledTime - Game.CloudOutcomes.LastCryoComposedAt < 4f)
+                            continue;
                         AnnouncePanelTexts(notification, "notify", "", "");
+                    }
                 }
             }
             _notificationsBaselined = true;

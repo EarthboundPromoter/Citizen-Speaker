@@ -38,6 +38,9 @@ namespace CSAccess.Patches
             ConversationActive = true;
             // U2: a fresh window announces its first named speaker once.
             DialogueState.LastAnnouncedSpeaker = "";
+            // The dialogue-log attribution history is per-conversation, like the
+            // rendered log itself.
+            DialogueState.History.Clear();
         }
 
         private static void OnEnded(Transform actor)

@@ -24,6 +24,7 @@ namespace CSAccess.Modality
         TutorialContinue,  // T
         NumberChoices,     // 1-9
         ReviewArrows,      // review-cursor movement in cursor-owning modes
+        DialogueLog,       // B — rendered dialogue-log review (owner design 2026-07-23)
     }
 
     /// <summary>
@@ -72,8 +73,9 @@ namespace CSAccess.Modality
             // (session-5, third of the taught-action trap class).
             t[Mode.Tutorial] = S(ModKey.Navigate, ModKey.Activate, ModKey.ReviewArrows, ModKey.TutorialContinue,
                 ModKey.ScanToggle);
-            t[Mode.ResponseMenu] = S(ModKey.Navigate, ModKey.Activate, ModKey.NumberChoices);
-            t[Mode.Dialogue] = S(ModKey.Navigate, ModKey.Activate);
+            t[Mode.ResponseMenu] = S(ModKey.Navigate, ModKey.Activate, ModKey.NumberChoices,
+                ModKey.DialogueLog);
+            t[Mode.Dialogue] = S(ModKey.Navigate, ModKey.Activate, ModKey.DialogueLog);
             t[Mode.DiceAllocation] = S(ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Reroll,
                 ModKey.InventoryToggle, ModKey.CharacterToggle, ModKey.DriveLogToggle);
             // Character table owns arrows/Enter/Space here (fourth table, owner
@@ -135,6 +137,7 @@ namespace CSAccess.Modality
             (ModKey.Clocks, "K: clocks"),
             (ModKey.Census, "N: last station change"),
             (ModKey.WhereAmI, "L: where am I"),
+            (ModKey.DialogueLog, "B: dialogue log"),
             (ModKey.RereadDialogue, "R: reread dialogue"),
             (ModKey.Respeak, "Z: repeat speech"),
             (ModKey.Describe, "Space: describe focus"),
@@ -146,6 +149,14 @@ namespace CSAccess.Modality
         /// escape hatch (an undiscoverable hatch is no hatch).</summary>
         public static string HelpFor(Mode mode)
         {
+            // In-context help: while a review surface owns the keys, F1 describes
+            // THAT surface (owner request 2026-07-23), not the mode underneath.
+            if (UI.VitalsReview.Active)
+                return "UI bar. Up and Down: vitals and dice rows. Left and Right: cells. "
+                    + "Space: full row. C, V or Backspace: back.";
+            if (UI.DialogueReview.Active)
+                return "Dialogue log. Up and Down: read back and forward. Space: repeat block. "
+                    + "B or Backspace: back to live.";
             if (mode == Mode.Credits)
                 return "End sequence. Enter: skip credits. Z: repeat speech. L: where am I.";
             bool tableSurface = mode == Mode.ActionView
@@ -157,13 +168,19 @@ namespace CSAccess.Modality
                 // load on the player's own transitions; tabs are dead).
                 sb.Append("Up and Down: rows. Left and Right: columns. ");
                 sb.Append("Space: full row. Enter: activate. ");
+                // Top band review (owner design 2026-07-23): at these surfaces C/V
+                // speak AND position into the UI bar; the generic glance lines below
+                // are replaced by this one.
+                sb.Append("C and V: UI bar, vitals and dice rows; ");
+                sb.Append("either key again, or Backspace, returns. ");
             }
             foreach (var (key, help) in HelpOrder)
             {
                 if (!Allows(mode, key)) continue;
-                // The table grammar above replaces the generic movement lines.
+                // The table grammar above replaces the generic movement lines, and
+                // the UI bar line replaces the plain C/V glance lines.
                 if (tableSurface && (key == ModKey.Navigate || key == ModKey.Activate
-                    || key == ModKey.Describe)) continue;
+                    || key == ModKey.Describe || key == ModKey.Vitals || key == ModKey.Dice)) continue;
                 sb.Append(help).Append(". ");
             }
             if (mode == Mode.Station || mode == Mode.Cloud)

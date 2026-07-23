@@ -66,12 +66,30 @@ namespace CSAccess
 
             // Keymap reorder (owner ruling 2026-07-19): C = meter/vitals reads,
             // V = dice. D is the game's native rotate key and passes through
-            // untouched (same ruling as S/camera-scroll).
+            // untouched (same ruling as S/camera-scroll). Since the top-band review
+            // (owner design 2026-07-23), the same keys also position into the UI bar
+            // at camera surfaces — spoken output unchanged, plus the bar announcement.
             if (Input.GetKeyDown(KeyCode.C) && Query(mode, ModKey.Vitals))
-            { SpeechService.Say(GameQueries.DescribeVitals(), Priority.Immediate, "query"); return; }
+            { VitalsReview.QueryKey(mode, VitalsReview.RowVitals); return; }
 
             if (Input.GetKeyDown(KeyCode.V) && Query(mode, ModKey.Dice))
-            { SpeechService.Say(GameQueries.DescribeDiceBrief(), Priority.Immediate, "query"); return; }
+            { VitalsReview.QueryKey(mode, VitalsReview.RowDice); return; }
+
+            // --- Top band review: while entered, the band owns arrows, Space, Enter
+            //     and Backspace. Speech-only keys, so this sits above the input-pause
+            //     guard like the queries it extends; overlay modes deactivate it by
+            //     mode inside HandleKeys (affordance precedence). The surface table
+            //     below keeps its position throughout. ---
+            if (VitalsReview.HandleKeys(mode)) return;
+
+            // --- Dialogue log (B, owner design 2026-07-23): review of the rendered
+            //     back-read blocks, attributed from the live capture. Speech-only;
+            //     while entered it owns arrows, Space, Enter and Backspace, and
+            //     Enter presses nothing — the log can never advance the
+            //     conversation. B again returns to live (the choices, untouched). ---
+            if (Input.GetKeyDown(KeyCode.B) && Query(mode, ModKey.DialogueLog))
+            { DialogueReview.Toggle(); return; }
+            if (DialogueReview.HandleKeys(mode)) return;
 
             if (Input.GetKeyDown(KeyCode.K) && Query(mode, ModKey.Clocks))
             { SpeechService.Say(GameQueries.DescribeClocks(), Priority.Immediate, "query"); return; }

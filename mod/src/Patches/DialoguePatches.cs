@@ -21,6 +21,13 @@ namespace CSAccess.Patches
         /// <summary>Incremented per subtitle so the watcher can announce a sole Continue option.</summary>
         public static long SubtitleSeq;
 
+        /// <summary>Per-conversation subtitle history (speaker, line) for the B
+        /// dialogue-log review's attribution backfill (owner design 2026-07-23):
+        /// the rendered log blocks are bare text — the mod remembers who spoke each
+        /// line as it was live. Cleared at conversation start; capped defensively.</summary>
+        public static readonly List<(string Speaker, string Text)> History =
+            new List<(string Speaker, string Text)>();
+
         public static void SetResponses(Response[] responses)
         {
             CurrentResponses.Clear();
@@ -42,6 +49,8 @@ namespace CSAccess.Patches
             DialogueState.LastSpeaker = speaker ?? "";
             DialogueState.MenuOpen = false;
             DialogueState.SubtitleSeq++;
+            DialogueState.History.Add((speaker ?? "", text));
+            if (DialogueState.History.Count > 400) DialogueState.History.RemoveAt(0);
 
             if (!Plugin.AutoReadDialogue.Value) return;
             bool named = !string.IsNullOrEmpty(speaker) && Plugin.SpeakSpeakerNames.Value &&

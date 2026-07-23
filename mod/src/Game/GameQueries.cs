@@ -552,30 +552,86 @@ namespace CSAccess.Game
         /// Cryo stays numeric (value resource).</summary>
         public static string DescribeVitals()
         {
+            var cells = VitalsCells();
+            if (cells.Count == 0) return "Vitals not available.";
             var sb = new StringBuilder();
+            foreach (var cell in cells)
+                sb.Append(cell.Label).Append(' ').Append(cell.Value).Append(". ");
+            return sb.ToString().TrimEnd();
+        }
+
+        /// <summary>The vitals row of the top band review (VitalsReview), one labeled
+        /// cell per rendered instrument; DescribeVitals composes the C query from
+        /// exactly these cells, so the row read and the query can never diverge.
+        /// CS2 seam: this is the per-game vitals content provider.</summary>
+        public static List<(string Label, string Value)> VitalsCells()
+        {
+            var cells = new List<(string Label, string Value)>();
             int? cycle = Substrate.LuaStore.CycleNumber();
-            if (cycle != null) sb.Append("Cycle ").Append(cycle).Append(". ");
+            if (cycle != null) cells.Add(("Cycle", cycle.Value.ToString()));
             // Segments-first (owner ruling 2026-07-20): calibrated 20 pts/box × 5.
             int? energy = Substrate.LuaStore.Energy();
             if (energy != null)
             {
-                sb.Append("Energy ").Append(EnergyBoxes(energy.Value));
+                string value = EnergyBoxes(energy.Value);
                 var starving = GameObject.Find("Letterbox Canvas/Top UI/Energy UI/Energy Bar System/Starving");
-                if (starving != null && starving.activeInHierarchy) sb.Append(", starving");
-                sb.Append(". ");
+                if (starving != null && starving.activeInHierarchy) value += ", starving";
+                cells.Add(("Energy", value));
             }
             int? condition = Substrate.LuaStore.Condition();
             if (condition != null)
             {
-                sb.Append("Condition ").Append(ConditionBoxes(condition.Value));
+                string value = ConditionBoxes(condition.Value);
                 var conditionFsm = FindFsm("Condition System", "Energy UI");
                 string band = conditionFsm != null ? ConditionWord(conditionFsm) : null;
-                if (band != null) sb.Append(", ").Append(band.ToLowerInvariant());
-                sb.Append(". ");
+                if (band != null) value += ", " + band.ToLowerInvariant();
+                cells.Add(("Condition", value));
             }
             int? bits = Substrate.LuaStore.Bits();
-            if (bits != null) sb.Append("Cryo ").Append(bits).Append(". ");
-            return sb.Length > 0 ? sb.ToString().TrimEnd() : "Vitals not available.";
+            if (bits != null) cells.Add(("Cryo", bits.Value.ToString()));
+            var tracker = TrackerCell();
+            if (tracker != null) cells.Add(tracker.Value);
+            return cells;
+        }
+
+        /// <summary>The tracker as a standalone line ("TRACKED: 3 of 6, stage 2.") for
+        /// the cloud extract feedback tail; null while no tracker renders.</summary>
+        internal static string TrackerLine()
+        {
+            var cell = TrackerCell();
+            return cell != null ? cell.Value.Label + ": " + cell.Value.Value + "." : null;
+        }
+
+        /// <summary>The ghost tracker as a vitals cell, present exactly while the game
+        /// renders one (Ghost Trackers shows the district's tracker in scan mode only:
+        /// the Scan dial's Scan Idle activates the group, exits hide it — corpus decode
+        /// 2026-07-23). Label = the rendered tracker text (localized "TRACKED");
+        /// value = filled segments over the stage's dial (stage 1 renders 2 segments,
+        /// stage 2 renders 6) from the same variables that drive the rendered fill.</summary>
+        private static (string Label, string Value)? TrackerCell()
+        {
+            // Find sees active objects only — the render-honesty gate is the Find itself.
+            var group = GameObject.Find("Letterbox Canvas/Top UI/Ghost Trackers");
+            if (group == null) return null;
+            foreach (Transform child in group.transform)
+            {
+                if (!child.gameObject.activeInHierarchy) continue;
+                bool hunter = child.name == "Hunter Tracker";
+                if (!hunter && child.name != "Killer Tracker") continue;
+
+                string label = null;
+                var tmp = child.GetComponentInChildren<TMPro.TMP_Text>(false);
+                if (tmp != null && !string.IsNullOrWhiteSpace(tmp.text))
+                    label = Speech.SpeechService.Clean(tmp.text.Trim());
+                if (string.IsNullOrEmpty(label)) label = "Tracked";
+
+                int count = Substrate.LuaStore.Num(hunter ? "C_HUNTERKILLER" : "C_KILLER") ?? 0;
+                int? stage = Substrate.LuaStore.Num(hunter ? "HUNTERSTAGE" : "KILLERSTAGE");
+                int segments = stage == 2 ? 6 : 2;
+                string value = count + " of " + segments + ", stage " + (stage == 2 ? 2 : 1);
+                return (label, value);
+            }
+            return null;
         }
 
         /// <summary>D: "3 dice: 6, 2, 5." — flat string per input-model (tray is not
@@ -604,6 +660,27 @@ namespace CSAccess.Game
             if (GameObject.Find("PERK: Hard to Kill") != null)
                 sb.Append(" Perk: Hard to Kill.");
             return sb.ToString();
+        }
+
+        /// <summary>The dice row of the top band review (VitalsReview): one cell per
+        /// die in slot order, per-die states visible (the brief hides WHICH die is
+        /// spent; the cells answer it). Wording mirrors DescribeDice's per-die read.
+        /// CS2 seam: this is the per-game dice content provider.</summary>
+        public static List<(string Label, string Value)> DiceCells()
+        {
+            var cells = new List<(string Label, string Value)>();
+            foreach (var d in GetDice())
+            {
+                string value = d.State == "Used" ? "spent"
+                    : d.State == "Slotted" || d.State.StartsWith("Boost")
+                        ? "value " + d.Value + ", slotted"
+                        : "value " + d.Value;
+                cells.Add(("Die " + d.SlotNumber, value));
+            }
+            // Same render-gated badge the brief read carries.
+            if (GameObject.Find("PERK: Hard to Kill") != null)
+                cells.Add(("Perk", "Hard to Kill"));
+            return cells;
         }
 
         // ---------- Dice allocation mode (native uGUI picker; see docs/ui-state-map.md 6b) ----------

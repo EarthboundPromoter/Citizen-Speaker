@@ -93,6 +93,93 @@ namespace CSAccess.UI
             => !Modality.NavIdiom.Native
                && Modality.ModeModel.Current() == Modality.Mode.Cloud;
 
+        // ---------- Card latch (live-proven 2026-07-23) ----------
+        // Card ownership is latched on the Location Button's own event clocks, NOT
+        // derived from row membership: the button rests Active through the entire
+        // visit, while the canvas dial exits the Variables Met family ~0.5s after
+        // the controller's Complete (observed live: Variables Met 2 -> Off 4), which
+        // dropped the row and silently rerouted keys to the field table (the
+        // reported state-fallback bug). Acquire on Clicked/Camera Transition/Active,
+        // release at the settled pull-back (Idle) or when the canvas dies.
+
+        private static Transform _openCanvas;
+        private static string _openLatchName;
+
+        public static void Init()
+        {
+            Substrate.FsmSignals.Subscribe("Location Button", "Clicked", OnMarkerOpen);
+            Substrate.FsmSignals.Subscribe("Location Button", "Camera Transition", OnMarkerOpen);
+            Substrate.FsmSignals.Subscribe("Location Button", "Active", OnMarkerOpen);
+            Substrate.FsmSignals.Subscribe("Location Button", "Idle", OnMarkerClosed);
+        }
+
+        private static void OnMarkerOpen(PlayMakerFSM fsm, string state)
+        {
+            var canvas = HackingCanvasOf(fsm);
+            if (canvas == null) return;
+            _openCanvas = canvas;
+            _openLatchName = NameOfCanvas(canvas);
+        }
+
+        private static void OnMarkerClosed(PlayMakerFSM fsm, string state)
+        {
+            var canvas = HackingCanvasOf(fsm);
+            if (canvas == null || canvas != _openCanvas) return;
+            _openCanvas = null;
+            _cardNode = null;
+        }
+
+        /// <summary>The node canvas a cloud marker button belongs to; null for
+        /// station markers (scoping mirror of CloudFlight.IsHackingMarker).</summary>
+        private static Transform HackingCanvasOf(PlayMakerFSM fsm)
+        {
+            if (fsm == null) return null;
+            Transform below = null;
+            for (var t = fsm.transform; t != null; t = t.parent)
+            {
+                if (t.name == "Hacking UI") return below;
+                below = t;
+            }
+            return null;
+        }
+
+        /// <summary>The latched canvas while it is still alive; releases on despawn
+        /// (a scan exit deactivates the whole Hacking UI without an Idle event).</summary>
+        private static Transform OpenCanvas()
+        {
+            if (_openCanvas == null) return null;
+            if (_openCanvas.gameObject == null || !_openCanvas.gameObject.activeInHierarchy)
+            { _openCanvas = null; return null; }
+            return _openCanvas;
+        }
+
+        /// <summary>The open node built from the latch directly — independent of row
+        /// membership, so the card survives the post-Complete dial excursion. The
+        /// canvas FSM and card group stay alive until the pull-back (live log).</summary>
+        private static Node LatchedNode(Transform canvas)
+        {
+            var fsm = canvas.GetComponent<PlayMakerFSM>();
+            var card = fsm != null ? CardOf(fsm) : null;
+            return new Node
+            {
+                Name = NameOfCanvas(canvas) ?? _openLatchName ?? canvas.name.TrimEnd(),
+                Canvas = canvas,
+                Card = card,
+                Open = true,
+                Demand = card != null ? DemandFor(card) : null,
+                Narrative = card != null ? NarrativeFor(card) : null,
+            };
+        }
+
+        private static string NameOfCanvas(Transform canvas)
+        {
+            var fsm = canvas.GetComponent<PlayMakerFSM>();
+            var nameVar = fsm != null ? fsm.FsmVariables.GetFsmString("Location Name") : null;
+            return nameVar != null && !string.IsNullOrEmpty(nameVar.Value)
+                ? SpeechService.Clean(nameVar.Value.Trim())
+                : null;
+        }
+
         private static Modality.Mode _prevSurface = Modality.Mode.Title;
         private static float _surfaceAt;
         private static bool _entered;
@@ -105,6 +192,7 @@ namespace CSAccess.UI
                 _prevSurface = surface;
                 _surfaceAt = Time.unscaledTime;
                 _entered = false;
+                if (surface != Modality.Mode.Cloud) _openCanvas = null;
                 return;
             }
             if (surface != Modality.Mode.Cloud || _entered || Modality.NavIdiom.Native)
@@ -123,10 +211,11 @@ namespace CSAccess.UI
         {
             var rows = Rows();
             // Auto-select the open node's row (owner: entering with a node already
-            // open lands on it).
+            // open lands on it) — latch first, button-state flag as fallback.
+            var open = OpenCanvas();
             _row = 0; _col = 0;
             for (int i = 0; i < rows.Count; i++)
-                if (rows[i].Open) { _row = i; break; }
+                if ((open != null && rows[i].Canvas == open) || rows[i].Open) { _row = i; break; }
             SpeechService.Say(W.TableName + " "
                 + (rows.Count > 0 ? RowRead(rows[_row]) : W.NoRows),
                 Priority.Immediate, "table");
@@ -146,15 +235,14 @@ namespace CSAccess.UI
         public static bool AnnounceSettled()
         {
             if (!Active()) return false;
-            var rows = Rows();
-            if (rows.Count == 0) return false;
-            int open = OpenIndex(rows);
-            if (open >= 0)
+            var openCanvas = OpenCanvas();
+            if (openCanvas != null)
             {
-                _row = open;
-                SpeechService.Say(CardRow(rows[open]), Priority.Immediate, "table");
+                SpeechService.Say(CardRow(LatchedNode(openCanvas)), Priority.Immediate, "table");
                 return true;
             }
+            var rows = Rows();
+            if (rows.Count == 0) return false;
             _row = Mathf.Clamp(_row, 0, rows.Count - 1);
             SpeechService.Say(RowRead(rows[_row]), Priority.Immediate, "table");
             return true;
@@ -162,10 +250,11 @@ namespace CSAccess.UI
 
         public static bool HandleKeys()
         {
-            var rows = Rows();
-            int open = OpenIndex(rows);
-            if (open >= 0) return HandleCardKeys(rows[open]);
+            // The latch, not row membership, decides card vs field (see latch doc).
+            var openCanvas = OpenCanvas();
+            if (openCanvas != null) return HandleCardKeys(LatchedNode(openCanvas));
             _cardNode = null;
+            var rows = Rows();
 
             if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
             if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
@@ -178,13 +267,6 @@ namespace CSAccess.UI
         }
 
         // ---------- The open-node card table (one row) ----------
-
-        private static int OpenIndex(List<Node> rows)
-        {
-            for (int i = 0; i < rows.Count; i++)
-                if (rows[i].Open) return i;
-            return -1;
-        }
 
         private static bool HandleCardKeys(Node node)
         {
@@ -317,6 +399,19 @@ namespace CSAccess.UI
             if (node.Button == null)
             {
                 SpeechService.Say(node.Name + " is not clickable.", Priority.Immediate, "table");
+                return;
+            }
+            // Disable refusal (live 2026-07-23): during a zoom the game puts every
+            // sibling marker in Disable; a click dispatched then is silently queued
+            // and detonates as a camera jump on the pull-back. Never click a marker
+            // the game has switched off.
+            var bfsm = node.Button.GetComponent<PlayMakerFSM>();
+            string bs = bfsm != null ? bfsm.ActiveStateName : null;
+            var btn = node.Button.GetComponent<Button>()
+                      ?? node.Button.GetComponentInChildren<Button>(false);
+            if ((bs != null && bs.StartsWith("Disable")) || (btn != null && !btn.IsInteractable()))
+            {
+                SpeechService.Say(node.Name + " is disabled.", Priority.Immediate, "table");
                 return;
             }
             Navigator.Click(node.Button); // native camera flight; the settle speaks the card row

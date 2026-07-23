@@ -1,6 +1,6 @@
 # Citizen Speaker
 
-**Version 0.9.3 — beta**
+**Version 0.9.5 — beta**
 
 A screen-reader mod for **Citizen Sleeper**: it speaks the game's interface, dice,
 clocks, and story through NVDA or JAWS (via [Tolk](https://github.com/dkager/tolk))
@@ -51,7 +51,7 @@ From the [Steam store page](https://store.steampowered.com/app/1578650/Citizen_S
    [Releases page](https://github.com/EarthboundPromoter/Citizen-Speaker/releases/latest)
    and extract it: put `CSAccess.dll` into `BepInEx/plugins/`, and `Tolk.dll` +
    `nvdaControllerClient64.dll` beside `Citizen Sleeper.exe`.
-3. Launch the game. You'll hear "Citizen Speaker 0.9.3. Press F1 for commands."
+3. Launch the game. You'll hear "Citizen Speaker 0.9.5. Press F1 for commands."
    To update, replace `CSAccess.dll` with the newer one.
 
 ## How the mod works
@@ -82,8 +82,9 @@ F1 always speaks the keys that work on the current screen.
 | **Space** | Read the full current row or focused element. |
 | **Backspace** | Back / cancel. |
 | **1–9** | Pick a dialogue response. |
-| **C** | Vitals — cycle, energy, condition, cryo. |
-| **V** | Dice. |
+| **C** | Vitals — cycle, energy, condition, cryo, and the cloud tracker. At the station, a location, or in the cloud it also opens the UI bar on the vitals row; press C or V again, or Backspace, to return. |
+| **V** | Dice — and the UI bar's dice row, one die per column. |
+| **B** | Dialogue log — in a conversation, read back through earlier lines with Up and Down; B or Backspace returns to the live line or the choices. |
 | **K** | Clocks. |
 | **N** | Last station change. |
 | **L** | Where am I. |
@@ -115,9 +116,10 @@ in live play. Notes:
   the game's skip button, which the game otherwise only offers to mouse and
   controller players.
 
-**Known issue:** selecting a cloud network node has an intermediate step with no
-feedback yet — opening a node takes one more Enter press than a typical action
-card. Press Enter again if a node seems unresponsive.
+Cloud hacking speaks its full three-step flow as of 0.9.5: slot a matching die
+("Enter to hack"), hack, then extract ("Enter to extract data") — each press
+announces what it will do, and the district's tracker progress is spoken after
+each extraction.
 
 ## License and credits
 

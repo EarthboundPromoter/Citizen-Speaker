@@ -38,11 +38,17 @@ namespace CSAccess.UI
             public const string Cancelled = "Cancelled.";
             public const string ConfirmPrompt = "Enter to confirm, Backspace to cancel.";
             public const string HeaderName = "Name";
+            public const string HeaderDescription = "Description";
             public const string HeaderPerks = "Perks";
             public const string HeaderNext = "Next";
         }
 
-        private static readonly string[] Headers = { W.HeaderName, W.HeaderPerks, W.HeaderNext };
+        // Description column (owner ruling 2026-07-23, skill-display audit): the
+        // rendered per-skill function line, deliberately EXCLUDED from the row-switch
+        // read (the CloudTable Narrative precedent — heavy on the frequent read) but
+        // present in the column walk and the Space detail.
+        private static readonly string[] Headers =
+            { W.HeaderName, W.HeaderDescription, W.HeaderPerks, W.HeaderNext };
 
         private static Transform _window;
         private static int _row, _col;
@@ -115,12 +121,24 @@ namespace CSAccess.UI
                 Priority.Immediate, "table");
         }
 
+        /// <summary>Space = the complete "teach me this skill" read (owner ruling
+        /// 2026-07-23): name and value, the rendered function description, the ladder
+        /// shape with the current rung, both perks, and the next rung with cost.</summary>
         private static void Detail()
         {
             var rows = Rows();
             if (rows.Count == 0) return;
             _row = Mathf.Clamp(_row, 0, rows.Count - 1);
-            SpeechService.Say(RowRead(rows[_row]), Priority.Immediate, "table");
+            var row = rows[_row];
+            var sb = new System.Text.StringBuilder(NameCell(row));
+            string desc = DescriptionCell(row);
+            if (desc != null) sb.Append(". ").Append(desc);
+            sb.Append(". ").Append(LadderLine(row));
+            string perks = PerksCell(row);
+            if (perks != null) sb.Append(' ').Append(perks).Append('.');
+            string next = NextCell(row);
+            if (next != null) sb.Append(' ').Append(W.HeaderNext).Append(": ").Append(next).Append('.');
+            SpeechService.Say(sb.ToString(), Priority.Immediate, "table");
         }
 
         /// <summary>Full row per the standard idiom; once the flow is armed the read
@@ -144,7 +162,8 @@ namespace CSAccess.UI
             switch (col)
             {
                 case 0: return RowRead(row);
-                case 1: return PerksCell(row);
+                case 1: return DescriptionCell(row) ?? "none";
+                case 2: return PerksCell(row);
                 default: return NextCell(row);
             }
         }
@@ -152,6 +171,35 @@ namespace CSAccess.UI
         // ---------- Cells ----------
 
         private static string SkillWord(Transform row) => row.name.Trim();
+
+        /// <summary>The rendered per-skill function line (Skill Topline/Skill Desc,
+        /// e.g. "Work with machines and physical tools.") — the what-is-this-skill-for
+        /// answer the window always showed and the mod never spoke (audit 2026-07-23).</summary>
+        private static string DescriptionCell(Transform row)
+        {
+            string desc = TextOf(row, "Skill Topline/Skill Desc");
+            return string.IsNullOrEmpty(desc) ? null : desc.TrimEnd('.');
+        }
+
+        /// <summary>The progression shape the BG markers render — the full scale with
+        /// the current rung marked (corpus ladder order; the FSM resting state IS the
+        /// position dial). Spoken only in the Space detail.</summary>
+        private static string LadderLine(Transform row)
+        {
+            string at = RestingState(row) switch
+            {
+                "-1" => "-1",
+                "0" => "0",
+                "Perk 1" => "Perk 1",
+                "+1" => "+1",
+                "Perk 2" => "Perk 2",
+                "+2" => "+2",
+                "BROKEN" => W.Broken,
+                _ => null,
+            };
+            return "Ladder: -1, 0, Perk 1, +1, Perk 2, +2"
+                + (at != null ? "; at " + at : "") + ".";
+        }
 
         /// <summary>"ENDURE +1" (Lua bucket, the BL-1 render pairing) + broken flag from
         /// the row FSM's resting state (the ladder dial).</summary>
