@@ -60,7 +60,7 @@ namespace CSAccess.Game
                 text = "Missing the required item. Needs " + cost
                     + ", holding " + holding + ".";
             }
-            Queue.Add(new PendingSay { Text = text, Due = Time.unscaledTime + 0.1f });
+            Queue.Add(new PendingSay { Text = text, Due = Time.unscaledTime + Timing.RefusalSayDefer });
         }
 
         public static void Tick()

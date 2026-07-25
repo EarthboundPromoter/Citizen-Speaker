@@ -19,7 +19,7 @@ namespace CSAccess.Substrate
         public static void Tick()
         {
             if ((_luaDone && _signalsDone) || Time.unscaledTime < _nextTry) return;
-            _nextTry = Time.unscaledTime + 5f;
+            _nextTry = Time.unscaledTime + Timing.SelfTestRetry;
 
             if (!_luaDone)
             {

@@ -20,6 +20,7 @@ namespace CSAccess
         internal static ConfigEntry<bool> ForceGamepadUI;
         internal static ConfigEntry<bool> TraceFsmSignals;
         internal static ConfigEntry<bool> TraceInput;
+        internal static ConfigEntry<bool> DumpStatDiagnostics;
         internal static ConfigEntry<bool> MapTableCamera;
 
         private InputManager _input;
@@ -44,6 +45,9 @@ namespace CSAccess
             TraceInput = Config.Bind("Debug", "TraceInput", false,
                 "Log every mod-relevant key press and synthetic nav event live "
                 + "(always recorded in memory for the F3 incident dump regardless).");
+            DumpStatDiagnostics = Config.Bind("Debug", "DumpStatDiagnostics", false,
+                "On station-scene entry, dump all PlayMaker globals and the HUD stat "
+                + "FSMs to the log (the original stat-source hunt; dev diagnostics).");
             MapTableCamera = Config.Bind("MapTable", "CameraFollow", true,
                 "Station table row moves drive the camera (Focus Z write - the game's "
                 + "own scroll accumulator). Disable to browse without camera movement.");

@@ -134,19 +134,11 @@ namespace CSAccess
             try
             {
                 var selected = Navigator.Current();
-                state["selection"] = selected != null ? PathOf(selected) : null;
+                state["selection"] = selected != null ? Util.PathOf(selected) : null;
             }
             catch { }
             try { state["speechQueueDepth"] = SpeechService.QueueDepth; } catch { }
             return state;
-        }
-
-        private static string PathOf(GameObject go)
-        {
-            var sb = new StringBuilder(go.name);
-            for (var t = go.transform.parent; t != null; t = t.parent)
-                sb.Insert(0, t.name + "/");
-            return sb.ToString();
         }
 
         // ---------- F3 incident dump ----------

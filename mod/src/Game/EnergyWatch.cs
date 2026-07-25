@@ -49,7 +49,7 @@ namespace CSAccess.Game
                     Queue.Add(new PendingSay
                     {
                         Text = "Starving. Energy empty.",
-                        Due = Time.unscaledTime + 0.2f,
+                        Due = Time.unscaledTime + Timing.StatEventDefer,
                     });
                 }
                 return;
@@ -73,7 +73,7 @@ namespace CSAccess.Game
                 // "of 5" per the segments-first ruling (5 rendered boxes; Setter 6
                 // = boost overcharge, spoken as "6 of 5" if it ever fires — flag it).
                 Text = "Energy " + (falling ? "falling: " : "rising: ") + level + " of 5.",
-                Due = Time.unscaledTime + 0.3f,
+                Due = Time.unscaledTime + Timing.BandLabelSettle,
             });
         }
 

@@ -197,9 +197,9 @@ namespace CSAccess.UI
             }
             if (surface != Modality.Mode.Cloud || _entered || Modality.NavIdiom.Native)
                 return;
-            // 1.2s: land AFTER the entry census's own 0.8s Text Setup settle so
-            // row names are populated and the silent baseline has run.
-            if (Time.unscaledTime - _surfaceAt < 1.2f) return;
+            // Land AFTER the entry census's own Text Setup settle so row names are
+            // populated and the silent baseline has run.
+            if (Time.unscaledTime - _surfaceAt < Timing.CloudSurfaceSettle) return;
             // Camera flights inside the cloud keep their own mute; don't announce
             // mid-flight.
             if (Modality.CloudFlight.Suppressing()) return;
@@ -304,15 +304,7 @@ namespace CSAccess.UI
         }
 
         private static Button CardButton(Node node)
-        {
-            if (node.Card == null) return null;
-            var slot = Game.StationAtlas.FindDeep(node.Card, "Dice Slot Button");
-            var b = slot != null ? slot.GetComponent<Button>() : null;
-            if (b != null && b.gameObject.activeInHierarchy && b.IsInteractable()) return b;
-            foreach (var candidate in node.Card.GetComponentsInChildren<Button>(false))
-                if (candidate.IsInteractable()) return candidate;
-            return null;
-        }
+            => Describe.FindCardButton(node.Card);
 
         private static string CardCell(Node node, int col)
         {
@@ -542,7 +534,7 @@ namespace CSAccess.UI
         {
             if (string.IsNullOrEmpty(s)) return null;
             string t = s.Trim().TrimEnd('.');
-            return t.Equals("Description in text table",
+            return t.Equals(Game.GameVocab.Warts.LocalizationLeakDescription,
                 System.StringComparison.OrdinalIgnoreCase) ? null : s;
         }
 
@@ -599,7 +591,7 @@ namespace CSAccess.UI
             // not exits — the census runs only on a genuine cloud entry.
             bool cloud = Modality.ModeModel.Surface() == Modality.Mode.Cloud;
             if (cloud && !_wasCloud)
-                _entryCensusAt = Time.unscaledTime + 0.8f; // let Text Setup settle
+                _entryCensusAt = Time.unscaledTime + Timing.CloudEntryCensusSettle; // let Text Setup settle
             _wasCloud = cloud;
 
             if (_entryCensusAt > 0 && Time.unscaledTime >= _entryCensusAt)
@@ -618,7 +610,7 @@ namespace CSAccess.UI
         /// diff a beat later (target dials flip on everyFrame watches + Text Setup).</summary>
         public static void AfterOutcome()
         {
-            _revealDiffAt = Time.unscaledTime + 0.6f;
+            _revealDiffAt = Time.unscaledTime + Timing.CloudRevealDiffDefer;
         }
 
         private static Dictionary<string, float> Snapshot()

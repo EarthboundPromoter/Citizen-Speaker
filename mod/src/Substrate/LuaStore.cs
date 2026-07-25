@@ -57,8 +57,9 @@ namespace CSAccess.Substrate
 
         public enum Skill { Endure, Engage, Engineer, Interface, Intuit }
 
-        private static readonly string[] SkillVars =
-            { "ENDURE", "ENGAGE", "ENGINEER", "INTERFACE", "INTUIT" };
+        // Enum-order-bound (A3): GameVocab.SkillLuaVars is indexed by (int)skill and
+        // is NOT the display order — the binding is documented at the definition.
+        private static readonly string[] SkillVars = Game.GameVocab.SkillLuaVars;
 
         /// <summary>The skill's value — the same number whose bucket (-1/0/+1/+2) the
         /// character window renders as the highlighted modifier row

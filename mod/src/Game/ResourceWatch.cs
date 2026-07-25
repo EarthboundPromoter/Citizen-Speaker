@@ -74,7 +74,7 @@ namespace CSAccess.Game
             {
                 Subject = label.ToUpperInvariant(),
                 Text = label + " " + sign + " " + amount + ", now " + Mathf.RoundToInt(value) + ".",
-                Due = Time.unscaledTime + 1.2f,
+                Due = Time.unscaledTime + Timing.ResourceSayDefer,
             });
         }
 
@@ -101,8 +101,10 @@ namespace CSAccess.Game
         private static bool InteractionLaneSpoke(string subjectUpper)
         {
             if (subjectUpper == "UPGRADE POINTS" || subjectUpper == "DRIVE POINTS")
-                return Time.unscaledTime - UI.CharacterTable.LastPurchaseSpokeAt < 2.5f;
-            if (Time.unscaledTime - Watchers.RecentEffectBodiesAt > 2.5f) return false;
+                return Time.unscaledTime - UI.CharacterTable.LastPurchaseSpokeAt
+                    < Timing.ResourceStandDownWindow;
+            if (Time.unscaledTime - Watchers.RecentEffectBodiesAt
+                > Timing.ResourceStandDownWindow) return false;
             foreach (var body in Watchers.RecentEffectBodies)
                 if (body.Contains(subjectUpper)) return true;
             return false;
@@ -111,7 +113,7 @@ namespace CSAccess.Game
         private static void PollPoints()
         {
             if (Time.unscaledTime < _pointsPollAt) return;
-            _pointsPollAt = Time.unscaledTime + 0.5f;
+            _pointsPollAt = Time.unscaledTime + Timing.PointsPoll;
             PollPoint(Substrate.LuaStore.UpgradePoints(), ref _upgradePoints, "Upgrade points",
                 "UPGRADE POINTS");
             PollPoint(Substrate.LuaStore.DrivePoints(), ref _drivePoints, "Drive points",
@@ -130,7 +132,7 @@ namespace CSAccess.Game
             {
                 Subject = subject,
                 Text = label + " " + sign + " " + Mathf.Abs(delta) + ", now " + current.Value + ".",
-                Due = Time.unscaledTime + 1.2f,
+                Due = Time.unscaledTime + Timing.ResourceSayDefer,
             });
         }
     }

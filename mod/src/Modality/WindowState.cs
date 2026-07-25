@@ -137,7 +137,7 @@ namespace CSAccess.Modality
         {
             if (_questLog != null) return _questLog;
             if (Time.unscaledTime < _questLogNextSearch) return null;
-            _questLogNextSearch = Time.unscaledTime + 5f;
+            _questLogNextSearch = Time.unscaledTime + Timing.WindowStatePoll;
             var go = GameObject.Find("Letterbox Canvas/Drive System/CS Drive Log");
             if (go != null) _questLog = go.GetComponent<QuestLogWindow>();
             return _questLog;
@@ -151,7 +151,7 @@ namespace CSAccess.Modality
         public static void DivergenceTick()
         {
             if (Time.unscaledTime < _nextDivergenceCheck) return;
-            _nextDivergenceCheck = Time.unscaledTime + 5f;
+            _nextDivergenceCheck = Time.unscaledTime + Timing.WindowStatePoll;
 
             string report = null;
             bool charAlpha = AlphaOpen("Letterbox Canvas/Character Window");

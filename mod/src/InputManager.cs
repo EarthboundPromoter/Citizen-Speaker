@@ -453,7 +453,7 @@ namespace CSAccess
             {
                 fsm.SendEvent("Reroll");
                 SpeechService.Say("Rerolled.", Priority.Immediate, "dice");
-                _rerollReadAt = Time.unscaledTime + 1.0f; // dice re-render, then the new pool
+                _rerollReadAt = Time.unscaledTime + Timing.RerollRereadDelay; // dice re-render, then the new pool
                 return;
             }
             int? perks = Substrate.LuaStore.PerkCount(Substrate.LuaStore.Skill.Intuit);

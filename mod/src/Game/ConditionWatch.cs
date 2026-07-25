@@ -21,8 +21,9 @@ namespace CSAccess.Game
     /// a silent baseline. Breakdown states are one-shot by nature. Wording provisional.</summary>
     internal static class ConditionWatch
     {
-        private static readonly string[] BandOrder =
-            { "Dying", "Declining", "Fading", "Flickering", "Stable" };
+        // Band STATE names, ascending — GameVocab holds them beside the band string-
+        // variable names, which are a different set (audit A10).
+        private static string[] BandOrder => GameVocab.ConditionBandStates;
 
         // State-name → skill word (NB "Interface Breakdown " ships with a trailing
         // space in the corpus — names are trimmed before lookup).
@@ -59,7 +60,7 @@ namespace CSAccess.Game
                 Queue.Add(new PendingSay
                 {
                     Text = "Breakdown. " + skill + " broken. All dice spent.",
-                    Due = Time.unscaledTime + 0.2f,
+                    Due = Time.unscaledTime + Timing.StatEventDefer,
                 });
                 return;
             }
@@ -68,7 +69,7 @@ namespace CSAccess.Game
                 Queue.Add(new PendingSay
                 {
                     Text = "Breakdown. All five skills broken.",
-                    Due = Time.unscaledTime + 0.2f,
+                    Due = Time.unscaledTime + Timing.StatEventDefer,
                 });
                 return;
             }
@@ -95,7 +96,7 @@ namespace CSAccess.Game
             {
                 Text = "Condition " + (falling ? "falling: " : "improving: ")
                     + boxes + word.ToLowerInvariant() + ".",
-                Due = Time.unscaledTime + 0.3f, // let the localized label land
+                Due = Time.unscaledTime + Timing.BandLabelSettle, // let the localized label land
             });
         }
 

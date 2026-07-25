@@ -22,7 +22,7 @@ namespace CSAccess.Patches
         /// <summary>Called by Navigator immediately before it moves or sets selection.
         /// Only selection changes we cause ourselves count as user-initiated — Enter and
         /// game-driven reselection must never interrupt the active text block.</summary>
-        public static void NoteUserNavigation() => _userMoveExpires = Time.unscaledTime + 0.25f;
+        public static void NoteUserNavigation() => _userMoveExpires = Time.unscaledTime + Timing.UserMoveWindow;
 
         // --- Boot-sweep silence (W2 hardening, owner design): after a Unity scene load,
         //     the game walks focus across controls the player can't touch yet. Game-driven
@@ -172,13 +172,13 @@ namespace CSAccess.Patches
                 && !Modality.WindowState.InventoryOpen
                 && Describe.HasAncestor(selected, "Bottom UI")
                 && Describe.HasAncestor(selected, "Inventory")
-                && Time.unscaledTime - _lastStripReanchor > 1.5f)
+                && Time.unscaledTime - _lastStripReanchor > Timing.StripReanchorCooldown)
             {
                 var mode = Modality.ModeModel.Current();
                 if (mode == Modality.Mode.ActionView || mode == Modality.Mode.Station)
                 {
                     _lastStripReanchor = Time.unscaledTime;
-                    _reanchorAt = Time.unscaledTime + 0.1f;
+                    _reanchorAt = Time.unscaledTime + Timing.ReanchorDefer;
                     _reanchorMode = mode;
                     Plugin.Log.LogInfo("[Focus] strip steal suppressed (" + selected.name
                         + "): " + mode + " re-anchor scheduled.");
@@ -216,7 +216,7 @@ namespace CSAccess.Patches
             if (selected.name == "Item Cursor")
             {
                 _pendingItem = selected;
-                _pendingItemAt = Time.unscaledTime + 0.15f;
+                _pendingItemAt = Time.unscaledTime + Timing.ItemNameSettle;
                 _pendingItemUser = userInitiated;
                 return;
             }

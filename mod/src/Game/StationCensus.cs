@@ -71,8 +71,8 @@ namespace CSAccess.Game
             if (fsm == null || fsm.gameObject == null) return;
             if (!fsm.gameObject.name.Contains(" Canvas")) return;
             // Coalesce bursts (a story swap or zone settle flips several canvases):
-            // the diff runs once, half a second after the churn quiets.
-            _diffDueAt = Time.unscaledTime + 0.5f;
+            // the diff runs once, a beat after the churn quiets.
+            _diffDueAt = Time.unscaledTime + Timing.CensusCoalesceDefer;
         }
 
         /// <summary>Scene load: re-baseline silently (cross-load diffs are unknowable).</summary>
@@ -93,8 +93,8 @@ namespace CSAccess.Game
         public static void OnBeat()
         {
             if (EndgameWatch.EndgameActive()) return; // stand down (see WorldAtRest)
-            _beatWindowUntil = Time.unscaledTime + 3f;
-            _flushNotBefore = Time.unscaledTime + 1.5f;
+            _beatWindowUntil = Time.unscaledTime + Timing.CensusBeatWindow;
+            _flushNotBefore = Time.unscaledTime + Timing.CensusFlushLeadIn;
             Diff();
         }
 
@@ -123,7 +123,7 @@ namespace CSAccess.Game
                 && Time.unscaledTime >= _flushNotBefore)
                 TryFlush();
             if (Pending.Count > 0 && _pendingSince > 0f && !_staleLogged
-                && Time.unscaledTime - _pendingSince > 30f)
+                && Time.unscaledTime - _pendingSince > Timing.CensusStaleLogAfter)
             {
                 _staleLogged = true;
                 Plugin.Log.LogInfo("[Census] change unflushed for 30s (no station beat) — "
@@ -160,7 +160,7 @@ namespace CSAccess.Game
             // per frame for the whole menu dwell. Station-side surfaces only, at
             // most one attempt per 2 s (the save-load window still logs, capped).
             if (Time.unscaledTime < _nextBaselineTry) return;
-            _nextBaselineTry = Time.unscaledTime + 2f;
+            _nextBaselineTry = Time.unscaledTime + Timing.CensusBaselineRetry;
             var surface = ModeModel.Surface();
             if (surface != Mode.Station && surface != Mode.ActionView && surface != Mode.Cloud)
                 return;

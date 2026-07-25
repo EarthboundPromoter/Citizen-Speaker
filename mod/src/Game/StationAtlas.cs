@@ -215,7 +215,7 @@ namespace CSAccess.Game
                 if (activeOnly && !fsm.gameObject.activeSelf) continue;
                 var value = fsm.FsmVariables.GetFsmFloat("ClockValue");
                 if (value == null) continue;
-                int steps = GameQueries.LeadingInt(fsm.gameObject.name);
+                int steps = Util.LeadingInt(fsm.gameObject.name);
                 if (steps <= 0) continue;
                 // Interior groups keep every size variant; the authored one is the
                 // ACTIVE child when rendered — prefer it, else take the first valued.

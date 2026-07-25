@@ -9,9 +9,6 @@ namespace CSAccess.UI
     /// Up/Down step through the centered class's details; Left/Right change class; Enter starts.</summary>
     internal static class CharacterSelect
     {
-        private static readonly string[] ClassNames = { "EXTRACTOR", "OPERATOR", "MACHINIST" };
-        private static readonly string[] SkillOrder = { "ENGINEER", "INTERFACE", "ENDURE", "INTUIT", "ENGAGE" };
-
         private static int _reviewIndex = -1;
 
         public static GameObject Canvas()
@@ -37,7 +34,7 @@ namespace CSAccess.UI
             foreach (Transform child in movingPanel)
             {
                 if (!child.gameObject.activeInHierarchy) continue;
-                if (System.Array.IndexOf(ClassNames, child.name) < 0) continue;
+                if (System.Array.IndexOf(Game.GameVocab.ClassNames, child.name) < 0) continue;
                 float d = Mathf.Abs(child.position.x - centerX);
                 if (d < bestDistance) { bestDistance = d; best = child; }
             }
@@ -74,8 +71,8 @@ namespace CSAccess.UI
         public static List<string> BuildItems(Transform panel)
         {
             var items = new List<string>();
-            int classIndex = System.Array.IndexOf(ClassNames, panel.name);
-            items.Add(panel.name + ", class " + (classIndex + 1) + " of " + ClassNames.Length +
+            int classIndex = System.Array.IndexOf(Game.GameVocab.ClassNames, panel.name);
+            items.Add(panel.name + ", class " + (classIndex + 1) + " of " + Game.GameVocab.ClassNames.Length +
                       ". Up and Down to review details, Left and Right to change class, Enter to start.");
 
             string desc = Describe.TextUnder(panel, "DESC");
@@ -94,10 +91,11 @@ namespace CSAccess.UI
 
             var skillDescs = SkillDescriptions(panel);
             var modifiers = SkillModifiers(panel);
-            for (int i = 0; i < SkillOrder.Length; i++)
+            var order = Game.GameVocab.SkillDisplayOrder;
+            for (int i = 0; i < order.Length; i++)
             {
-                string entry = SkillOrder[i];
-                if (modifiers.TryGetValue(SkillOrder[i], out string mod) && mod != "0")
+                string entry = order[i];
+                if (modifiers.TryGetValue(order[i], out string mod) && mod != "0")
                     entry += " " + mod;
                 if (i < skillDescs.Count)
                     entry += ": " + skillDescs[i];
@@ -129,7 +127,7 @@ namespace CSAccess.UI
             {
                 string txt = tmp.text?.Trim();
                 if (string.IsNullOrEmpty(txt)) continue;
-                if (System.Array.IndexOf(SkillOrder, txt) >= 0) skills.Add(tmp);
+                if (System.Array.IndexOf(Game.GameVocab.SkillDisplayOrder, txt) >= 0) skills.Add(tmp);
                 else if (txt == "+1" || txt == "+2" || txt == "-1" || txt == "0") mods.Add(tmp);
             }
             var result = new Dictionary<string, string>();

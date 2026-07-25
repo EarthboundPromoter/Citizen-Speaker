@@ -17,18 +17,10 @@ namespace CSAccess.Game
             {
                 if (fsm == null || fsm.gameObject == null) continue;
                 if (fsm.gameObject.name != goName) continue;
-                if (pathHint != null && !PathOf(fsm.gameObject).Contains(pathHint)) continue;
+                if (pathHint != null && !Util.PathOf(fsm.gameObject).Contains(pathHint)) continue;
                 return fsm;
             }
             return null;
-        }
-
-        public static string PathOf(GameObject go)
-        {
-            var sb = new StringBuilder(go.name);
-            for (var t = go.transform.parent; t != null; t = t.parent)
-                sb.Insert(0, t.name + "/");
-            return sb.ToString();
         }
 
         // ---------- Cycle transition (end-cycle pipeline) ----------
@@ -247,9 +239,9 @@ namespace CSAccess.Game
                 if (fsm == null || fsm.gameObject == null || fsm.gameObject.name != "Die") continue;
                 var parent = fsm.transform.parent;
                 if (parent == null || !parent.name.StartsWith("Dice Slot")) continue;
-                if (!PathOf(fsm.gameObject).Contains("Dice UI")) continue;
+                if (!Util.PathOf(fsm.gameObject).Contains("Dice UI")) continue;
 
-                int slotNum = ParseTrailingInt(parent.name);
+                int slotNum = Util.TrailingInt(parent.name);
                 var value = fsm.FsmVariables.GetFsmInt("DiceValue");
                 dice.Add(new DieInfo
                 {
@@ -261,39 +253,6 @@ namespace CSAccess.Game
             }
             dice.Sort((a, b) => a.SlotNumber.CompareTo(b.SlotNumber));
             return dice;
-        }
-
-        public static string DescribeDice()
-        {
-            var dice = GetDice();
-            if (dice.Count == 0) return "No dice available.";
-            var sb = new StringBuilder("Dice: ");
-            foreach (var d in dice)
-            {
-                sb.Append("die ").Append(d.SlotNumber).Append(", ");
-                if (d.State == "Used") sb.Append("spent");
-                else if (d.State == "Slotted" || d.State.StartsWith("Boost")) sb.Append("value ").Append(d.Value).Append(", slotted");
-                else sb.Append("value ").Append(d.Value);
-                sb.Append(". ");
-            }
-            return sb.ToString();
-        }
-
-        /// <summary>Leading integer of a name ("32 Step Clock" -> 32); 0 if none.</summary>
-        public static int LeadingInt(string name)
-        {
-            int i = 0;
-            while (i < name.Length && char.IsDigit(name[i])) i++;
-            int.TryParse(name.Substring(0, i), out int result);
-            return result;
-        }
-
-        private static int ParseTrailingInt(string name)
-        {
-            int i = name.Length - 1;
-            while (i >= 0 && char.IsDigit(name[i])) i--;
-            int.TryParse(name.Substring(i + 1), out int result);
-            return result;
         }
 
         // ---------- Actions at the current location ----------
@@ -420,7 +379,7 @@ namespace CSAccess.Game
                 var fsm = child.GetComponent<PlayMakerFSM>();
                 if (fsm == null) continue;
 
-                int steps = ParseLeadingInt(child.name);
+                int steps = Util.LeadingInt(child.name);
                 int value = ReadFsmNumber(fsm, "ClockValue");
                 bool positive = fsm.FsmVariables.GetFsmBool("Positive?")?.Value ?? false;
                 bool cycle = fsm.FsmVariables.GetFsmBool("Cycle Clock?")?.Value ?? false;
@@ -448,29 +407,6 @@ namespace CSAccess.Game
             var fv = fsm.FsmVariables.GetFsmFloat(name);
             if (fv != null) return Mathf.RoundToInt(fv.Value);
             return 0;
-        }
-
-        private static int ParseLeadingInt(string name)
-        {
-            int i = 0;
-            while (i < name.Length && char.IsDigit(name[i])) i++;
-            int.TryParse(name.Substring(0, i), out int result);
-            return result;
-        }
-
-        // ---------- World map buttons ----------
-
-        public static List<GameObject> GetWorldButtons()
-        {
-            var results = new List<GameObject>();
-            foreach (var button in Object.FindObjectsOfType<UnityEngine.UI.Button>())
-            {
-                if (!button.IsInteractable()) continue;
-                string name = button.gameObject.name;
-                if (name == "Location Button" || name == "Character Button")
-                    results.Add(button.gameObject);
-            }
-            return results;
         }
 
         // DescribeStatus (the old unbound "status" reader) removed 2026-07-20: its
@@ -505,10 +441,12 @@ namespace CSAccess.Game
         }
 
         // ---------- Segments-first stat reads (owner ruling 2026-07-20) ----------
-        // Energy renders 5 boxes at 20 points (4 Splitter objects; FSM Setter index =
-        // box count, live pairs 2↔40 / 3↔60 / 5↔100). Condition renders 20 boxes at
-        // 5 points (art-level ticks, owner-counted; chunk live-confirmed 65→60).
-        // All spoken stat values use filled-box form; band words ride with the count.
+        // RENDER CALIBRATIONS (audit C3), not derivable from data: the divisors are
+        // owner-counted against the drawn meters. Energy renders 5 boxes at 20 points
+        // (4 Splitter objects; FSM Setter index = box count, live pairs 2↔40 / 3↔60 /
+        // 5↔100). Condition renders 20 boxes at 5 points (art-level ticks, owner-
+        // counted; chunk live-confirmed 65→60). All spoken stat values use filled-box
+        // form; band words ride with the count. CS2 re-counts both meters.
 
         public static string EnergyBoxes(int value)
             => Mathf.RoundToInt(value / 20f) + " of 5";
@@ -516,14 +454,11 @@ namespace CSAccess.Game
         public static string ConditionBoxes(int value)
             => Mathf.RoundToInt(value / 5f) + " of 20";
 
-        private static readonly string[] ConditionWordVars =
-            { "Stable", "Flickering", "Fading", "Declining", "Breaking", "Attempting Recovery" };
-
         /// <summary>The Condition System keeps one string var per display label; only the
         /// current condition band's var is non-empty.</summary>
         private static string ConditionWord(PlayMakerFSM fsm)
         {
-            foreach (var name in ConditionWordVars)
+            foreach (var name in GameVocab.ConditionWordVars)
             {
                 string v = fsm.FsmVariables.GetFsmString(name)?.Value;
                 if (!string.IsNullOrEmpty(v)) return v;
@@ -664,8 +599,8 @@ namespace CSAccess.Game
 
         /// <summary>The dice row of the top band review (VitalsReview): one cell per
         /// die in slot order, per-die states visible (the brief hides WHICH die is
-        /// spent; the cells answer it). Wording mirrors DescribeDice's per-die read.
-        /// CS2 seam: this is the per-game dice content provider.</summary>
+        /// spent; the cells answer it). Per-die wording: spent / value N, slotted /
+        /// value N. CS2 seam: this is the per-game dice content provider.</summary>
         public static List<(string Label, string Value)> DiceCells()
         {
             var cells = new List<(string Label, string Value)>();
@@ -709,7 +644,7 @@ namespace CSAccess.Game
             string s = fsm != null ? fsm.ActiveStateName : null;
             bool live = !string.IsNullOrEmpty(s) && s != "Off";
             if (live) _lastDiceLive = Time.unscaledTime;
-            return live || Time.unscaledTime - _lastDiceLive < 0.25f;
+            return live || Time.unscaledTime - _lastDiceLive < Timing.DiceModeHysteresis;
         }
 
         /// <summary>Spoken description of the die a picker cursor stands for.

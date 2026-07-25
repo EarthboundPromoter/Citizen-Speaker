@@ -64,7 +64,7 @@ namespace CSAccess.Game
             if (_controller != null && _controller) return _controller;
             // Bounded re-find: absent at the title scene; never scan per frame.
             if (Time.unscaledTime < _nextFind) return null;
-            _nextFind = Time.unscaledTime + 3f;
+            _nextFind = Time.unscaledTime + Timing.EndgameFindPoll;
             _controller = GameQueries.FindFsm("Ending Controller");
             return _controller;
         }

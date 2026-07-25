@@ -41,7 +41,10 @@ namespace CSAccess
                 if (scene.Contains("MAIN") && !scene.Contains("MAIN TITLE"))
                 {
                     SpeechService.Say("On station.", Priority.Queued, "scene");
-                    DumpGlobalVariables();
+                    // B2: config-gated — these dumps served the original stat-source
+                    // hunt and only add log bulk on a routine boot.
+                    if (Plugin.DumpStatDiagnostics.Value)
+                        DumpGlobalVariables();
                 }
             }
 
@@ -83,7 +86,7 @@ namespace CSAccess
             bool open = _pauseCanvas.gameObject.activeInHierarchy;
             if (open && !_pauseWasOpen)
             {
-                var autosave = _pauseCanvas.Find("Time SInce Last Autosave");
+                var autosave = _pauseCanvas.Find(GameVocab.Warts.TimeSinceLastAutosave);
                 string line = autosave != null ? UI.Describe.JoinTexts(autosave.gameObject, 3) : null;
                 // C6: the render is three fragments ("TIME SINCE LAST AUTOSAVE",
                 // "160", "SECONDS") — join to a sentence instead of comma splices.
@@ -166,8 +169,9 @@ namespace CSAccess
             _titleWarningWasOpen = open;
         }
 
-        /// <summary>One-time diagnostic: log all PlayMaker global variables so we can learn
-        /// where condition/energy/cycle live (they're rendered as bar graphics only).</summary>
+        /// <summary>Stat-source diagnostic (config-gated, Debug.DumpStatDiagnostics):
+        /// log all PlayMaker global variables — the original hunt for where
+        /// condition/energy/cycle live (they're rendered as bar graphics only).</summary>
         private static void DumpGlobalVariables()
         {
             try
@@ -195,7 +199,7 @@ namespace CSAccess
                 foreach (var fsm in PlayMakerFSM.FsmList)
                 {
                     if (fsm == null || fsm.gameObject == null) continue;
-                    string path = Game.GameQueries.PathOf(fsm.gameObject);
+                    string path = Util.PathOf(fsm.gameObject);
                     string lower = path.ToLowerInvariant();
                     if (!lower.Contains("energy ui") && !lower.Contains("condition") &&
                         !lower.Contains("cycle clock") && !lower.Contains("flicker"))
@@ -262,8 +266,10 @@ namespace CSAccess
                 foreach (Transform notification in category)
                 {
                     int id = notification.GetInstanceID();
+                    // Alphas multiply up to (not including) the notification root's
+                    // parent, so the root's own group counts.
                     bool visible = notification.gameObject.activeInHierarchy &&
-                                   EffectiveAlpha(notification) > 0.5f;
+                                   Util.AlphaUpTo(notification, _notificationRoot.parent) > 0.5f;
                     if (!visible)
                     {
                         _visibleNotifications.Remove(id);
@@ -275,7 +281,8 @@ namespace CSAccess
                         // its own string (owner composition 2026-07-23) — the rendered
                         // notification stands down (A4 lane rule).
                         if (notification.name.StartsWith("INTERFACE - Transfer Intercept")
-                            && Time.unscaledTime - Game.CloudOutcomes.LastCryoComposedAt < 4f)
+                            && Time.unscaledTime - Game.CloudOutcomes.LastCryoComposedAt
+                               < Timing.CryoComposeSuppress)
                             continue;
                         AnnouncePanelTexts(notification, "notify", "", "");
                     }
@@ -284,22 +291,6 @@ namespace CSAccess
             _notificationsBaselined = true;
         }
 
-        /// <summary>Notification templates stay active and are hidden via CanvasGroup alpha —
-        /// multiply alphas up to the notification root to get real visibility.</summary>
-        private float EffectiveAlpha(Transform t)
-        {
-            float alpha = 1f;
-            for (var cur = t; cur != null && cur != _notificationRoot.parent; cur = cur.parent)
-            {
-                var group = cur.GetComponent<CanvasGroup>();
-                if (group != null) alpha *= group.alpha;
-            }
-            return alpha;
-        }
-
-        private static readonly string[] ClassNames = { "EXTRACTOR", "OPERATOR", "MACHINIST" };
-        private static readonly string[] SkillWords = { "ENGINEER", "INTERFACE", "ENDURE", "INTUIT", "ENGAGE" };
-        private static readonly string[] ModifierWords = { "+2", "+1", "-1", "0" };
         private string _lastClass;
 
         /// <summary>Announce the class centered in the character-select carousel whenever it changes.</summary>
@@ -320,7 +311,7 @@ namespace CSAccess
             foreach (Transform child in movingPanel)
             {
                 if (!child.gameObject.activeInHierarchy) continue;
-                if (System.Array.IndexOf(ClassNames, child.name) < 0) continue;
+                if (System.Array.IndexOf(GameVocab.ClassNames, child.name) < 0) continue;
                 float d = Mathf.Abs(child.position.x - centerX);
                 if (d < bestDistance) { bestDistance = d; centered = child; }
             }
@@ -330,9 +321,9 @@ namespace CSAccess
             UI.CharacterSelect.ResetReview();
             // C5: the entry read carries the same ordinal the review read has; the
             // bare-name Left/Right two-stage stays (mash-safe, owner-kept).
-            int ordinal = System.Array.IndexOf(ClassNames, centered.name) + 1;
+            int ordinal = System.Array.IndexOf(GameVocab.ClassNames, centered.name) + 1;
             SpeechService.Say(firstAnnounce
-                    ? centered.name + ", class " + ordinal + " of " + ClassNames.Length
+                    ? centered.name + ", class " + ordinal + " of " + GameVocab.ClassNames.Length
                       + ". Up and Down to review details, Left and Right to change class, Enter to start."
                     : centered.name,
                 Priority.Immediate, "class");
@@ -428,7 +419,7 @@ namespace CSAccess
             if (!_outlookPending) return;
             if (_diceSystemState != "Slotted") { _outlookPending = false; return; }
             int? v = GameQueries.SettledSlottedDieValue();
-            bool timedOut = Time.unscaledTime - _outlookSince > 0.6f;
+            bool timedOut = Time.unscaledTime - _outlookSince > Timing.OutlookSettleBail;
             if (v == null && !timedOut) return; // keep watching until it settles
             // Bail fallback (2026-07-22): when the settle detection misses (14/118
             // slots overnight spoke a bare start prompt), the value itself is final
@@ -439,7 +430,7 @@ namespace CSAccess
             // string (owner ruling 2026-07-21): the game's focus announce for the slot
             // button is muted, so the mod re-emits its useful tail here, guaranteeing
             // the order "Die slotted." -> odds -> start action with nothing racing.
-            string line = v != null ? Game.ActionOutcomes.OutlookLine(v.Value) : null;
+            string line = v != null ? GameVocab.OutlookLine(v.Value) : null;
             string start = GameQueries.SlottedActionButtonText();
             var sb = new System.Text.StringBuilder();
             if (!string.IsNullOrEmpty(line)) sb.Append(line);
@@ -541,7 +532,7 @@ namespace CSAccess
                         // spend — the outcome announce carries it; only a genuine bare
                         // unslot speaks its removal.
                         bool spent = GameQueries.ActionResolving(_slottedActionRoot)
-                            || Time.unscaledTime - _lastControllerLeftIdle < 1.5f
+                            || Time.unscaledTime - _lastControllerLeftIdle < Timing.DiceSpendWindow
                             || GameQueries.SlottedDiceValueGlobal() != _slottedGlobalAtOpen;
                         if (!spent)
                             SpeechService.Say("Die removed.", Priority.Immediate, "dice");
@@ -645,7 +636,7 @@ namespace CSAccess
                 foreach (var tmp in outcomes.GetComponentsInChildren<TMP_Text>(false))
                 {
                     if (!tmp.gameObject.name.StartsWith("Effect")) continue;
-                    if (AlphaUpTo(tmp.transform, actionRoot) < 0.5f) continue;
+                    if (Util.AlphaUpTo(tmp.transform, actionRoot) < 0.5f) continue;
                     string txt = tmp.text?.Trim();
                     if (string.IsNullOrEmpty(txt)) continue;
                     txt = ComposeEffect(txt);
@@ -693,7 +684,8 @@ namespace CSAccess
             string sign = gain >= loss ? "plus" : "minus";
             string upper = body.ToUpperInvariant();
 
-            if (Time.unscaledTime - RecentEffectBodiesAt > 2f) RecentEffectBodies.Clear();
+            if (Time.unscaledTime - RecentEffectBodiesAt > Timing.EffectEchoWindow)
+                RecentEffectBodies.Clear();
             RecentEffectBodies.Add(upper);
             RecentEffectBodiesAt = Time.unscaledTime;
 
@@ -718,7 +710,8 @@ namespace CSAccess
             string clock = ClockNow(body);
             if (clock != null)
             {
-                if (Time.unscaledTime - RecentEffectClocksAt > 2f) RecentEffectClocks.Clear();
+                if (Time.unscaledTime - RecentEffectClocksAt > Timing.EffectEchoWindow)
+                    RecentEffectClocks.Clear();
                 RecentEffectClocks.Add(upper);
                 RecentEffectClocksAt = Time.unscaledTime;
                 return clock;
@@ -754,19 +747,6 @@ namespace CSAccess
             return string.IsNullOrEmpty(band) ? null : band.ToLowerInvariant();
         }
 
-        /// <summary>Effective CanvasGroup visibility of t, multiplying alphas up to (not
-        /// including) stopAt.</summary>
-        internal static float AlphaUpTo(Transform t, Transform stopAt)
-        {
-            float alpha = 1f;
-            for (var cur = t; cur != null && cur != stopAt; cur = cur.parent)
-            {
-                var g = cur.GetComponent<CanvasGroup>();
-                if (g != null) alpha *= g.alpha;
-            }
-            return alpha;
-        }
-
         /// <summary>The last spoken tutorial announce, for R-reread in Tutorial mode
         /// (owner ruling 2026-07-20 — tutorials reread the way dialogue does).</summary>
         internal static string LastTutorialLine;
@@ -779,7 +759,7 @@ namespace CSAccess
             // triggers activate the panel while the game presents it only later.
             // Announce only when it actually renders; a false return leaves the
             // panel unmarked and the poll retries (BL-3 machinery unchanged).
-            if (AlphaUpTo(panel, null) < 0.5f) return false;
+            if (Util.AlphaUpTo(panel) < 0.5f) return false;
 
             var parts = new List<string>();
             foreach (var tmp in panel.GetComponentsInChildren<TMP_Text>(false))
@@ -863,7 +843,8 @@ namespace CSAccess
             {
                 if (!child.gameObject.activeSelf) continue;
                 string n = child.name;
-                if (n.IndexOf("ostioner", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                if (n.IndexOf(GameVocab.Warts.PositionerFragment,
+                        System.StringComparison.OrdinalIgnoreCase) >= 0)
                     continue; // per-locale positioner copies ("A Prompt postioner FR")
                 foreach (var kv in PromptWords)
                     if (n.StartsWith(kv.Key) || n.Contains(kv.Key)) { prompts.Add(kv.Value); break; }

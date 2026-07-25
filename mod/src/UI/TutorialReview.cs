@@ -29,13 +29,7 @@ namespace CSAccess.UI
                 // Rendered visibility required (session-5): the cloud tutorial panel
                 // stays GameObject-active after dismissal and hides by CanvasGroup
                 // alpha — the active+text test alone never releases.
-                float a = 1f;
-                for (var cur = child; cur != null; cur = cur.parent)
-                {
-                    var g = cur.GetComponent<CanvasGroup>();
-                    if (g != null) a *= g.alpha;
-                }
-                if (a < 0.5f) continue;
+                if (Util.AlphaUpTo(child) < 0.5f) continue;
                 return child;
             }
             return null;

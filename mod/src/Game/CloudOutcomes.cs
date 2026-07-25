@@ -49,9 +49,13 @@ namespace CSAccess.Game
             // (corpus 2026-07-23) — the tracker tick lands there, spoken as a queued
             // tail after the outcome read.
             FsmSignals.Subscribe("Hacking Slots Controller", "Outcome Animation",
-                (fsm, state) => Schedule(fsm, 0.35f));
+                (fsm, state) => Schedule(fsm, Timing.CloudOutcomeAnimDefer));
             FsmSignals.Subscribe("Hacking Slots Controller", "Complete",
-                (fsm, state) => { Schedule(fsm, 0.2f); _trackerLineAt = Time.unscaledTime + 0.6f; });
+                (fsm, state) =>
+                {
+                    Schedule(fsm, Timing.CloudCompleteDefer);
+                    _trackerLineAt = Time.unscaledTime + Timing.TrackerLineDefer;
+                });
 
             foreach (var slot in new[]
                 { "Hacking Dice Slot 1", "Hacking Dice Slot 2", "Hacking Dice Slot 3" })
@@ -65,7 +69,7 @@ namespace CSAccess.Game
                 // one beat so the Transfer Intercept proc (same-beat Perk Manager
                 // notify) can ride the SAME composed string — no overlap.
                 FsmSignals.Subscribe(slot, "ANIMATION",
-                    (fsm, state) => _hackComposeAt = Time.unscaledTime + 0.3f);
+                    (fsm, state) => _hackComposeAt = Time.unscaledTime + Timing.HackComposeDefer);
             }
 
             // The INTERFACE perk's success state is the proc clock (corpus: chance
@@ -88,7 +92,7 @@ namespace CSAccess.Game
             if (_hackComposeAt > 0 && Time.unscaledTime >= _hackComposeAt)
             {
                 _hackComposeAt = -1f;
-                bool proc = Time.unscaledTime - _perkProcAt < 1.5f;
+                bool proc = Time.unscaledTime - _perkProcAt < Timing.PerkProcWindow;
                 if (proc) LastCryoComposedAt = Time.unscaledTime;
                 SpeechService.Say("Hacked." + (proc ? " Plus 5 cryo." : "")
                     + " Enter to extract data.", Priority.Immediate, "cloud");
@@ -138,7 +142,8 @@ namespace CSAccess.Game
                 // Two clocks fire per resolve (Outcome Animation, then Complete) —
                 // announce identical content once.
                 if (!LastAnnounced.TryGetValue(id, out var last)
-                    || last.Text != composed || Time.unscaledTime - last.Time > 6f)
+                    || last.Text != composed
+                    || Time.unscaledTime - last.Time > Timing.CloudRepeatWindow)
                 {
                     LastAnnounced[id] = (composed, Time.unscaledTime);
                     SpeechService.Say(composed, Priority.Queued, "cloud");
@@ -169,7 +174,7 @@ namespace CSAccess.Game
                 for (var cur = tmp.transform; cur != null && cur != outcomes; cur = cur.parent)
                     if (cur.name == "Outcome Type") { typed = true; break; }
                 if (!typed) continue;
-                if (Watchers.AlphaUpTo(tmp.transform, root) < 0.5f) continue;
+                if (Util.AlphaUpTo(tmp.transform, root) < 0.5f) continue;
                 string txt = tmp.text?.Trim();
                 if (!string.IsNullOrEmpty(txt)) return txt;
             }

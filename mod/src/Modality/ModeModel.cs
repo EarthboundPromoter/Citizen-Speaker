@@ -76,7 +76,7 @@ namespace CSAccess.Modality
             //     alpha polls). One-directional exclusion only; see class doc. ---
             bool charWin = WindowState.CharacterWindowOpen;
             bool driveLog = WindowState.DriveLogOpen;
-            if (charWin && driveLog && Time.unscaledTime - _bothWindowsLogged > 30f)
+            if (charWin && driveLog && Time.unscaledTime - _bothWindowsLogged > Timing.BothWindowsLogThrottle)
             {
                 _bothWindowsLogged = Time.unscaledTime;
                 Plugin.Log.LogInfo("[Mode] Character window and drive log both read open (ledgered ambiguity).");
@@ -207,7 +207,7 @@ namespace CSAccess.Modality
                 // stays GameObject-active after dismissal and hides by alpha — the
                 // active+text test never released, trapping Tutorial mode). Same
                 // effective-alpha standard as the notification watcher.
-                if (EffectiveAlpha(panel) < 0.5f) continue;
+                if (Util.AlphaUpTo(panel) < 0.5f) continue;
                 foreach (var tmp in panel.GetComponentsInChildren<TMPro.TMP_Text>(false))
                 {
                     string txt = tmp.text;
@@ -216,17 +216,6 @@ namespace CSAccess.Modality
                 }
             }
             return false;
-        }
-
-        private static float EffectiveAlpha(Transform t)
-        {
-            float a = 1f;
-            for (var cur = t; cur != null; cur = cur.parent)
-            {
-                var g = cur.GetComponent<CanvasGroup>();
-                if (g != null) a *= g.alpha;
-            }
-            return a;
         }
 
         /// <summary>Event-driven: the Dialogue System's own conversationStarted/Ended

@@ -128,7 +128,7 @@ namespace CSAccess.UI
                 return;
             // Settle debounce: transitional mode flickers (flights, teardown)
             // must not announce mid-flight.
-            if (Time.unscaledTime - _surfaceAt < 0.6f) return;
+            if (Time.unscaledTime - _surfaceAt < Timing.StationSurfaceSettle) return;
             _entered = true;
             EnterStation();
         }
@@ -400,7 +400,7 @@ namespace CSAccess.UI
             // enable rather than refusing off stale state; refuse only on timeout
             // (genuinely locked markers never enable).
             _pendingCommit = row;
-            _pendingCommitUntil = Time.unscaledTime + 2f;
+            _pendingCommitUntil = Time.unscaledTime + Timing.CommitEnableWait;
         }
 
         private static StationAtlas.Row _pendingCommit;
@@ -460,7 +460,7 @@ namespace CSAccess.UI
                 return;
             }
             focusZ.Value = angle;
-            _muteUntil = Time.unscaledTime + 1.5f;
+            _muteUntil = Time.unscaledTime + Timing.CameraFocusMute;
             if (Plugin.TraceInput.Value)
                 Plugin.Log.LogInfo("[Table] camera -> " + angle.ToString("0.0"));
         }

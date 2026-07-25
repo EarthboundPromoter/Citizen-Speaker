@@ -234,12 +234,12 @@ namespace CSAccess.UI
                 // The pull-out can render a beat after the heading click — retry
                 // once before refusing (a dead Track press was the owner report).
                 _pendingTrackQuest = quest;
-                _pendingTrackAt = Time.unscaledTime + 0.2f;
+                _pendingTrackAt = Time.unscaledTime + Timing.JournalRetryDefer;
                 return;
             }
             Navigator.Click(toggle.gameObject);
             // Announce the RESULT from the API the pips use (single tracking: one name).
-            _announceTrackingAt = Time.unscaledTime + 0.25f;
+            _announceTrackingAt = Time.unscaledTime + Timing.JournalResultDefer;
         }
 
         private static float _announceTrackingAt = -1f;
@@ -256,7 +256,7 @@ namespace CSAccess.UI
                 if (toggle != null)
                 {
                     Navigator.Click(toggle.gameObject);
-                    _announceTrackingAt = Time.unscaledTime + 0.25f;
+                    _announceTrackingAt = Time.unscaledTime + Timing.JournalResultDefer;
                 }
                 else
                     SpeechService.Say("Track not available.", Priority.Immediate, "table");

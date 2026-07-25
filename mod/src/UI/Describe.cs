@@ -451,7 +451,7 @@ namespace CSAccess.UI
             // stays GameObject-active and hides by alpha — the active+text test spoke
             // an invisible teaser. Same effective-alpha standard as the notification
             // watcher and F13; per-text alpha guards color-faded glyph rows too.
-            if (EffectiveAlpha(pred) < 0.5f) return null;
+            if (Util.AlphaUpTo(pred) < 0.5f) return null;
             var texts = new System.Collections.Generic.List<string>();
             foreach (var tmp in pred.GetComponentsInChildren<TMPro.TMP_Text>(false))
             {
@@ -523,15 +523,20 @@ namespace CSAccess.UI
 
         private static bool _predictiveLogged;
 
-        private static float EffectiveAlpha(Transform t)
+        /// <summary>The card's activation button (audit A7 — was two private copies in
+        /// LocationTable and CloudTable): the card's own Dice Slot Button when it is
+        /// rendered and interactable, else the first interactable Button under the
+        /// card (item/cryo cards keep their clickable elsewhere). Null = the card is
+        /// not activatable right now.</summary>
+        public static Button FindCardButton(Transform cardRoot)
         {
-            float a = 1f;
-            for (var cur = t; cur != null; cur = cur.parent)
-            {
-                var g = cur.GetComponent<CanvasGroup>();
-                if (g != null) a *= g.alpha;
-            }
-            return a;
+            if (cardRoot == null) return null;
+            var slot = Game.StationAtlas.FindDeep(cardRoot, "Dice Slot Button");
+            var b = slot != null ? slot.GetComponent<Button>() : null;
+            if (b != null && b.gameObject.activeInHierarchy && b.IsInteractable()) return b;
+            foreach (var candidate in cardRoot.GetComponentsInChildren<Button>(false))
+                if (candidate.IsInteractable()) return candidate;
+            return null;
         }
 
         /// <summary>Cloud action roots break the " Action" suffix convention freely
@@ -566,8 +571,6 @@ namespace CSAccess.UI
             return null;
         }
 
-        private static readonly string[] SkillNames = { "ENGINEER", "INTERFACE", "ENDURE", "INTUIT", "ENGAGE" };
-
         /// <summary>Skill word from the card's rendered texts; the modifier bucket comes from
         /// the Lua skill variable — the same value whose bucket the row highlights (brief
         /// G#2, BL-1). The row renders all four labels and marks one graphically, so the
@@ -578,7 +581,7 @@ namespace CSAccess.UI
             {
                 string txt = tmp.text?.Trim();
                 if (string.IsNullOrEmpty(txt)) continue;
-                foreach (var skill in SkillNames)
+                foreach (var skill in Game.GameVocab.SkillDisplayOrder)
                 {
                     if (txt == skill)
                     {
@@ -634,7 +637,7 @@ namespace CSAccess.UI
             {
                 string txt = tmp.text?.Trim();
                 if (string.IsNullOrEmpty(txt)) continue;
-                foreach (var skill in SkillNames)
+                foreach (var skill in Game.GameVocab.SkillDisplayOrder)
                     if (txt == skill) return skill;
             }
             return null;
@@ -693,7 +696,7 @@ namespace CSAccess.UI
                     clsLabel = txt;
                 else if (up == "CYCLE")
                     cycleLabel = txt;
-                else if (up == "OPERATOR" || up == "EXTRACTOR" || up == "MACHINIST")
+                else if (System.Array.IndexOf(Game.GameVocab.ClassNames, up) >= 0)
                     cls = txt;
                 else if (up.Contains("CYCLE"))
                     cycleInline = txt;

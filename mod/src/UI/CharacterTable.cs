@@ -275,7 +275,8 @@ namespace CSAccess.UI
         private static bool PerkOwned(Transform skill, int n)
         {
             // NB the FG container name carries a trailing space in the shipped hierarchy.
-            var fg = skill.Find("FG Markers /Perk " + n) ?? skill.Find("FG Markers/Perk " + n);
+            var fg = skill.Find(Game.GameVocab.Warts.FgMarkersTrailingSpace + "/Perk " + n)
+                ?? skill.Find("FG Markers/Perk " + n);
             return fg != null && fg.gameObject.activeInHierarchy;
         }
 
@@ -374,7 +375,7 @@ namespace CSAccess.UI
             _pointsBefore = PointsLine();
             _watchRow = row;
             for (int n = 1; n <= 2; n++) _perkWasOwned[n] = PerkOwned(row, n);
-            _checkAt = Time.unscaledTime + 0.3f;
+            _checkAt = Time.unscaledTime + Timing.PurchaseCheckDefer;
             // F12: a fresh arm on a row with no modal up starts a new attempt.
             if (ConfirmRoot(row) == null) _confirmAnnounced = false;
         }
@@ -415,7 +416,7 @@ namespace CSAccess.UI
                     SpeechService.Say((string.IsNullOrEmpty(label) ? "Confirm upgrade" : label)
                         + ". " + W.ConfirmPrompt, Priority.Queued, "table");
                 }
-                _checkAt = Time.unscaledTime + 0.3f; // watch stays armed
+                _checkAt = Time.unscaledTime + Timing.PurchaseCheckDefer; // watch stays armed
                 return;
             }
 

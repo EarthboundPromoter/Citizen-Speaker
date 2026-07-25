@@ -55,7 +55,7 @@ namespace CSAccess.UI
                 }
                 // C4: scene-start auto-reads spoke their empty result at frame 1
                 // (2 of 3 cold boots) — an empty world is boot noise, not news.
-                if (Time.unscaledTime < 8f)
+                if (Time.unscaledTime < Timing.BootQuietWindow)
                     Plugin.Log.LogInfo("[Nav] nothing to focus (boot window, silent).");
                 else
                     SpeechService.Say("Nothing to focus.", Priority.Immediate, "nav");
@@ -98,7 +98,7 @@ namespace CSAccess.UI
                 SpeechService.Say("Nothing focused.", Priority.Immediate, "nav");
                 return;
             }
-            if (Time.unscaledTime - _lastActivate < 0.3f) return;
+            if (Time.unscaledTime - _lastActivate < Timing.ActivateDebounce) return;
             _lastActivate = Time.unscaledTime;
             Click(go);
         }

@@ -75,7 +75,7 @@ namespace CSAccess.Speech
         public static void Tick()
         {
             if (Queue.Count == 0) return;
-            if (Time.unscaledTime - _lastSpokeAt < 0.15f) return;
+            if (Time.unscaledTime - _lastSpokeAt < Timing.SpeechQueueGap) return;
             try
             {
                 if (_loaded && Tolk.Tolk_IsSpeaking()) return;

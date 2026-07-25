@@ -178,7 +178,7 @@ namespace CSAccess.UI
             }
             // One native click on the card's own button (single-dispatch): die actions
             // open allocation, item/cryo actions run their designed slot flow.
-            var button = FindCardButton(root);
+            var button = Describe.FindCardButton(root);
             if (button != null)
             {
                 SnapshotForDiff();
@@ -210,7 +210,7 @@ namespace CSAccess.UI
                 _clockSnapshot[name] = GameQueries.ClockProgress(clock) ?? "";
             }
             foreach (var action in GameQueries.GetActionPanels())
-                _activatableSnapshot[ActionName(action)] = FindCardButton(action) != null;
+                _activatableSnapshot[ActionName(action)] = Describe.FindCardButton(action) != null;
             _hasSnapshot = true;
         }
 
@@ -224,7 +224,8 @@ namespace CSAccess.UI
             var parts = new List<string>();
             // F7 dedupe: clocks the outcome's effect line already spoke as state
             // ("NAME now x of y") are skipped here — one tick, one announcement.
-            bool effectFresh = UnityEngine.Time.unscaledTime - Watchers.RecentEffectClocksAt < 2f;
+            bool effectFresh = UnityEngine.Time.unscaledTime - Watchers.RecentEffectClocksAt
+                < Timing.EffectEchoWindow;
             foreach (var clock in GameQueries.GetClockPanels())
             {
                 string name = Describe.TrimQuotes(Describe.TextUnder(clock, "Clock Name")) ?? clock.name;
@@ -240,7 +241,7 @@ namespace CSAccess.UI
             foreach (var action in GameQueries.GetActionPanels())
             {
                 string name = ActionName(action);
-                bool now = FindCardButton(action) != null;
+                bool now = Describe.FindCardButton(action) != null;
                 if (_activatableSnapshot.TryGetValue(name, out bool was) && was != now)
                     parts.Add(name + ", " + (now ? W.NowEnabled : W.NowDisabled));
             }
@@ -249,15 +250,7 @@ namespace CSAccess.UI
             SnapshotForDiff(); // rows stay live for the next roll
         }
 
-        private static Button FindCardButton(Transform root)
-        {
-            var slotButton = StationAtlas.FindDeep(root, "Dice Slot Button");
-            var b = slotButton != null ? slotButton.GetComponent<Button>() : null;
-            if (b != null && b.gameObject.activeInHierarchy && b.IsInteractable()) return b;
-            foreach (var candidate in root.GetComponentsInChildren<Button>(false))
-                if (candidate.IsInteractable()) return candidate;
-            return null;
-        }
+        // Card-button resolution lives in Describe.FindCardButton (audit A7).
 
         // ---------- Rows / cells ----------
 
@@ -269,7 +262,7 @@ namespace CSAccess.UI
         private static string ActionRow(Transform root)
         {
             var sb = new System.Text.StringBuilder(ActionName(root));
-            var selectable = FindCardButton(root);
+            var selectable = Describe.FindCardButton(root);
             string requires = Cell(root, 1);
             string risk = Cell(root, 2);
             string cost = Cell(root, 3);

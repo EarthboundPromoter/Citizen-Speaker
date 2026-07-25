@@ -45,22 +45,7 @@ namespace CSAccess.Game
             // Chance Filter runs on hover-preview, so state-entry outlook spoke with
             // no die slotted and raced "Die slotted." on fast commits. The outlook
             // now rides the actual slot commit (Watchers' picker-close decision)
-            // via OutlookLine below.
-        }
-
-        /// <summary>A1: the slot-settle outlook as the game's own odds. The roll
-        /// states are hard-coded per boosted die value, uniform across all 119
-        /// controllers (corpus: RandomInt 1-4 + FloatSwitch): 1-2 = 50 neg / 50 neu,
-        /// 3-4 = 25/50/25, 5 = 50 neu / 50 pos, 6 = 100 pos. The dice tutorial
-        /// surfaces these numbers (owner ruling: game-stated, speakable); absent
-        /// tiers are omitted.</summary>
-        internal static string OutlookLine(float slottedValue)
-        {
-            if (slottedValue <= 0f) return null;
-            if (slottedValue <= 2f) return "Negative 50 percent, neutral 50 percent.";
-            if (slottedValue <= 4f) return "Negative 25 percent, neutral 50 percent, positive 25 percent.";
-            if (slottedValue <= 5f) return "Neutral 50 percent, positive 50 percent.";
-            return "Positive 100 percent.";
+            // via GameVocab.OutlookLine (odds table = data, audit C1).
         }
 
         private static void Subscribe(string state, string spokenTier)
@@ -90,7 +75,7 @@ namespace CSAccess.Game
                 Name = name,
                 Root = root,
                 GroupParent = root != null && root.parent != null ? root.parent.parent : null,
-                Due = Time.unscaledTime + 0.15f,
+                Due = Time.unscaledTime + Timing.OutcomeCardDefer,
             });
         }
 
