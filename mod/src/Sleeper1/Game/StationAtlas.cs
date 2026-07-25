@@ -1,0 +1,571 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+using CSAccess.Scaffold;
+using CSAccess.Middleware;
+
+namespace CSAccess.Sleeper1
+{
+    /// <summary>
+    /// Camera-independent station truth for the map table (docs/map-table-design.md).
+    /// Reads the always-active canvas FSMs under 1_Station UI/Locations and /Characters:
+    /// the canvas FSM's ActiveStateName is the availability dial (corpus decode + live
+    /// proof 2026-07-20 — Off/Off 2 = story-locked, never listed; Off Camera = available
+    /// off-frustum), and its Location/Character Name variable is the localized rendered
+    /// name. Walks inactive children by construction (GetComponentsInChildren(true) from
+    /// the active canvas roots) — the render-honesty boundary is the STATE dial, never
+    /// object visibility.
+    /// </summary>
+    internal static class StationAtlas
+    {
+        internal sealed class Row
+        {
+            public bool IsCharacter;
+            public string Name;          // localized, FSM-resolved (rendered name)
+            public string Tagline;       // billboard description ("Old dock terminal")
+            public string State;         // canvas FSM ActiveStateName (diagnostic)
+            public Transform Canvas;     // live variant canvas root
+            public GameObject Button;    // Location/Character Button (may be inactive)
+            public bool Interactable;    // zoom-down affordance (rendered + interactable)
+            public bool IsNew;           // New Shine rendered (the sighted "new" pulse)
+            public float Angle;          // corridor angle (rotator Z domain)
+            public int Zone;             // 0 Rim / 1 Greenway / 2 Hub (heuristic, see ZoneOf)
+        }
+
+        // Location-canvas states that mean "the game shows (or would show) this node".
+        // Everything else — Off / Off 2 / Text Setup and the character template's
+        // polling states — is unlisted (owner ruling 4: not shown = not known).
+        private static readonly HashSet<string> LocationListed = new HashSet<string>
+        {
+            "Variables Met", "Off Camera", "Selected", "Cycle Check",
+            "Clock Flasher", "Flashed Already?",
+        };
+
+        private static readonly HashSet<string> CharacterListed = new HashSet<string>
+        {
+            "Variables Met Pos", "Variables Met Neg 1", "Click to Play",
+            "Autoplay Wait", "Autoplay", "Active",
+        };
+
+        /// <summary>Build the full row set fresh (table open / tab swap — no caching
+        /// across opens; variants swap and anchors move).</summary>
+        public static List<Row> Build()
+        {
+            var rows = new List<Row>();
+            var byName = new Dictionary<string, Row>();
+            CollectContainer("Locations", false, rows, byName);
+            CollectContainer("Characters", true, rows, byName);
+            // Descending: table-Down matches the camera's natural forward travel from
+            // the default position (owner report 2026-07-20 — ascending read inverted;
+            // static flip, never dynamic reordering).
+            rows.Sort((a, b) => b.Angle.CompareTo(a.Angle));
+            return rows;
+        }
+
+        private static void CollectContainer(string containerName, bool characters,
+            List<Row> rows, Dictionary<string, Row> byName)
+        {
+            var container = FindStationChild(containerName);
+            if (container == null)
+            {
+                // D1: once per absence episode, not per Build — the save-load window
+                // and title dwells ran this several times a second and flooded the log.
+                if (MissingContainersLogged.Add(containerName))
+                    Plugin.Log.LogInfo("[Atlas] container '" + containerName
+                        + "' not found — silent until it appears.");
+                return;
+            }
+            if (MissingContainersLogged.Remove(containerName))
+                Plugin.Log.LogInfo("[Atlas] container '" + containerName + "' recovered.");
+            foreach (Transform canvas in container)
+                CollectCanvas(canvas, characters, rows, byName);
+        }
+
+        private static void CollectCanvas(Transform canvas, bool characters,
+            List<Row> rows, Dictionary<string, Row> byName)
+        {
+            var fsm = CanvasFsm(canvas);
+            if (fsm == null)
+            {
+                // FSM-less grouping transform: Locations/Post Rim Gate holds the
+                // entire far station (Lowend onward, ~70 canvases) one level down
+                // (live find 2026-07-21 — Lowend rendered by the game, invisible to
+                // the whole mod). Canvases all carry the availability FSM, so
+                // recursion stops at real canvases and never walks their interiors.
+                foreach (Transform child in canvas)
+                    CollectCanvas(child, characters, rows, byName);
+                return;
+            }
+            string state = fsm.ActiveStateName;
+            bool listed = characters ? CharacterListed.Contains(state)
+                                     : LocationListed.Contains(state);
+            string varPrefix = characters ? "Character" : "Location";
+            if (!listed)
+            {
+                WarnIfGroupingShape(canvas, varPrefix);
+                return;
+            }
+
+            string name = StringVar(fsm, varPrefix + " Name");
+            if (string.IsNullOrEmpty(name))
+            {
+                // Graceful silence: unnamed template. But warn if it looks like a
+                // grouping node — see WarnIfGroupingShape.
+                WarnIfGroupingShape(canvas, varPrefix);
+                return;
+            }
+            string tagline = StringVar(fsm, varPrefix + " Description");
+
+            var button = FindDeep(canvas, characters ? "Character Button" : "Location Button");
+            var selectable = button != null ? button.GetComponent<Selectable>() : null;
+            var shine = FindDeep(canvas, "New Shine");
+
+            var row = new Row
+            {
+                IsCharacter = characters,
+                Name = SpeechService.Clean(name),
+                Tagline = tagline != null ? SpeechService.Clean(tagline) : null,
+                State = state,
+                Canvas = canvas,
+                Button = button != null ? button.gameObject : null,
+                Interactable = selectable != null && selectable.gameObject.activeInHierarchy
+                               && selectable.IsInteractable(),
+                IsNew = IsNewByAuthoredFlag(fsm, varPrefix)
+                        ?? (shine != null && shine.gameObject.activeInHierarchy),
+                Angle = MarkerAngle(button != null ? button.transform : canvas),
+            };
+            if (!characters) MaybeStampZone(row.Name, state);
+            row.Zone = ResolveZone(row.Name,
+                button != null ? button.transform : canvas, row.Angle);
+            row.Angle = UnwrapForZone(row.Zone, row.Angle);
+
+            // Variant dedup by rendered name: the live (non-Off) variant wins; if two
+            // variants both read listed (transitional frame), keep the interactable one.
+            if (byName.TryGetValue((characters ? "C:" : "L:") + row.Name, out var existing))
+            {
+                if (!existing.Interactable && row.Interactable)
+                {
+                    rows[rows.IndexOf(existing)] = row;
+                    byName[(characters ? "C:" : "L:") + row.Name] = row;
+                }
+                return;
+            }
+            byName[(characters ? "C:" : "L:") + row.Name] = row;
+            rows.Add(row);
+        }
+
+        // ---------- Facet reads (cells; each cites its source in map-table-design.md) ----------
+
+        /// <summary>Clock cell: the billboard dial first, else the location's own clock
+        /// groups (the K-index source — render-paired via the owner's reachability
+        /// ruling: one Enter away). "Billboarded" and "started" are different axes
+        /// (owner catch 2026-07-20: Shipyard's 0-of-8 didn't billboard and read as no
+        /// clock; the club's 0-of-4 did) — null now means the location truly has NO
+        /// clock. Values are as-rendered/last-maintained; staleness acceptance-flagged.</summary>
+        public static string ClockCell(Row row)
+        {
+            // F1b (run-2 finding): the billboard must actually RENDER before its
+            // dial is read — step-clock variants keep local activeSelf under an
+            // off billboard root, which spoke a clock the game wasn't drawing
+            // (Dragos's Yard "0 of 8, negative"). Billboard cycle-ness renders
+            // via the separate Cycle Clock Visual child, not the FSM bool.
+            var clockRoot = FindDeep(row.Canvas, "Location Clock");
+            string fromBillboard =
+                clockRoot != null && clockRoot.gameObject.activeInHierarchy
+                    ? DialString(clockRoot, activeOnly: true) : null;
+            if (fromBillboard != null)
+            {
+                var cycleVisual = FindDeep(clockRoot, "Cycle Clock Visual");
+                if (cycleVisual != null && cycleVisual.gameObject.activeInHierarchy
+                    && !fromBillboard.Contains("cycle clock") && fromBillboard.EndsWith(" clock"))
+                    fromBillboard = fromBillboard.Substring(0, fromBillboard.Length - " clock".Length)
+                        + " cycle clock";
+                return fromBillboard;
+            }
+
+            // Interior clock groups live in the location's Actions group (corpus:
+            // "<Location> Actions/<Name> Clock/<N> Step Clock" families).
+            var fsm = row.Canvas != null ? row.Canvas.GetComponent<PlayMakerFSM>() : null;
+            var group = fsm != null ? fsm.FsmVariables.GetFsmGameObject("Location Actions") : null;
+            var groupGo = group != null ? group.Value : null;
+            if (groupGo == null) return null;
+            var parts = new List<string>();
+            foreach (Transform child in groupGo.transform)
+            {
+                if (!child.name.TrimEnd().EndsWith(" Clock")) continue;
+                // The clock group's own local activeSelf is the story gate's
+                // output (Action Switch family writes it) and survives the
+                // parent Actions group being off at map view. Locally-off
+                // groups are story-gated ghosts — the game never rendered
+                // them (fresh-run F1: Empty Container spoke three unstarted
+                // clocks; the rendered set inside was empty).
+                if (!child.gameObject.activeSelf) continue;
+                string dial = DialString(child, activeOnly: false);
+                if (dial != null) parts.Add(dial);
+            }
+            return parts.Count > 0 ? string.Join("; ", parts) : null;
+        }
+
+        /// <summary>The step-clock dial under root with a ClockValue: the authored size
+        /// variant (activeSelf when rendered; first-with-value when reading an interior
+        /// group whose objects may be inactive).</summary>
+        private static string DialString(Transform root, bool activeOnly)
+        {
+            foreach (var fsm in root.GetComponentsInChildren<PlayMakerFSM>(true))
+            {
+                if (!fsm.gameObject.name.Contains("Step Clock")) continue;
+                if (activeOnly && !fsm.gameObject.activeSelf) continue;
+                var value = fsm.FsmVariables.GetFsmFloat("ClockValue");
+                if (value == null) continue;
+                int steps = Util.LeadingInt(fsm.gameObject.name);
+                if (steps <= 0) continue;
+                // Interior groups keep every size variant; the authored one is the
+                // ACTIVE child when rendered — prefer it, else take the first valued.
+                if (!activeOnly && !fsm.gameObject.activeSelf)
+                {
+                    var active = FindActiveDial(root);
+                    if (active != null && active != fsm) continue;
+                }
+                var positive = fsm.FsmVariables.GetFsmBool("Positive?");
+                var cycle = fsm.FsmVariables.GetFsmBool("Cycle Clock?");
+                var sb = new System.Text.StringBuilder();
+                int v = Mathf.RoundToInt(value.Value);
+                // F11: overshoot past the authored size renders full — "complete".
+                if (v >= steps) sb.Append("complete");
+                else sb.Append(v).Append(" of ").Append(steps);
+                if (positive != null) sb.Append(positive.Value ? ", positive" : ", negative");
+                if (cycle != null && cycle.Value) sb.Append(" cycle");
+                sb.Append(" clock");
+                return sb.ToString();
+            }
+            return null;
+        }
+
+        private static PlayMakerFSM FindActiveDial(Transform root)
+        {
+            // Local activeSelf, not activeInHierarchy: the authored size variant
+            // keeps its local flag when the parent Actions group is off at map
+            // view (fresh-run F1 — the old (false) walk found nothing there and
+            // the caller fell back to an arbitrary first-valued variant).
+            foreach (var fsm in root.GetComponentsInChildren<PlayMakerFSM>(true))
+                if (fsm.gameObject.activeSelf
+                    && fsm.gameObject.name.Contains("Step Clock")
+                    && fsm.FsmVariables.GetFsmFloat("ClockValue") != null)
+                    return fsm;
+            return null;
+        }
+
+        /// <summary>Tracked-drive relevance: pip children carry quest name + entry; the
+        /// pip's own gate is IsQuestTrackingEnabled (corpus decode) — the mod asks the
+        /// same API the pip does, so the answer is camera-independent and identical to
+        /// what a rendered pip would show. Only tracked, non-complete entries listed.</summary>
+        public static List<string> DriveCell(Row row)
+        {
+            var drives = new List<string>();
+            var billboard = FindDeep(row.Canvas, "Billboard Elements")
+                            ?? FindDeep(row.Canvas, "Billboarding Elements");
+            if (billboard == null) return drives;
+            foreach (Transform child in billboard)
+            {
+                // Case-insensitive: pips ship as both " pip" and " Pip"
+                // ("SURVIVE Pip" at Bright Market — fresh-run F8).
+                if (child.name.IndexOf(" pip", System.StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+                var fsm = child.GetComponent<PlayMakerFSM>();
+                if (fsm == null) continue;
+                var quest = fsm.FsmVariables.GetFsmString("Quest Name");
+                var entry = fsm.FsmVariables.GetFsmInt("Entry #");
+                if (quest == null || string.IsNullOrEmpty(quest.Value)) continue;
+                try
+                {
+                    if (!PixelCrushers.DialogueSystem.QuestLog.IsQuestTrackingEnabled(quest.Value))
+                        continue;
+                    if (entry != null)
+                    {
+                        var st = PixelCrushers.DialogueSystem.QuestLog.GetQuestEntryState(
+                            quest.Value, entry.Value);
+                        if (st == PixelCrushers.DialogueSystem.QuestState.Success
+                            || st == PixelCrushers.DialogueSystem.QuestState.Failure)
+                            continue; // pip Complete state = deactivated
+                    }
+                    if (!drives.Contains(quest.Value)) drives.Add(quest.Value);
+                }
+                catch (System.Exception e) { Plugin.Log.LogWarning("[Atlas] quest read: " + e.Message); }
+            }
+            return drives;
+        }
+
+        /// <summary>Actions count: activeSelf "* Action" roots under the canvas FSM's own
+        /// Location Actions group — maintained by the game's Action Switch / controller
+        /// FSMs whenever the location renders; may lag for unvisited locations
+        /// (acceptance-flagged). -1 = no group (characters, some structures).</summary>
+        public static int ActionCount(Row row)
+        {
+            var fsm = CanvasFsm(row.Canvas);
+            var group = fsm != null ? fsm.FsmVariables.GetFsmGameObject("Location Actions") : null;
+            var groupGo = group != null ? group.Value : null;
+            if (groupGo == null) return -1;
+            int n = 0;
+            // Structural card typing (2026-07-22): the name-suffix test dropped decorated
+            // and unconventionally-named cards from row facets (GIMBAL LOUNGE read with
+            // no Actions facet all session while BUY A SPACER MEAL was playable inside).
+            foreach (Transform child in groupGo.transform)
+                if (child.gameObject.activeSelf && GameQueries.IsActionCard(child))
+                    n++;
+            return n;
+        }
+
+        // ---------- Rig geometry ----------
+
+        /// <summary>Corridor angle in the rig's Damped Z domain, self-calibrating: the
+        /// Focus object rides the rotator AT the centered location (live /transforms
+        /// proof 2026-07-20 — Focus world pos == the on-camera marker's pos), so
+        /// offset = Damped Z − rawAngle(Focus) holds every frame, no guessed constants.
+        /// rawAngle = signed angle around the rotator's forward axis (the ring is the
+        /// plane perpendicular to it — vertical in world; never use world Y).
+        /// Sign risk (acceptance-flagged): if row moves drive the camera the WRONG WAY,
+        /// negate raw angles (one line, AngleSign).</summary>
+        private const float AngleSign = 1f;
+
+        public static float MarkerAngle(Transform marker)
+        {
+            var rotator = RotatorTransform();
+            if (rotator == null || marker == null) return 0f;
+            float raw = RawAngle(marker.position, rotator);
+            var focus = rotator.Find("Focus");
+            var fsm = FocusFsm();
+            var damped = fsm != null ? fsm.FsmVariables.GetFsmFloat("Damped Z") : null;
+            if (focus == null || damped == null) return (raw + 360f) % 360f;
+            float offset = damped.Value - RawAngle(focus.position, rotator);
+            return Norm(raw + offset);
+        }
+
+        private static float RawAngle(Vector3 p, Transform rotator)
+        {
+            Vector3 axis = rotator.forward;
+            Vector3 v = Vector3.ProjectOnPlane(p - rotator.position, axis);
+            Vector3 reference = Vector3.ProjectOnPlane(Vector3.up, axis).normalized;
+            return AngleSign * Vector3.SignedAngle(reference, v, axis);
+        }
+
+        /// <summary>A3: the "new" flag from the game's AUTHORED polarity, not the
+        /// New Shine animation — the shine pulses, so activeInHierarchy sampled
+        /// mid-pulse flapped rows between reads (session-13 specimens: BRIGHT
+        /// MARKET, DOCK B-2, DRAGOS'S YARD). The marker button FSM's own check is
+        /// Lua "&lt;Identifier&gt;_OLD" (corpus: BuildString identifier + "_OLD"; unset =
+        /// new, set = old — Set Old writes it on first visit). Null when the canvas
+        /// carries no identifier → caller falls back to the shine.</summary>
+        private static bool? IsNewByAuthoredFlag(PlayMakerFSM canvasFsm, string varPrefix)
+        {
+            string id = StringVar(canvasFsm, varPrefix + " Identifier");
+            if (string.IsNullOrEmpty(id)) return null;
+            int? old = LuaStore.Num(id.Trim() + "_OLD");
+            return old == null || old.Value == 0;
+        }
+
+        /// <summary>Insurance against the Post-Rim-Gate bug class (zone audit risk 5):
+        /// a node the walk bails on (unlisted state / unnamed template) that holds
+        /// availability-FSM children of its own would silently drop a whole subtree —
+        /// exactly how the far station vanished pre-2da528d, except with an FSM on
+        /// the grouping node. No such shape exists today (Rim Gate Controller is
+        /// childless); if a game patch mints one, this logs it instead of losing it.
+        /// Once per node name; the child probe only runs until then.</summary>
+        private static readonly HashSet<string> WarnedGroups = new HashSet<string>();
+        private static readonly HashSet<string> MissingContainersLogged = new HashSet<string>();
+
+        private static void WarnIfGroupingShape(Transform node, string varPrefix)
+        {
+            if (WarnedGroups.Contains(node.name)) return;
+            foreach (Transform child in node)
+            {
+                // A genuine hidden location/character ROOT follows the "* Canvas"
+                // naming convention; inner elements (Action Switch, Billboard,
+                // Marker, Clock) do not, even though they can carry a shared
+                // "Location Name" FSM var. The corpus has ZERO canvas-under-canvas
+                // nesting, so a "* Canvas" child under a skipped node is the real
+                // Post-Rim-Gate alarm — anything else (an Off location's own inner
+                // FSM elements, e.g. "Action Switch (Ankhita)") is a false positive
+                // (live 2026-07-21: Bliss's Bay 5 Canvas tripped the loose probe).
+                if (!child.name.TrimEnd().EndsWith("Canvas")) continue;
+                var childFsm = CanvasFsm(child);
+                if (childFsm == null || StringVar(childFsm, varPrefix + " Name") == null)
+                    continue;
+                WarnedGroups.Add(node.name);
+                Plugin.Log.LogWarning("[Atlas] '" + node.name + "' was skipped ("
+                    + "unlisted/unnamed) but holds canvas-shaped children — possible "
+                    + "hidden subtree, Post-Rim-Gate class. Child: '" + child.name + "'.");
+                return;
+            }
+            WarnedGroups.Add(node.name); // probed clean — don't rescan every build
+        }
+
+        private static float Norm(float a) => (a % 360f + 360f) % 360f;
+
+        /// <summary>Zone from rig geometry: the Hub is literally the wheel's hub —
+        /// small radial distance from the rotator axis (ring markers sit at ~9300;
+        /// threshold halves it). On the ring the rule is a COMPLEMENT (zone audit
+        /// 2026-07-21): the game's own Focus clamps put Rim at 135–258 and Greenway
+        /// at 275–390, extending to 430 when the Flotilla opens — so anything on the
+        /// ring outside Rim's band IS Greenway (the 258–275 sliver is the ferry
+        /// tween itself). The old (258.5, 320) window misfiled the outer Greenway
+        /// and the whole Flotilla band (which normalizes to 30–70) into Rim.</summary>
+        private const float HubRadius = 5000f;
+        private const float RimFrom = 135f;
+        private const float RimTo = 258.5f;
+
+        public static int ZoneOf(Transform marker, float angle)
+        {
+            var rotator = RotatorTransform();
+            if (marker != null && rotator != null)
+            {
+                Vector3 v = Vector3.ProjectOnPlane(
+                    marker.position - rotator.position, rotator.forward);
+                if (v.magnitude < HubRadius) return 2; // Hub
+            }
+            return angle >= RimFrom && angle <= RimTo ? 0 : 1; // Rim : Greenway
+        }
+
+        // ---------- Zone resolution (owner redesign 2026-07-22) ----------
+        // Zone is NOT authored anywhere in the game — corpus Z1: all 173 canvas FSMs
+        // are structurally identical, and membership is emergent (marker position vs
+        // the camera's current zone framing; IsVisibleInCameraFrustrum is the only
+        // camera gate). Resolution order:
+        //  (1) session STAMP — observed live: the canvas hit its in-frustum state
+        //      while the Location Controller rested at a zone (transition tweens
+        //      sweep foreign canvases through frustum — Founder's Gap flipped
+        //      Variables Met mid-ascent — so in-flight observations are ignored);
+        //  (2) BAKED calibration — the 2026-07-22 sweep ride: Focus Z driven across
+        //      each zone's live clamp band over the bridge, every frustum flip
+        //      recorded (Rim [135,258] 19 members; Greenway [275,390] 6; Hub fixed
+        //      view 4). Dev-side tool, baked as authored data (owner ruling);
+        //  (3) geometric heuristic (ZoneOf) for never-observed canvases only.
+        private static readonly Dictionary<string, int> StampedZones = new Dictionary<string, int>();
+        private static readonly Dictionary<string, int> BakedZones = new Dictionary<string, int>
+        {
+            // Rim (sweep 2026-07-22, first-seen 140-250)
+            {"UNIT ASSEMBLY",0},{"HAVENAGE OFFICES",0},{"EMPTY CONTAINER",0},
+            {"MERCHANT FREIGHTER",0},{"OVERLOOK BAR",0},{"SCRAP FREIGHTER",0},
+            {"ORT EXCHANGE",0},{"YATAGAN DISPENSARY",0},{"ORT FABRICATOR",0},
+            {"EMPHIS'S STALL",0},{"TAMBOUR TEAHOUSE",0},{"REPAIRED UNIT",0},
+            {"MIN-GI EXPRESS",0},{"CASTOR'S TABLE",0},{"RABIAH'S WARD",0},
+            {"MIDLINE FREIGHT HUB",0},{"ASCENDER CAR",0},{"PAZ IMPORT/EXPORT",0},
+            {"FOUNDER'S GAP",0},
+            // Greenway (sweep 2026-07-22, first-seen 275-355)
+            {"FOUNDER'S FERRY",1},{"GREENWAY",1},{"HYPHA COMMUNE",1},
+            {"WILD MARGINS",1},{"THE WASTES",1},{"CLIMBING BRIAR",1},
+            // Hub (fixed arrival view 2026-07-22)
+            {"DESCENDER CAR",2},{"GIMBAL LOUNGE",2},{"CAPSULE 0451",2},
+            {"BLISS'S BAY",2},
+        };
+
+        public static int ResolveZone(string name, Transform marker, float angle)
+        {
+            int z;
+            if (!string.IsNullOrEmpty(name))
+            {
+                if (StampedZones.TryGetValue(name, out z)) return z;
+                if (BakedZones.TryGetValue(name, out z)) return z;
+            }
+            return ZoneOf(marker, angle);
+        }
+
+        /// <summary>Live zone observation: a location canvas in its IN-FRUSTUM state
+        /// ("Variables Met"/"Selected" — "Off Camera" is listed but out of frame)
+        /// while the Location Controller rests at a zone IS a member of that zone,
+        /// by the game's own behavior. Stamps override the baked seed and log any
+        /// correction; mid-transition sightings are ignored.</summary>
+        private static void MaybeStampZone(string name, string canvasState)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            if (canvasState != "Variables Met" && canvasState != "Selected") return;
+            var controller = LocationController();
+            string st = controller != null ? controller.ActiveStateName : null;
+            if (st != "Rim" && st != "Greenway" && st != "Hub") return;
+            int zone = CurrentZone();
+            if (zone < 0 || zone > 2) return;
+            if (StampedZones.TryGetValue(name, out int prev) && prev == zone) return;
+            StampedZones[name] = zone;
+            if (BakedZones.TryGetValue(name, out int baked) && baked != zone)
+                Plugin.Log.LogInfo("[Atlas] zone stamp CORRECTS baked: " + name
+                    + " " + baked + " -> " + zone);
+            else if (!BakedZones.ContainsKey(name))
+                Plugin.Log.LogInfo("[Atlas] zone stamped: " + name + " -> " + zone);
+        }
+
+        /// <summary>Greenway angles past 360 normalize to 30–70 (Flotilla band) —
+        /// unwrap so sort order stays physically adjacent and camera-follow writes
+        /// land in the game's own 275–430 clamp domain instead of flying to the
+        /// wrong end of the zone (zone audit risk 2).</summary>
+        public static float UnwrapForZone(int zone, float angle)
+            => zone == 1 && angle < RimFrom ? angle + 360f : angle;
+
+        public static Transform RotatorTransform()
+        {
+            var go = GameObject.Find("Focus Rotator");
+            return go != null ? go.transform : null;
+        }
+
+        public static PlayMakerFSM FocusFsm()
+        {
+            var rotator = RotatorTransform();
+            var focus = rotator != null ? rotator.Find("Focus") : null;
+            return focus != null ? focus.GetComponent<PlayMakerFSM>() : null;
+        }
+
+        public static PlayMakerFSM LocationController()
+        {
+            foreach (var fsm in PlayMakerFSM.FsmList)
+                if (fsm != null && fsm.gameObject != null
+                    && fsm.gameObject.name == "Location Controller")
+                    return fsm;
+            return null;
+        }
+
+        /// <summary>Current zone from Lua LOCATION (0 Rim / 1 Greenway / 2 Hub — the
+        /// Location Controller's own filter source). -1 unknown.</summary>
+        public static int CurrentZone()
+        {
+            try
+            {
+                var r = PixelCrushers.DialogueSystem.DialogueLua.GetVariable("LOCATION");
+                return r.hasReturnValue && r.isNumber ? Mathf.RoundToInt(r.asFloat) : -1;
+            }
+            catch { return -1; }
+        }
+
+        // ---------- Plumbing ----------
+
+        private static Transform FindStationChild(string name)
+        {
+            // 1_Station UI lives under the ERLIN MAIN scene root; the container itself
+            // is always active, so Find reaches it.
+            var go = GameObject.Find("1_Station UI/" + name);
+            if (go != null) return go.transform;
+            go = GameObject.Find(name);
+            return go != null && go.transform.parent != null
+                   && go.transform.parent.name == "1_Station UI" ? go.transform : null;
+        }
+
+        private static PlayMakerFSM CanvasFsm(Transform canvas)
+        {
+            // The availability FSM sits on the canvas root itself.
+            return canvas != null ? canvas.GetComponent<PlayMakerFSM>() : null;
+        }
+
+        private static string StringVar(PlayMakerFSM fsm, string name)
+        {
+            var v = fsm.FsmVariables.GetFsmString(name);
+            return v != null ? v.Value : null;
+        }
+
+        /// <summary>Depth-first named lookup INCLUDING inactive children.</summary>
+        public static Transform FindDeep(Transform root, string name)
+        {
+            if (root == null) return null;
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                if (t.name == name) return t;
+            return null;
+        }
+    }
+}

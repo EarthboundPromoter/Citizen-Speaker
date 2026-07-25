@@ -1,10 +1,12 @@
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
-using CSAccess.Speech;
 using HarmonyLib;
 using UnityEngine;
-using Priority = CSAccess.Speech.Priority;
+using CSAccess.Scaffold;
+using CSAccess.Middleware;
+using CSAccess.Sleeper1;
+using Priority = CSAccess.Scaffold.Priority;
 
 namespace CSAccess
 {
@@ -54,25 +56,41 @@ namespace CSAccess
 
             SpeechService.Init();
 
+            // Tier seams (stage 1): the scaffold speaks and diagnoses through
+            // injected providers; the composition root is the only place that
+            // wires game-tier knowledge downward.
+            ElementDescriber.Element = Describe.Element;
+            NavSignals.UserNavigated = FocusPatch.NoteUserNavigation;
+            NavSignals.ClearCooldown = FocusPatch.ClearCooldown;
+            Diag.ModeNameProvider = () => ModeModel.Name(ModeModel.Current());
+            Diag.StateProvider = DiagState;
+            Diag.FsmRecentProvider = n =>
+            {
+                var list = new System.Collections.Generic.List<(int, string, string)>();
+                foreach (var r in FsmSignals.Recent(n))
+                    list.Add((r.Frame, r.OwnerName, r.StateName));
+                return list;
+            };
+
             var harmony = new Harmony(Id);
             harmony.PatchAll(typeof(Plugin).Assembly);
 
             _input = new InputManager(this);
             _watchers = new Watchers();
-            Game.CycleGate.Init();
-            Game.ActionOutcomes.Init();
-            Game.CloudOutcomes.Init();
-            Game.RefusalWatch.Init();
-            Game.ConditionWatch.Init();
-            Game.EnergyWatch.Init();
-            Game.ResourceWatch.Init();
-            Game.StationCensus.Init();
-            Game.EndgameWatch.Init();
-            Modality.WindowState.Init();
-            Modality.CloudFlight.Init();
-            UI.CloudTable.Init();
-            Game.PerkWatch.Init();
-            UI.TitleFlow.Init();
+            CycleGate.Init();
+            ActionOutcomes.Init();
+            CloudOutcomes.Init();
+            RefusalWatch.Init();
+            ConditionWatch.Init();
+            EnergyWatch.Init();
+            ResourceWatch.Init();
+            StationCensus.Init();
+            EndgameWatch.Init();
+            WindowState.Init();
+            CloudFlight.Init();
+            CloudTable.Init();
+            PerkWatch.Init();
+            TitleFlow.Init();
 
             Log.LogInfo("Citizen Speaker 0.9.5 loaded. Press F1 in game for commands.");
             SpeechService.Say("Citizen Speaker 0.9.5. Press F1 for commands.", Priority.Queued, "init");
@@ -82,22 +100,42 @@ namespace CSAccess
         {
             _input.Tick();
             _watchers.Tick();
-            Game.ActionOutcomes.Tick();
-            Game.CloudOutcomes.Tick();
-            Game.RefusalWatch.Tick();
-            Game.ConditionWatch.Tick();
-            Game.EnergyWatch.Tick();
-            Game.ResourceWatch.Tick();
-            Game.StationCensus.Tick();
-            UI.CharacterTable.Tick();
-            UI.MapTable.Tick();
-            UI.JournalTable.Tick();
-            UI.CloudTable.Tick();
-            Modality.CloudFlight.Tick();
-            Patches.FocusPatch.Tick();
+            ActionOutcomes.Tick();
+            CloudOutcomes.Tick();
+            RefusalWatch.Tick();
+            ConditionWatch.Tick();
+            EnergyWatch.Tick();
+            ResourceWatch.Tick();
+            StationCensus.Tick();
+            CharacterTable.Tick();
+            MapTable.Tick();
+            JournalTable.Tick();
+            CloudTable.Tick();
+            CloudFlight.Tick();
+            FocusPatch.Tick();
             SpeechService.Tick();
-            Substrate.SelfTest.Tick();
-            Patches.ConversationEvents.Tick();
+            SelfTest.Tick();
+            ConversationEvents.Tick();
+        }
+
+        /// <summary>Diag's believed-state entries (keys = the /modstate contract).
+        /// Guarded per entry — a broken reader must not cost the rest (the same
+        /// resilience StateNow had when the reads were inline).</summary>
+        private static System.Collections.Generic.Dictionary<string, object> DiagState()
+        {
+            var state = new System.Collections.Generic.Dictionary<string, object>();
+            try
+            {
+                state["characterWindow"] = WindowState.CharacterWindowOpen;
+                state["driveLog"] = WindowState.DriveLogOpen;
+                state["inventory"] = WindowState.InventoryOpen;
+                state["autoplayPending"] = WindowState.AutoplayScenePending;
+            }
+            catch { }
+            try { state["conversation"] = ConversationEvents.ConversationActive; } catch { }
+            try { state["responseMenu"] = DialogueState.MenuOpen; } catch { }
+            try { state["inputPaused"] = GameQueries.InputPaused(); } catch { }
+            return state;
         }
 
         private void OnDestroy()
