@@ -669,13 +669,7 @@ namespace CSAccess.Sleeper1
         private static string ComposeEffect(string txt)
         {
             string s = txt.Trim();
-            int gain = 0, loss = 0, i = 0;
-            while (i < s.Length && (s[i] == '+' || s[i] == '-' || s[i] == ' '))
-            {
-                if (s[i] == '+') gain++;
-                else if (s[i] == '-') loss++;
-                i++;
-            }
+            int i = Util.GlyphRun(s, out int gain, out int loss);
             int delta = gain + loss;
             if (delta == 0) return s;
             // A2: effect targets are names — quote-normalize so the fully-quoted

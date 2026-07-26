@@ -490,13 +490,7 @@ namespace CSAccess.Sleeper1
         private static string TranscodePredictedEntry(TMPro.TMP_Text tmp, Transform pred)
         {
             string t = tmp.text.Trim();
-            int plus = 0, minus = 0, i = 0;
-            while (i < t.Length && (t[i] == '+' || t[i] == '-' || t[i] == ' '))
-            {
-                if (t[i] == '+') plus++;
-                else if (t[i] == '-') minus++;
-                i++;
-            }
+            int i = Util.GlyphRun(t, out int plus, out int minus);
             string body = t.Substring(i).Trim();
             int count = plus + minus;
             if (count == 0 || body.Length == 0) return t;
@@ -826,13 +820,7 @@ namespace CSAccess.Sleeper1
                 string t = seg.Trim();
                 if (t.Length == 0) continue;
                 if (t.Equals("PER CYCLE", System.StringComparison.OrdinalIgnoreCase)) continue;
-                int plus = 0, minus = 0, i = 0;
-                while (i < t.Length && (t[i] == '+' || t[i] == '-' || t[i] == ' '))
-                {
-                    if (t[i] == '+') plus++;
-                    else if (t[i] == '-') minus++;
-                    i++;
-                }
+                int i = Util.GlyphRun(t, out int plus, out int minus);
                 string word = t.Substring(i).Trim();
                 if (plus + minus == 0) { lead = t; continue; } // STARVING! and kin
                 costs.Add((plus > 0 ? "plus " : "") + (plus + minus) + " "

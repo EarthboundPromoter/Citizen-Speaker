@@ -58,5 +58,23 @@ namespace CSAccess.Scaffold
             int.TryParse(name.Substring(i + 1), out int result);
             return result;
         }
+
+        /// <summary>Parse the leading glyph run of a rendered effect entry ("-- ENERGY",
+        /// "+ 15 CRYO"): counts '+' and '-' through any interleaved spaces and returns
+        /// the index where the run ends (the body start). Parsing only — what a run
+        /// MEANS is per-surface policy (effect state, predicted tiers, the cycle
+        /// strip), deliberately not unified (audit A9 ruling 2026-07-26).</summary>
+        public static int GlyphRun(string s, out int plus, out int minus)
+        {
+            plus = 0; minus = 0;
+            int i = 0;
+            while (i < s.Length && (s[i] == '+' || s[i] == '-' || s[i] == ' '))
+            {
+                if (s[i] == '+') plus++;
+                else if (s[i] == '-') minus++;
+                i++;
+            }
+            return i;
+        }
     }
 }
