@@ -49,10 +49,6 @@ namespace CSAccess.Sleeper1
             public const string NowEnabled = "action card enabled";
         }
 
-        private static int _row, _col;
-        // Section of the current row (crossing announces + resets the column —
-        // the two sections carry different columns).
-        private static bool _inClocks;
         // Full facet set as columns (owner ruling: full read on row switch, table
         // broken out by risk, cost, narrative block, ...).
         // Requires merges the old Skill and Takes cells (owner ruling, session-12
@@ -68,106 +64,70 @@ namespace CSAccess.Sleeper1
         private static readonly string[] ClockHeaders =
             { W.HeaderName, W.HeaderProgress, W.HeaderNarrative };
 
-        public static void OnLeftLocation() { _inClocks = false; _row = 0; _col = 0; }
-
-        public static bool HandleKeys()
-        {
-            if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
-            if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCol(1); return true; }
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) { MoveCol(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.Space)) { Detail(); return true; }
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            { Commit(); return true; }
-            return false;
-        }
-
         /// <summary>The stacked grid's row space: 0.._actions-1 are action cards,
         /// the rest are clock cards. Rows are fetched fresh per keypress (live).</summary>
-        private static bool ClockRowAt(int row, int actionCount) => row >= actionCount;
+        private static bool ClockRowAt(int row) => row >= GameQueries.GetActionPanels().Count;
 
-        private static void MoveRow(int delta)
+        // Engine composition (audit A1, 2026-07-26): the D4 stacked grid is the
+        // sections capability — crossing the action/clock boundary announces the
+        // section and resets the column (the sections carry different columns).
+        // Empty cells speak a terse form (session-11 live nit: bare "Cost:").
+        private static readonly TableEngine T = new TableEngine
+        {
+            Rows = () => GameQueries.GetActionPanels().Count + GameQueries.GetClockPanels().Count,
+            Cols = row => ClockRowAt(row) ? ClockHeaders.Length : Headers.Length,
+            SectionOf = row => ClockRowAt(row) ? 1 : 0,
+            SectionPrefix = section => section == 1 ? W.SectionClocks : W.SectionActions,
+            RowSpeech = (row, col) =>
+            {
+                var actions = GameQueries.GetActionPanels();
+                if (row >= actions.Count)
+                {
+                    var clock = GameQueries.GetClockPanels()[row - actions.Count];
+                    return col == 0 ? ClockRow(clock)
+                        : ClockName(clock) + ". " + (ClockCell(clock, col) ?? "none");
+                }
+                var action = actions[row];
+                return col == 0 ? ActionRow(action)
+                    : ActionName(action) + ". " + (Cell(action, col) ?? "none");
+            },
+            CellSpeech = (row, col) =>
+            {
+                var actions = GameQueries.GetActionPanels();
+                return row >= actions.Count
+                    ? ClockHeaders[col] + ": "
+                        + (ClockCell(GameQueries.GetClockPanels()[row - actions.Count], col) ?? "none")
+                    : Headers[col] + ": " + (Cell(actions[row], col) ?? "none");
+            },
+            Detail = (row, _) => Detail(row),
+            Commit = (row, _) => Commit(row),
+            EmptyRow = () => W.NoRows,
+        };
+
+        public static void OnLeftLocation() => T.Reset();
+
+        public static bool HandleKeys() => T.HandleKeys();
+
+        private static void Detail(int row)
         {
             var actions = GameQueries.GetActionPanels();
-            var clocks = GameQueries.GetClockPanels();
-            int total = actions.Count + clocks.Count;
-            if (total == 0)
-            { SpeechService.Say(W.NoRows, Priority.Immediate, "table"); return; }
-            _row = Mathf.Clamp(_row + delta, 0, total - 1);
-            bool clockRow = ClockRowAt(_row, actions.Count);
-            string prefix = "";
-            if (clockRow != _inClocks)
-            {
-                // Boundary crossing (D4): announce the section, reset the column.
-                _inClocks = clockRow;
-                _col = 0;
-                prefix = (clockRow ? W.SectionClocks : W.SectionActions) + " ";
-            }
-            if (clockRow)
-            {
-                var clock = clocks[_row - actions.Count];
-                SpeechService.Say(prefix + (_col == 0 ? ClockRow(clock)
-                    : ClockName(clock) + ". " + (ClockCell(clock, _col) ?? "none")),
-                    Priority.Immediate, "table");
-            }
-            else
-            {
-                var action = actions[_row];
-                SpeechService.Say(prefix + (_col == 0 ? ActionRow(action)
-                    : ActionName(action) + ". " + (Cell(action, _col) ?? "none")),
-                    Priority.Immediate, "table");
-            }
-        }
-
-        private static void MoveCol(int delta)
-        {
-            var actions = GameQueries.GetActionPanels();
-            var clocks = GameQueries.GetClockPanels();
-            int total = actions.Count + clocks.Count;
-            if (total == 0) return;
-            _row = Mathf.Clamp(_row, 0, total - 1);
-            _inClocks = ClockRowAt(_row, actions.Count);
-            // Empty cells speak a terse form (session-11 live nit: bare "Cost:").
-            if (_inClocks)
-            {
-                _col = Mathf.Clamp(_col + delta, 0, ClockHeaders.Length - 1);
-                SpeechService.Say(ClockHeaders[_col] + ": "
-                    + (ClockCell(clocks[_row - actions.Count], _col) ?? "none"),
-                    Priority.Immediate, "table");
-            }
-            else
-            {
-                _col = Mathf.Clamp(_col + delta, 0, Headers.Length - 1);
-                SpeechService.Say(Headers[_col] + ": " + (Cell(actions[_row], _col) ?? "none"),
-                    Priority.Immediate, "table");
-            }
-        }
-
-        private static void Detail()
-        {
-            var actions = GameQueries.GetActionPanels();
-            var clocks = GameQueries.GetClockPanels();
-            int total = actions.Count + clocks.Count;
-            if (total == 0) return;
-            _row = Mathf.Clamp(_row, 0, total - 1);
-            if (ClockRowAt(_row, actions.Count))
+            if (row >= actions.Count)
             {
                 // ClockRow already carries the narrative (full-row ruling).
-                SpeechService.Say(ClockRow(clocks[_row - actions.Count]),
+                SpeechService.Say(ClockRow(GameQueries.GetClockPanels()[row - actions.Count]),
                     Priority.Immediate, "table");
                 return;
             }
-            SpeechService.Say(Describe.DescribeAction(actions[_row].gameObject, detailed: true),
+            SpeechService.Say(Describe.DescribeAction(actions[row].gameObject, detailed: true),
                 Priority.Immediate, "table");
         }
 
-        private static void Commit()
+        private static void Commit(int row)
         {
             var actions = GameQueries.GetActionPanels();
-            if (actions.Count == 0 || _row >= actions.Count)
+            if (actions.Count == 0 || row >= actions.Count)
                 return; // clocks are display-only (corpus: no selection machinery)
-            _row = Mathf.Clamp(_row, 0, actions.Count - 1);
-            var root = actions[_row];
+            var root = actions[row];
             // Skill-locked cards keep an interactable button and open a DOOMED picker
             // (Haggle live case: LOCKED has no DiceSlotted response) — Enter states the
             // reason instead of clicking (owner ruling 2026-07-20).
