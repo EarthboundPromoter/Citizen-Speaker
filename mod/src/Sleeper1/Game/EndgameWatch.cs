@@ -24,8 +24,14 @@ namespace CSAccess.Sleeper1
     ///   second Enter clicks the revealed button (single native dispatch; its
     ///   onClick owns what skipping means).
     /// - "Returning to the main menu." at Reset Game (the leave-flow exit;
-    ///   TitleFlow announces the landing). The continue flow's RELOAD reloads
-    ///   the station scene, which speaks through the existing scene watcher.
+    ///   TitleFlow announces the landing).
+    /// - The stay flows (END CONT 01/02/04, Follow Thread) exit through RELOAD
+    ///   instead — a TERMINAL state (census graph): its CallMethod restores play
+    ///   in place and the controller rests there for the remainder of the
+    ///   session. No scene load, so the dial must read RELOAD as over (stuck
+    ///   Mode.Credits bug, owner report 2026-07-25) and the census re-baselines
+    ///   as if the scene changed. Silent by owner ruling 2026-07-25: the mod
+    ///   already speaks the active node on return to play.
     ///
     /// Flux Ending Controller decodes to pure variable bookkeeping (CHECKER ->
     /// BAD/STANDARD/POS, no UI states) — nothing to speak, no subscription.
@@ -53,6 +59,16 @@ namespace CSAccess.Sleeper1
                 (fsm, s) => SpeechService.Say(W.Credits, Priority.Queued, "endgame"));
             FsmSignals.Subscribe("Ending Controller", "Reset Game",
                 (fsm, s) => SpeechService.Say(W.ToTitle, Priority.Queued, "endgame"));
+            // Stay-flow exit: the sequence tore down and restored station objects
+            // around the credits with no scene load, so the census baseline is
+            // pre-ending truth — re-baseline exactly as a scene change would.
+            FsmSignals.Subscribe("Ending Controller", "RELOAD",
+                (fsm, s) =>
+                {
+                    Plugin.Log.LogInfo("[Endgame] RELOAD: stay-flow exit — end"
+                        + " sequence over, play resumes in place. Census re-baselines.");
+                    StationCensus.OnSceneChanged();
+                });
         }
 
         // ---------- The endgame dial ----------
@@ -70,12 +86,19 @@ namespace CSAccess.Sleeper1
             return _controller;
         }
 
-        /// <summary>True from the ENDSCENE trigger until the scene reload:
-        /// the controller in any state but its END STARTER resting poll.</summary>
+        /// <summary>True from the ENDSCENE trigger until the sequence exits.
+        /// Both resting states read inactive: END STARTER (the pre-trigger poll)
+        /// and RELOAD (the stay-flow terminal — play resumed in place, no scene
+        /// load ever comes; treating it active latched Mode.Credits for the rest
+        /// of the session, owner report 2026-07-25). The leave flow needs no
+        /// entry here: Reset Game loads the title scene and the controller dies
+        /// with it.</summary>
         public static bool EndgameActive()
         {
             var c = Controller();
-            return c != null && c.ActiveStateName != "END STARTER";
+            if (c == null) return false;
+            string state = c.ActiveStateName;
+            return state != "END STARTER" && state != "RELOAD";
         }
 
         // ---------- Skip ----------

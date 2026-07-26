@@ -10,7 +10,7 @@ using Priority = CSAccess.Scaffold.Priority;
 
 namespace CSAccess
 {
-    [BepInPlugin(Id, "Citizen Sleeper Access", "0.9.5")]
+    [BepInPlugin(Id, "Citizen Sleeper Access", "0.9.6")]
     public class Plugin : BaseUnityPlugin
     {
         public const string Id = "com.sleeperaccess.mod";
@@ -92,8 +92,8 @@ namespace CSAccess
             PerkWatch.Init();
             TitleFlow.Init();
 
-            Log.LogInfo("Citizen Speaker 0.9.5 loaded. Press F1 in game for commands.");
-            SpeechService.Say("Citizen Speaker 0.9.5. Press F1 for commands.", Priority.Queued, "init");
+            Log.LogInfo("Citizen Speaker 0.9.6 loaded. Press F1 in game for commands.");
+            SpeechService.Say("Citizen Speaker 0.9.6. Press F1 for commands.", Priority.Queued, "init");
         }
 
         private void Update()
