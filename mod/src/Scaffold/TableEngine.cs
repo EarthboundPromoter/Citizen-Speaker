@@ -43,8 +43,10 @@ namespace CSAccess.Scaffold
         public Func<string> EmptyRow;
         /// <summary>Spoken when MoveCol finds no rows; null = silent.</summary>
         public Func<string> EmptyCol;
-        /// <summary>Spoken when Detail/Commit find no rows; null = silent.</summary>
-        public Func<string> EmptyAction;
+        /// <summary>Spoken when Detail finds no rows; null = silent.</summary>
+        public Func<string> EmptyDetail;
+        /// <summary>Spoken when Commit finds no rows; null = silent.</summary>
+        public Func<string> EmptyCommit;
 
         // Sections (stacked grids): identity per row, crossing announces and
         // resets the column. Null SectionOf = single-section table.
@@ -145,7 +147,7 @@ namespace CSAccess.Scaffold
         private void DoDetail()
         {
             int count = Rows();
-            if (count == 0) { SpeakOpt(EmptyAction); return; }
+            if (count == 0) { SpeakOpt(EmptyDetail); return; }
             Row = Mathf.Clamp(Row, 0, count - 1);
             Detail?.Invoke(Row, Col);
         }
@@ -153,7 +155,7 @@ namespace CSAccess.Scaffold
         private void DoCommit()
         {
             int count = Rows();
-            if (count == 0) { SpeakOpt(EmptyAction); return; }
+            if (count == 0) { SpeakOpt(EmptyCommit); return; }
             Row = Mathf.Clamp(Row, 0, count - 1);
             Commit(Row, Col);
         }

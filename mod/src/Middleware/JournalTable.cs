@@ -36,25 +36,45 @@ namespace CSAccess.Middleware
             public const string HeaderAbandon = "Abandon";
         }
 
-        private static int _row, _col;
         private static readonly string[] Headers =
             { W.HeaderName, W.HeaderObjectives, W.HeaderTrack, W.HeaderAbandon };
 
+        // Engine composition (audit A1, 2026-07-26): cursor/clamp/dispatch live in
+        // Scaffold; the QuestLog truth, wording, and the expansion policy stay here.
+        // Owner ruling (session 11) rides in the hooks: the highlighted row IS the
+        // expanded row - expand on arrival, close the one we left; Right keeps the
+        // row current so Track/Abandon are always live.
+        private static readonly TableEngine T = new TableEngine
+        {
+            Rows = () => Rows().Count,
+            Cols = _ => Headers.Length,
+            RowSpeech = (row, col) =>
+            {
+                var rows = Rows();
+                return col == 0 ? RowReport(rows[row])
+                    : rows[row] + ". " + CellText(rows[row], col);
+            },
+            CellSpeech = (row, col) => Headers[col] + ": " + CellText(Rows()[row], col),
+            OnRowArrive = (prev, row) =>
+            {
+                var rows = Rows();
+                prev = Mathf.Clamp(prev, 0, rows.Count - 1);
+                if (row != prev) SyncExpansion(rows[prev], rows[row]);
+                else EnsureExpanded(rows[row]);
+            },
+            OnColArrive = (row, col, delta) => { if (delta > 0) EnsureExpanded(Rows()[row]); },
+            Detail = (row, _) => FullRow(row),
+            Commit = (row, col) => Activate(Rows()[row], col),
+            EmptyRow = () => W.NoQuests,
+            EmptyCol = () => W.NoQuests,
+            EmptyDetail = () => W.NoQuests,
+        };
+
         /// <summary>Routed from InputManager while mode == DriveLog. Returns true when
         /// the key was consumed. Slash falls through to the native tab swap.</summary>
-        public static bool HandleKeys()
-        {
-            if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
-            if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCol(1); return true; }
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) { MoveCol(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.Space)) { FullRow(); return true; }
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            { Activate(); return true; }
-            return false;
-        }
+        public static bool HandleKeys() => T.HandleKeys();
 
-        public static void OnWindowClosed() { _row = 0; _col = 0; }
+        public static void OnWindowClosed() => T.Reset();
 
         // ---------- Rows (stateless reads — the QuestLog is the truth every press) ----------
 
@@ -72,21 +92,6 @@ namespace CSAccess.Middleware
             return rows;
         }
 
-        private static void MoveRow(int delta)
-        {
-            var rows = Rows();
-            if (rows.Count == 0) { SpeechService.Say(W.NoQuests, Priority.Immediate, "table"); return; }
-            int prev = Mathf.Clamp(_row, 0, rows.Count - 1);
-            _row = Mathf.Clamp(_row + delta, 0, rows.Count - 1);
-            // Owner ruling (session 11): the highlighted row IS the expanded row —
-            // expand on arrival, close the one we left. The visual window tracks the
-            // table cursor and Track/Abandon are always live.
-            if (_row != prev) SyncExpansion(rows[prev], rows[_row]);
-            else EnsureExpanded(rows[_row]);
-            SpeechService.Say(_col == 0 ? RowReport(rows[_row])
-                : rows[_row] + ". " + CellText(rows[_row], _col), Priority.Immediate, "table");
-        }
-
         /// <summary>Expand the arriving row; if the departed row is still pulled out
         /// afterwards (the window is not an accordion), close it via its own heading.</summary>
         private static void SyncExpansion(string prevQuest, string quest)
@@ -96,20 +101,6 @@ namespace CSAccess.Middleware
             if (FindRowActionButton(prevQuest, "TRACKING") == null) return; // already closed
             var heading = FindHeadingButton(prevQuest);
             if (heading != null) Navigator.Click(heading.gameObject);
-        }
-
-        private static void MoveCol(int delta)
-        {
-            var rows = Rows();
-            if (rows.Count == 0) { SpeechService.Say(W.NoQuests, Priority.Immediate, "table"); return; }
-            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
-            _col = Mathf.Clamp(_col + delta, 0, Headers.Length - 1);
-            // Right keeps the row current (owner ruling, session 11): the Track and
-            // Abandon buttons render only inside the pulled-out row — without this,
-            // reaching them by column movement left Enter dead.
-            if (delta > 0) EnsureExpanded(rows[_row]);
-            SpeechService.Say(Headers[_col] + ": " + CellText(rows[_row], _col),
-                Priority.Immediate, "table");
         }
 
         /// <summary>Pull the quest's row out if it isn't already (the tracking toggle
@@ -122,14 +113,12 @@ namespace CSAccess.Middleware
             if (heading != null) Navigator.Click(heading.gameObject);
         }
 
-        private static void FullRow()
+        private static void FullRow(int row)
         {
             var rows = Rows();
-            if (rows.Count == 0) { SpeechService.Say(W.NoQuests, Priority.Immediate, "table"); return; }
-            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
             var sb = new System.Text.StringBuilder();
             for (int i = 0; i < Headers.Length; i++)
-                sb.Append(Headers[i]).Append(": ").Append(CellText(rows[_row], i)).Append(' ');
+                sb.Append(Headers[i]).Append(": ").Append(CellText(rows[row], i)).Append(' ');
             SpeechService.Say(sb.ToString().TrimEnd(), Priority.Immediate, "table");
         }
 
@@ -202,13 +191,9 @@ namespace CSAccess.Middleware
 
         // ---------- Enter: the cell's game-sanctioned action (press-only, owner ruling) ----------
 
-        private static void Activate()
+        private static void Activate(string quest, int col)
         {
-            var rows = Rows();
-            if (rows.Count == 0) return;
-            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
-            string quest = rows[_row];
-            switch (_col)
+            switch (col)
             {
                 case 0:
                 case 1:
