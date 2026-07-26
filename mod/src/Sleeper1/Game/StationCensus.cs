@@ -34,6 +34,7 @@ namespace CSAccess.Sleeper1
             public string Key;
             public string Name;     // display form ("Character: SABINE")
             public bool Appeared;
+            public bool Scene;      // mandatory-scene ENTER (flux-blocker fix 2026-07-25)
         }
 
         // ---------- Wording block (owner calibration lands here; all provisional) ----------
@@ -41,11 +42,21 @@ namespace CSAccess.Sleeper1
         {
             public const string None = "No changes recorded.";
             public const string LastPrefix = "Last change: ";
-            public static string Present(Change c) => c.Name + (c.Appeared ? " has appeared." : " is gone.");
-            public static string Past(Change c) => c.Name + (c.Appeared ? " appeared" : " gone");
+            public static string Present(Change c) => c.Scene
+                ? c.Name + " has an active scene."
+                : c.Name + (c.Appeared ? " has appeared." : " is gone.");
+            public static string Past(Change c) => c.Scene
+                ? c.Name + ", active scene"
+                : c.Name + (c.Appeared ? " appeared" : " gone");
         }
 
         private static Dictionary<string, string> _known;                    // null = not baselined
+        /// <summary>Canvases seen resting in the mandatory-scene state, keyed by
+        /// CANVAS INSTANCE (flux-blocker fix 2026-07-25 §4.2): same-name variants are
+        /// distinct canvases, so a scene entering on a twin is a fresh enter even
+        /// while its name never left the population set. Spoken names stay exactly
+        /// the population display forms — instance ids never speak.</summary>
+        private static Dictionary<int, string> _knownScenes;
         private static readonly List<Change> Pending = new List<Change>();   // awaiting present-tense flush
         private static readonly List<Change> Last = new List<Change>();      // most recent change event (N)
 
@@ -79,6 +90,7 @@ namespace CSAccess.Sleeper1
         public static void OnSceneChanged()
         {
             _known = null;
+            _knownScenes = null;
             Pending.Clear();
             Last.Clear();
             _diffDueAt = -1f;
@@ -164,7 +176,7 @@ namespace CSAccess.Sleeper1
             var surface = ModeModel.Surface();
             if (surface != Mode.Station && surface != Mode.ActionView && surface != Mode.Cloud)
                 return;
-            var snap = Snapshot();
+            var snap = Snapshot(out var scenes);
             if (snap == null) { _candidate = null; return; }
             // Stability requirement (first census ride: baselining the first
             // non-empty snapshot caught the save-load settle at 4 nodes and then
@@ -175,6 +187,9 @@ namespace CSAccess.Sleeper1
             {
                 _candidate = null;
                 _known = snap;
+                // Scenes already pending at baseline seed silently (the facet and
+                // the table carry them; only ENTERS are news — flux-blocker fix).
+                _knownScenes = scenes;
                 Plugin.Log.LogInfo("[Census] baseline: " + snap.Count + " node(s), silent (stable x2).");
                 return;
             }
@@ -207,9 +222,13 @@ namespace CSAccess.Sleeper1
 
         /// <summary>Key -> display name off the atlas (camera-independent by
         /// construction). Null while the scene isn't ready: a real station always
-        /// renders locations (session-5 tighten) — never baseline or diff a husk.</summary>
-        private static Dictionary<string, string> Snapshot()
+        /// renders locations (session-5 tighten) — never baseline or diff a husk.
+        /// Also reports the mandatory-scene set (canvas-instance keyed, flux-blocker
+        /// fix 2026-07-25): population identity stays NAME-keyed — instance keys
+        /// there would read every variant swap as a phantom gone/appeared pair.</summary>
+        private static Dictionary<string, string> Snapshot(out Dictionary<int, string> scenes)
         {
+            scenes = null;
             List<StationAtlas.Row> rows;
             try { rows = StationAtlas.Build(); }
             catch (System.Exception e)
@@ -219,11 +238,14 @@ namespace CSAccess.Sleeper1
             }
             bool anyLocation = false;
             var snap = new Dictionary<string, string>();
+            scenes = new Dictionary<int, string>();
             foreach (var r in rows)
             {
                 if (!r.IsCharacter) anyLocation = true;
                 snap[(r.IsCharacter ? "C:" : "L:") + r.Name] =
                     (r.IsCharacter ? "Character: " : "") + r.Name;
+                if (r.IsCharacter && r.ActiveScene)
+                    scenes[r.CanvasId] = "Character: " + r.Name;
             }
             return anyLocation ? snap : null;
         }
@@ -231,7 +253,7 @@ namespace CSAccess.Sleeper1
         private static void Diff()
         {
             if (_known == null) return;
-            var fresh = Snapshot();
+            var fresh = Snapshot(out var freshScenes);
             if (fresh == null) return;
 
             List<Change> changes = null;
@@ -244,12 +266,31 @@ namespace CSAccess.Sleeper1
                     (changes = changes ?? new List<Change>()).Add(
                         new Change { Key = kv.Key, Name = kv.Value, Appeared = false });
             _known = fresh;
+            // Mandatory-scene ENTERS only (flux-blocker fix 2026-07-25): a listed
+            // character's canvas resting into its pending-scene state is news — it
+            // blocks cycle end and the game's own signal is a silent marker pulse.
+            // Exits say nothing (the scene playing is its own experience). Rides
+            // the same Pending/flush machinery as population changes.
+            if (freshScenes != null && _knownScenes != null)
+                foreach (var kv in freshScenes)
+                    if (!_knownScenes.ContainsKey(kv.Key))
+                        (changes = changes ?? new List<Change>()).Add(new Change
+                        { Key = "S:" + kv.Key, Name = kv.Value, Appeared = true, Scene = true });
+            _knownScenes = freshScenes ?? _knownScenes;
             if (changes == null) return;
 
             // Fold into the pending batch; an oscillation (appeared then gone before
-            // any flush) cancels to nothing rather than speaking a phantom.
+            // any flush) cancels to nothing rather than speaking a phantom. Scene
+            // enters have no opposite (exits are silent) — they fold by identity
+            // instead, so a canvas bouncing through its pending state twice before
+            // a flush still speaks once.
             foreach (var c in changes)
             {
+                if (c.Scene)
+                {
+                    if (Pending.FindIndex(p => p.Key == c.Key) < 0) Pending.Add(c);
+                    continue;
+                }
                 int opposite = Pending.FindIndex(p => p.Key == c.Key && p.Appeared != c.Appeared);
                 if (opposite >= 0) Pending.RemoveAt(opposite);
                 else Pending.Add(c);
@@ -300,15 +341,17 @@ namespace CSAccess.Sleeper1
         {
             var sb = new System.Text.StringBuilder();
             int appeared = 0, gone = 0;
-            foreach (var c in Pending) { if (c.Appeared) appeared++; else gone++; }
+            // Scene enters never batch to a count (flux-blocker fix): they are rare,
+            // name-critical, and not population changes.
+            foreach (var c in Pending) { if (c.Scene) continue; if (c.Appeared) appeared++; else gone++; }
             if (appeared > BatchThreshold)
                 sb.Append(appeared).Append(" locations have appeared. ");
             if (gone > BatchThreshold)
                 sb.Append(gone).Append(" locations are gone. ");
             foreach (var c in Pending)
             {
-                if (c.Appeared && appeared > BatchThreshold) continue;
-                if (!c.Appeared && gone > BatchThreshold) continue;
+                if (!c.Scene && c.Appeared && appeared > BatchThreshold) continue;
+                if (!c.Scene && !c.Appeared && gone > BatchThreshold) continue;
                 sb.Append(W.Present(c)).Append(' ');
             }
             SpeechService.Say(sb.ToString().TrimEnd(), Priority.Queued, "census");

@@ -30,7 +30,18 @@ namespace CSAccess.Sleeper1
             public bool Interactable;    // zoom-down affordance (rendered + interactable)
             public bool IsNew;           // New Shine rendered (the sighted "new" pulse)
             public float Angle;          // corridor angle (rotator Z domain)
-            public int Zone;             // 0 Rim / 1 Greenway / 2 Hub (heuristic, see ZoneOf)
+            public int Zone;             // 0 Rim / 1 Greenway / 2 Hub (heuristic, see ZoneOf);
+                                         // -1 = character with no zone basis (safety net below)
+            /// <summary>Character canvas resting in "Click to Play" — the mandatory-scene
+            /// state, the only writer that holds the game's pending-scene global true
+            /// (corpus 2026-07-25, flux-blocker investigation doc §2/§A1). The game
+            /// renders it as the marker pulse; this flag is that render's
+            /// camera-independent dial.</summary>
+            public bool ActiveScene;
+            /// <summary>Canvas instance identity (flux-blocker doc §4.2): same-name
+            /// variants are distinct canvases; per-canvas trackers (census scene watch)
+            /// key on this, never on the spoken name.</summary>
+            public int CanvasId;
         }
 
         // Location-canvas states that mean "the game shows (or would show) this node".
@@ -128,23 +139,56 @@ namespace CSAccess.Sleeper1
                 Tagline = tagline != null ? SpeechService.Clean(tagline) : null,
                 State = state,
                 Canvas = canvas,
+                CanvasId = canvas.gameObject.GetInstanceID(),
                 Button = button != null ? button.gameObject : null,
                 Interactable = selectable != null && selectable.gameObject.activeInHierarchy
                                && selectable.IsInteractable(),
                 IsNew = IsNewByAuthoredFlag(fsm, varPrefix)
                         ?? (shine != null && shine.gameObject.activeInHierarchy),
                 Angle = MarkerAngle(button != null ? button.transform : canvas),
+                // Mandatory-scene dial (corpus 2026-07-25, flux-blocker doc §2):
+                // "Click to Play" is the only state that holds the game's
+                // pending-scene global true and blocks cycle end.
+                ActiveScene = characters && state == "Click to Play",
             };
             if (!characters) MaybeStampZone(row.Name, state);
             row.Zone = ResolveZone(row.Name,
                 button != null ? button.transform : canvas, row.Angle);
             row.Angle = UnwrapForZone(row.Zone, row.Angle);
 
+            // Unreachable-character safety net (flux-blocker doc §4.3): characters
+            // never stamp and have no baked zones, so their zone is pure geometry.
+            // When the geometric basis itself is missing (no rotator: MarkerAngle
+            // and ZoneOf both degrade to a silent guess), a listed character could
+            // file into a zone table nobody would think to check. Mark the zone
+            // unresolved instead — MapTable appends such rows to the CURRENT zone
+            // — and log loudly. Characters only; locations keep current behavior.
+            if (characters && RotatorTransform() == null)
+            {
+                row.Zone = -1;
+                if (UnresolvedZoneLogged.Add(row.Name))
+                    Plugin.Log.LogWarning("[Atlas] character zone UNRESOLVED: '"
+                        + row.Name + "' (no Focus Rotator for the geometric fallback)"
+                        + " — appended to the current zone table instead of filtered.");
+            }
+
             // Variant dedup by rendered name: the live (non-Off) variant wins; if two
-            // variants both read listed (transitional frame), keep the interactable one.
+            // variants both read listed (transitional frame), keep the interactable
+            // one. A variant in the mandatory-scene state is NEVER the one dropped
+            // (flux-blocker doc §4.2: the game can render two same-name markers with
+            // the pending scene on the second; collapsing to the casual variant hid
+            // the cycle-end unblock affordance) — and the drop is logged either way.
             if (byName.TryGetValue((characters ? "C:" : "L:") + row.Name, out var existing))
             {
-                if (!existing.Interactable && row.Interactable)
+                bool replace = (row.ActiveScene && !existing.ActiveScene)
+                    || (existing.ActiveScene == row.ActiveScene
+                        && !existing.Interactable && row.Interactable);
+                if (existing.ActiveScene != row.ActiveScene
+                    && DedupDropLogged.Add(row.Name))
+                    Plugin.Log.LogInfo("[Atlas] same-name variants '" + row.Name
+                        + "': keeping the mandatory-scene canvas, dropping its twin"
+                        + " (kept id " + (replace ? row.CanvasId : existing.CanvasId) + ").");
+                if (replace)
                 {
                     rows[rows.IndexOf(existing)] = row;
                     byName[(characters ? "C:" : "L:") + row.Name] = row;
@@ -154,6 +198,11 @@ namespace CSAccess.Sleeper1
             byName[(characters ? "C:" : "L:") + row.Name] = row;
             rows.Add(row);
         }
+
+        // Once-per-name log gates for the safety net and the dedup drop note
+        // (episode-scoped like MissingContainersLogged — never per Build).
+        private static readonly HashSet<string> UnresolvedZoneLogged = new HashSet<string>();
+        private static readonly HashSet<string> DedupDropLogged = new HashSet<string>();
 
         // ---------- Facet reads (cells; each cites its source in map-table-design.md) ----------
 
@@ -414,6 +463,18 @@ namespace CSAccess.Sleeper1
         private const float RimFrom = 135f;
         private const float RimTo = 258.5f;
 
+        /// <summary>Rim-floor tolerance (live 2026-07-25, endgame-purge doc): the
+        /// [135,258.5] band is the game's CLAMP band, but markers are not clamped —
+        /// the frustum reaches past the clamp floor, and an authored Rim marker was
+        /// found at ~134.75 (framed fine from Focus Z 135; the complement rule filed
+        /// it Greenway and stranded it). 5° of grace below the floor: the nearest
+        /// genuine non-Rim angles are the Flotilla band, which normalizes to 30–70
+        /// (zone-nav corpus Z3) — ~60° clear of 130 — and Greenway proper at 275+,
+        /// so nothing can misfile INTO Rim inside this margin. Heuristic only; the
+        /// camera clamp and all write-side values (UnwrapForZone, CameraTo) keep
+        /// the exact clamp constants.</summary>
+        private const float RimFloorTolerance = 5f;
+
         public static int ZoneOf(Transform marker, float angle)
         {
             var rotator = RotatorTransform();
@@ -423,7 +484,8 @@ namespace CSAccess.Sleeper1
                     marker.position - rotator.position, rotator.forward);
                 if (v.magnitude < HubRadius) return 2; // Hub
             }
-            return angle >= RimFrom && angle <= RimTo ? 0 : 1; // Rim : Greenway
+            return angle >= RimFrom - RimFloorTolerance && angle <= RimTo
+                ? 0 : 1; // Rim : Greenway
         }
 
         // ---------- Zone resolution (owner redesign 2026-07-22) ----------
@@ -451,6 +513,12 @@ namespace CSAccess.Sleeper1
             {"MIN-GI EXPRESS",0},{"CASTOR'S TABLE",0},{"RABIAH'S WARD",0},
             {"MIDLINE FREIGHT HUB",0},{"ASCENDER CAR",0},{"PAZ IMPORT/EXPORT",0},
             {"FOUNDER'S GAP",0},
+            // Third Founder's-Gap-class member (live 2026-07-25, endgame-purge doc):
+            // marker angle ~134.75 — a quarter degree BELOW the Rim clamp floor, so
+            // the complement rule misfiled it Greenway and camera-follow could never
+            // frame it (writes clamped to the flotilla end; row absent from the Rim
+            // table). Rim by the game's own placement and reachable from Focus Z 135.
+            {"POWER ROUTING",0},
             // Greenway (sweep 2026-07-22, first-seen 275-355)
             {"FOUNDER'S FERRY",1},{"GREENWAY",1},{"HYPHA COMMUNE",1},
             {"WILD MARGINS",1},{"THE WASTES",1},{"CLIMBING BRIAR",1},

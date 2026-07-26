@@ -629,7 +629,44 @@ namespace CSAccess.Sleeper1
                 }
                 return null;
             }
-            return null;
+            // Card-root gate family (corpus 2026-07-25, flux-blocker investigation
+            // doc §2/§3): the cycle-end cards carry NO controller child — their gate
+            // FSM sits on the card root, resting in "Scenes Active" (pending-scene
+            // global held; the card swaps in its Nope label and blocked description)
+            // or "Off" (cycle-end global unset; neither button nor label renders).
+            // Speak the card's own RENDERED strings — TextUnder is active-only, so
+            // this reads exactly what the game draws, nothing invented. Structural
+            // scope: only FSMs that actually author a "Scenes Active" state qualify
+            // (name conventions break; states don't — the typing lesson).
+            return CardRootGateReason(actionRoot);
+        }
+
+        /// <summary>The card-root gate's rendered reason, or null when the card has
+        /// no such gate or no rendered strings (caller keeps its generic wording).</summary>
+        private static string CardRootGateReason(Transform actionRoot)
+        {
+            var fsm = actionRoot.GetComponent<PlayMakerFSM>();
+            if (fsm == null) return null;
+            string state = fsm.ActiveStateName;
+            if (state != "Scenes Active" && state != "Off") return null;
+            bool shaped = false;
+            foreach (var s in fsm.FsmStates)
+                if (s != null && s.Name == "Scenes Active") { shaped = true; break; }
+            if (!shaped) return null;
+            // "Scenes Active" renders the Nope label + the swapped description;
+            // "Off" renders only the resting description. Empty reads fall through.
+            string label = state == "Scenes Active" ? TextUnder(actionRoot, "Nope") : null;
+            string desc = TextUnder(actionRoot, "Description");
+            var sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(label)) sb.Append(label);
+            if (!string.IsNullOrEmpty(desc))
+            {
+                if (sb.Length > 0) sb.Append(sb[sb.Length - 1] == '.' ? " " : ". ");
+                sb.Append(desc);
+            }
+            if (sb.Length == 0) return null;
+            if (sb[sb.Length - 1] != '.') sb.Append('.');
+            return sb.ToString();
         }
 
         /// <summary>The card's rendered skill word, if any.</summary>

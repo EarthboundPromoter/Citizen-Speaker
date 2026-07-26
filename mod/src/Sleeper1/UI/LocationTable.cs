@@ -273,12 +273,20 @@ namespace CSAccess.Sleeper1
                 ? W.HeaderRequires + " " + requires : W.EnterToActivate).Append('.');
             if (risk != null) sb.Append(' ').Append(risk).Append('.');
             // Disabled rows carry the reason (owner ruling 2026-07-20).
+            string reason = null;
             if (selectable == null)
-                sb.Append(' ').Append(Describe.DisabledReason(root) ?? W.NotActivatable);
+            {
+                reason = Describe.DisabledReason(root);
+                sb.Append(' ').Append(reason ?? W.NotActivatable);
+            }
             if (cost != null) sb.Append(' ').Append(cost).Append('.');
             if (predicted != null)
                 sb.Append(' ').Append(W.HeaderPredicted).Append(": ").Append(predicted).Append('.');
-            if (narrative != null) sb.Append(' ').Append(narrative);
+            // Card-root gate reasons quote the card's own Description (flux-blocker
+            // fix 2026-07-25) — the narrative cell would then repeat it verbatim in
+            // the same breath. One read, one utterance (the outlawed-dupe rule).
+            if (narrative != null && (reason == null || !reason.Contains(narrative)))
+                sb.Append(' ').Append(narrative);
             return sb.ToString();
         }
 

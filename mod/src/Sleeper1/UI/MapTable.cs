@@ -38,6 +38,11 @@ namespace CSAccess.Sleeper1
         {
             public const string RowNew = "new";
             public const string RowDisabled = "disabled";
+            // Mandatory-scene facet (flux-blocker fix 2026-07-25). Vocabulary is the
+            // game's own — its cycle-end strings call these "active scenes"; nothing
+            // else in the UI text table names them. Wording provisional (owner
+            // calibration).
+            public const string RowActiveScene = "active scene";
             public const string CharacterPrefix = "Character: ";
             public const string NoClock = "No clock.";
             public const string NoDrive = "No tracked drive.";
@@ -271,7 +276,10 @@ namespace CSAccess.Sleeper1
             if (fresh.Count != _rows.Count) return true;
             for (int i = 0; i < fresh.Count; i++)
                 if (fresh[i].Name != _rows[i].Name || fresh[i].IsCharacter != _rows[i].IsCharacter
-                    || fresh[i].Zone != _rows[i].Zone)
+                    || fresh[i].Zone != _rows[i].Zone
+                    // Facet freshness (flux-blocker fix 2026-07-25): a canvas
+                    // entering/leaving its pending-scene state changes the row read.
+                    || fresh[i].ActiveScene != _rows[i].ActiveScene)
                     return true;
             return false;
         }
@@ -420,10 +428,36 @@ namespace CSAccess.Sleeper1
             }
             if (Time.unscaledTime > _pendingCommitUntil)
             {
-                SpeechService.Say(_pendingCommit.Name + ": " + W.CommitDisabled,
-                    Priority.Immediate, "table");
+                var row = _pendingCommit;
                 _pendingCommit = null;
+                // Mandatory-scene fallback (flux-blocker fix 2026-07-25, addendum 2):
+                // scoped to character rows in the pending-scene state ONLY. The
+                // marker button's frustum dial can refuse pointer delivery while the
+                // button sits off-screen, but the click pipeline itself is start-
+                // point-independent (an authored vcam priority swap) and the game's
+                // own autoplay path fires the SAME FSM event without framing —
+                // sending it is the sanctioned interaction (TriggerReroll precedent:
+                // an FSM's own designed event, never a global write).
+                if (row.IsCharacter && row.ActiveScene && SendMarkerClicked(row))
+                    return;
+                SpeechService.Say(row.Name + ": " + W.CommitDisabled,
+                    Priority.Immediate, "table");
             }
+        }
+
+        /// <summary>Send the character marker's button FSM its own click event — the
+        /// exact event the game's autoplay path sends (corpus 2026-07-25, flux-blocker
+        /// doc addendum 2). False when the FSM isn't live (caller keeps the normal
+        /// refusal).</summary>
+        private static bool SendMarkerClicked(StationAtlas.Row row)
+        {
+            var fsm = row.Button != null ? row.Button.GetComponent<PlayMakerFSM>() : null;
+            if (fsm == null || !fsm.gameObject.activeInHierarchy) return false;
+            fsm.SendEvent("Clicked");
+            Plugin.Log.LogInfo("[Table] commit fallback: button never enabled within "
+                + Timing.CommitEnableWait + "s — sent the marker FSM its own Clicked"
+                + " event for '" + row.Name + "' (mandatory-scene row).");
+            return true;
         }
 
         // ---------- Camera ----------
@@ -476,7 +510,11 @@ namespace CSAccess.Sleeper1
         /// place over locations, so they are ordinary rows).</summary>
         private static void BuildView()
         {
-            _view = _rows.FindAll(r => r.Zone == _zone);
+            // Zone-unresolved characters (Zone -1, atlas safety net, flux-blocker
+            // fix 2026-07-25) ride the CURRENT zone's table rather than being
+            // filtered into nowhere — a listed character must always be reachable
+            // from some table. Locations keep the strict filter.
+            _view = _rows.FindAll(r => r.Zone == _zone || (r.IsCharacter && r.Zone < 0));
             _row = Mathf.Clamp(_row, 0, Mathf.Max(0, _view.Count - 1));
         }
 
@@ -488,6 +526,10 @@ namespace CSAccess.Sleeper1
             if (r.IsCharacter) sb.Append(W.CharacterPrefix);
             sb.Append(r.Name);
             if (r.IsNew) sb.Append(", ").Append(W.RowNew);
+            // Mandatory-scene facet (flux-blocker fix 2026-07-25): the canvas rests
+            // in its pending-scene state — the render the game shows as the marker
+            // pulse, and the state that blocks cycle end until committed.
+            if (r.IsCharacter && r.ActiveScene) sb.Append(", ").Append(W.RowActiveScene);
             // Disabled speaks ONLY when the marker is currently rendered and refuses
             // (live read — the open-time cache falsely flagged every off-camera row;
             // owner report 2026-07-20). Off-camera rows say nothing: no rendered truth
