@@ -162,6 +162,17 @@ namespace CSAccess.Sleeper1
                 && CharacterTable.HandleKeys())
                 return;
 
+            // --- Drive log: the journal table owns arrows/Enter/Space while the
+            //     window is open (map-table-design.md journal section — press-only
+            //     cell actions; the native nav soup is never walked). Slash falls
+            //     through to the native tab swap below. MUST dispatch above the
+            //     generic Space describe (owner-heard bug 2026-07-26: DriveLog
+            //     scope allows Describe, so Space never reached FullRow and spoke
+            //     the focused heading — the top quest's title — instead; the other
+            //     tables already dispatch above it). ---
+            if (mode == Mode.DriveLog && JournalTable.HandleKeys())
+                return;
+
             if (Input.GetKeyDown(KeyCode.Space) && Allowed(mode, ModKey.Describe))
             {
                 var current = Navigator.Current();
@@ -205,13 +216,6 @@ namespace CSAccess.Sleeper1
                     if (Input.GetKeyDown(KeyCode.RightArrow)) { CharacterSelect.ChangeClass(right: true); return; }
                 }
             }
-
-            // --- Drive log: the journal table owns arrows/Enter/Space while the
-            //     window is open (map-table-design.md journal section — press-only
-            //     cell actions; the native nav soup is never walked). Slash falls
-            //     through to the native tab swap below. ---
-            if (mode == Mode.DriveLog && JournalTable.HandleKeys())
-                return;
 
             // --- Drive log: slash = tab swap (owner ruling) — clicks the OTHER
             //     native tab button (Active/Completed), announced by rendered label. ---
