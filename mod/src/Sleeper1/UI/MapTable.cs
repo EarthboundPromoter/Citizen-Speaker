@@ -88,10 +88,9 @@ namespace CSAccess.Sleeper1
         // ---------- State ----------
 
         /// <summary>The permanent-nav gate (D3): table keys route whenever we are at
-        /// the station surface and the Ctrl+X escape hatch is off.</summary>
+        /// the station surface.</summary>
         public static bool Active()
-            => !NavIdiom.Native
-               && ModeModel.Current() == Mode.Station;
+            => ModeModel.Current() == Mode.Station;
 
         private static List<StationAtlas.Row> _rows = new List<StationAtlas.Row>();
         private static int _row, _col;
@@ -130,7 +129,7 @@ namespace CSAccess.Sleeper1
                 _entered = false;
                 return;
             }
-            if (surface != Mode.Station || _entered || NavIdiom.Native)
+            if (surface != Mode.Station || _entered)
                 return;
             // Settle debounce: transitional mode flickers (flights, teardown)
             // must not announce mid-flight.
@@ -181,9 +180,8 @@ namespace CSAccess.Sleeper1
             }
         }
 
-        /// <summary>Ctrl+X return path: re-anchor to the camera and re-announce —
-        /// native browsing moved the world under us, so a fresh build is the honest
-        /// position.</summary>
+        /// <summary>Review-surface return path (UI bar C/V exit): re-anchor to the
+        /// camera and re-announce — a fresh build is the honest position.</summary>
         public static void AnnouncePosition()
         {
             _entered = true;
@@ -217,7 +215,7 @@ namespace CSAccess.Sleeper1
         /// empty scan never degrades the table.</summary>
         private static void FoldFresh()
         {
-            if (!_entered || NavIdiom.Native) return;
+            if (!_entered) return;
             if (ModeModel.Surface() != Mode.Station) return;
             try
             {
@@ -330,7 +328,7 @@ namespace CSAccess.Sleeper1
         /// table adopts position from it instead (NearestRowToCamera).</summary>
         private static void ZoneWatch()
         {
-            if (!_entered || NavIdiom.Native) return;
+            if (!_entered) return;
             if (ModeModel.Surface() != Mode.Station) return;
             int now = StationAtlas.CurrentZone();
             if (now < 0 || now == _zone) return;

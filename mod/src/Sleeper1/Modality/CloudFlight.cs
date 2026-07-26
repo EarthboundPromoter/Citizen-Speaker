@@ -80,7 +80,7 @@ namespace CSAccess.Sleeper1
             _announceAt = -1f;
             // Table idiom (D3): the settled announcement is the card row (zoom-in)
             // or the field row (pull-back), not the native focus description. The
-            // native path below survives for Ctrl+X native mode and cloud exits.
+            // native path below survives for cloud exits (cloud already gone).
             if (CloudTable.AnnounceSettled()) return;
             var current = Navigator.Current();
             if (current == null || !current.activeInHierarchy) return;

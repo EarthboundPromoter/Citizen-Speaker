@@ -90,10 +90,9 @@ namespace CSAccess.Sleeper1
         // ---------- Permanent nav (D3, MapTable pattern) ----------
 
         /// <summary>The permanent-nav gate: table keys route whenever we are at the
-        /// cloud surface and the Ctrl+X escape hatch is off.</summary>
+        /// cloud surface.</summary>
         public static bool Active()
-            => !NavIdiom.Native
-               && ModeModel.Current() == Mode.Cloud;
+            => ModeModel.Current() == Mode.Cloud;
 
         // ---------- Card latch (live-proven 2026-07-23) ----------
         // Card ownership is latched on the Location Button's own event clocks, NOT
@@ -197,7 +196,7 @@ namespace CSAccess.Sleeper1
                 if (surface != Mode.Cloud) _openCanvas = null;
                 return;
             }
-            if (surface != Mode.Cloud || _entered || NavIdiom.Native)
+            if (surface != Mode.Cloud || _entered)
                 return;
             // Land AFTER the entry census's own Text Setup settle so row names are
             // populated and the silent baseline has run.
@@ -223,7 +222,8 @@ namespace CSAccess.Sleeper1
                 Priority.Immediate, "table");
         }
 
-        /// <summary>Ctrl+X return path: re-announce the field position.</summary>
+        /// <summary>Review-surface return path (UI bar C/V exit): re-announce the
+        /// field position.</summary>
         public static void AnnouncePosition()
         {
             _entered = true;
@@ -232,8 +232,8 @@ namespace CSAccess.Sleeper1
 
         /// <summary>Called by CloudFlight at a settled camera flight in place of its
         /// native focus announcement: a zoom-in speaks the open node's card row, a
-        /// pull-back re-anchors on the field row. False = not ours (native mode or
-        /// cloud already gone) — CloudFlight keeps its own announcement.</summary>
+        /// pull-back re-anchors on the field row. False = not ours (cloud already
+        /// gone) — CloudFlight keeps its own announcement.</summary>
         public static bool AnnounceSettled()
         {
             if (!Active()) return false;

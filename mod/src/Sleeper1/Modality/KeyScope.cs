@@ -148,8 +148,7 @@ namespace CSAccess.Sleeper1
 
         /// <summary>Only the keys live on the current screen — the console glyph-bar idiom.
         /// D3: station, cloud and location help lead with the table grammar — the
-        /// DEFAULT navigation, not a mode — and station/cloud close with the Ctrl+X
-        /// escape hatch (an undiscoverable hatch is no hatch).</summary>
+        /// DEFAULT navigation, not a mode.</summary>
         public static string HelpFor(Mode mode)
         {
             // In-context help: while a review surface owns the keys, F1 describes
@@ -163,7 +162,7 @@ namespace CSAccess.Sleeper1
             if (mode == Mode.Credits)
                 return "End sequence. Enter: skip credits. Z: repeat speech. L: where am I.";
             bool tableSurface = mode == Mode.ActionView
-                || (!NavIdiom.Native && (mode == Mode.Station || mode == Mode.Cloud));
+                || mode == Mode.Station || mode == Mode.Cloud;
             var sb = new System.Text.StringBuilder(ModeModel.Name(mode)).Append(". ");
             if (tableSurface)
             {
@@ -186,10 +185,6 @@ namespace CSAccess.Sleeper1
                     || key == ModKey.Describe || key == ModKey.Vitals || key == ModKey.Dice)) continue;
                 sb.Append(help).Append(". ");
             }
-            if (mode == Mode.Station || mode == Mode.Cloud)
-                sb.Append(NavIdiom.Native
-                    ? "Control X: table navigation. "
-                    : "Control X: native navigation. ");
             return sb.ToString().TrimEnd();
         }
     }

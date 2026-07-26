@@ -29,7 +29,6 @@ namespace CSAccess.Scaffold
         private static bool _available;
         private static readonly Queue<Pending> Queue = new Queue<Pending>();
         private static readonly List<string> History = new List<string>();
-        private static int _historyCursor = -1;
         private static string _lastQueued;
         private static float _lastSpokeAt;
 
@@ -153,7 +152,6 @@ namespace CSAccess.Scaffold
             History.Add(text);
             if (History.Count > HistoryCapacity)
                 History.RemoveRange(0, History.Count - HistoryCapacity);
-            _historyCursor = History.Count - 1;
 
             // The [mode fN tN] context block joins each utterance to the input ring,
             // FSM signals, and the bridge's /watch stream (shared frame clock).
@@ -171,22 +169,7 @@ namespace CSAccess.Scaffold
         public static void RepeatLast()
         {
             if (History.Count == 0) { Say("No speech history.", Priority.Immediate, "history"); return; }
-            _historyCursor = History.Count - 1;
-            SpeakRaw(History[_historyCursor]);
-        }
-
-        public static void HistoryBack()
-        {
-            if (History.Count == 0) { Say("No speech history.", Priority.Immediate, "history"); return; }
-            _historyCursor = Mathf.Max(0, _historyCursor - 1);
-            SpeakRaw(History[_historyCursor]);
-        }
-
-        public static void HistoryForward()
-        {
-            if (History.Count == 0) { Say("No speech history.", Priority.Immediate, "history"); return; }
-            _historyCursor = Mathf.Min(History.Count - 1, _historyCursor + 1);
-            SpeakRaw(History[_historyCursor]);
+            SpeakRaw(History[History.Count - 1]);
         }
 
         private static void SpeakRaw(string text)

@@ -44,14 +44,6 @@ namespace CSAccess.Sleeper1
                         + Fmt(LuaStore.SkillValue(LuaStore.Skill.Interface)) + "/"
                         + Fmt(LuaStore.SkillValue(LuaStore.Skill.Intuit))
                         + " introComplete=" + LuaClocks.IntroComplete());
-
-                    // Anchor probe rides the same one-shot: misses self-log inside Anchors.
-                    Plugin.Log.LogInfo("[Substrate] Anchors: activeAction=" + Name(Anchors.ActiveAction())
-                        + " dialoguePanel=" + Name(Anchors.DialoguePanel())
-                        + " responseMenu=" + Name(Anchors.ResponseMenu())
-                        + " leaveButton=" + Name(Anchors.LeaveButton())
-                        + " saver=" + Name(Anchors.Saver())
-                        + " uiSelector=" + Name(Anchors.UISelector()));
                 }
             }
 
@@ -64,6 +56,5 @@ namespace CSAccess.Sleeper1
         }
 
         private static string Fmt(int? v) => v?.ToString() ?? "?";
-        private static string Name(GameObject go) => go != null ? go.name : "null";
     }
 }

@@ -127,29 +127,15 @@ namespace CSAccess.Sleeper1
             //     work. Exception: a tutorial continue the game itself selected. ---
             if (GameQueries.InputPaused() && !TutorialContinueFocused()) return;
 
-            // --- Ctrl+X (D3 escape hatch, owner ruling 2026-07-20): the deliberately
-            //     buried toggle between the permanent table idiom and fully native
-            //     navigation, station and cloud only. The return path re-anchors and
-            //     re-announces the table position (native browsing moved the world). ---
-            if (Input.GetKeyDown(KeyCode.X)
-                && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
-                && (mode == Mode.Station || mode == Mode.Cloud))
-            {
-                NavIdiom.Native = !NavIdiom.Native;
-                if (NavIdiom.Native)
-                    SpeechService.Say("Native navigation.", Priority.Immediate, "nav");
-                else if (mode == Mode.Station) MapTable.AnnouncePosition();
-                else CloudTable.AnnouncePosition();
-                return;
-            }
-
             // --- Permanent table nav (D3): the tables ARE the station and cloud
             //     idiom — a plain mode gate, no open/close state, N dead. Overlay
             //     modes (windows, dialogue, dice) route past this block naturally;
             //     U/O/I/J and query keys pass through untouched. Backspace falls
-            //     through to the designed cancel. ---
-            if (mode == Mode.Station && !NavIdiom.Native && MapTable.HandleKeys()) return;
-            if (mode == Mode.Cloud && !NavIdiom.Native && CloudTable.HandleKeys()) return;
+            //     through to the designed cancel. (The Ctrl+X native-nav escape
+            //     hatch was removed 2026-07-26 — it never registered in play, and
+            //     the tables are verified through endgame; owner ruling.) ---
+            if (mode == Mode.Station && MapTable.HandleKeys()) return;
+            if (mode == Mode.Cloud && CloudTable.HandleKeys()) return;
 
             // --- Location table (always-on at a location, D4 stacked grid): arrows
             //     walk one grid — action cards, then clock cards, section announced

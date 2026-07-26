@@ -31,8 +31,6 @@ namespace CSAccess.Middleware
                 _subscribed = controller;
                 ConversationActive = false;
             }
-            // The event-vs-poll divergence diagnostic ran clean across the six session-6
-            // run snapshots (zero warnings) and was removed per its retirement condition.
         }
 
         private static void OnStarted(Transform actor)

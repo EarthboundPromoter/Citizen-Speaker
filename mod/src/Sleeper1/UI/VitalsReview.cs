@@ -113,14 +113,13 @@ namespace CSAccess.Sleeper1
         private static string RowRead(int row)
             => row == RowVitals ? GameQueries.DescribeVitals() : GameQueries.DescribeDiceBrief();
 
-        /// <summary>Return to the surface. Station/cloud re-announce their table position
-        /// (the Ctrl+X return convention); the location grid kept its position and gets
-        /// the bare acknowledgment.</summary>
+        /// <summary>Return to the surface. Station/cloud re-announce their table
+        /// position; the location grid kept its position and gets the bare
+        /// acknowledgment.</summary>
         private static void Exit(Mode mode)
         {
             _active = false;
             _col = -1;
-            if (NavIdiom.Native) { SpeechService.Say(W.Back, Priority.Immediate, "query"); return; }
             if (mode == Mode.Station) { MapTable.AnnouncePosition(); return; }
             if (mode == Mode.Cloud) { CloudTable.AnnouncePosition(); return; }
             SpeechService.Say(W.Back, Priority.Immediate, "query");

@@ -222,10 +222,6 @@ namespace CSAccess.Sleeper1
         /// (ConversationEvents) — reliable by construction, covers every trigger route.</summary>
         private static bool ConversationActive() => ConversationEvents.ConversationActive;
 
-        // DiceSlottedResting folded into GameQueries.DiceAllocationActive (2026-07-21):
-        // Slotted is one of the non-Off dice states that method now covers, along with
-        // Reselector and Setup that the old Active-only test dropped.
-
         /// <summary>Selection inside an Item Cursor — the game's own semi-modal watch uses
         /// exactly this name compare (brief E, inventory constraint).</summary>
         private static bool InventoryCursorFocused()
