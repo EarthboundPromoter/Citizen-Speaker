@@ -93,8 +93,27 @@ namespace CSAccess.Sleeper1
             => ModeModel.Current() == Mode.Station;
 
         private static List<StationAtlas.Row> _rows = new List<StationAtlas.Row>();
-        private static int _row, _col;
         private static List<StationAtlas.Row> _view = new List<StationAtlas.Row>();
+
+        // Engine composition (audit A1, 2026-07-26): unlike the fetch-fresh tables,
+        // rows are the RETAINED zone view — HandleKeys folds the live world in
+        // (re-anchoring the cursor by identity) before dispatching, so providers
+        // index _view directly. The camera contract rides the hooks: commit
+        // withdrawal at move start, the ONCE-per-actual-row-change write after
+        // speech (owner ruling 2026-07-22 - edge bare-repeats never re-write).
+        private static readonly TableEngine T = new TableEngine
+        {
+            Rows = () => _view.Count,
+            Cols = _ => Columns.Count,
+            OnRowMoveStart = () => _pendingCommit = null,
+            RowSpeech = (row, col) => col == 0 ? RowReport(row)
+                : _view[row].Name + ". " + CellText(row, col),
+            CellSpeech = (row, col) => Columns[col].Header + ": " + CellText(row, col),
+            AfterRowSpeech = (prev, row) => { if (row != prev) CameraTo(_view[row]); },
+            Detail = (row, _) => SpeakFullRow(row),
+            Commit = (row, _) => Commit(row),
+            EmptyRow = () => W.NoRows,
+        };
         /// <summary>The zone this table is built for — rebuilt + re-announced when the
         /// player's own transition settles (the ONLY way zones change now).</summary>
         private static int _zone = -1;
@@ -161,11 +180,10 @@ namespace CSAccess.Sleeper1
                 _emptyAtlasLogged = false;
                 _zone = StationAtlas.CurrentZone();
                 BuildView();
-                _row = NearestRowToCamera();
-                _col = 0;
+                T.Reset(NearestRowToCamera());
                 // Title = the bare region name (owner ruling 2026-07-22).
                 SpeechService.Say(W.Zone(_zone) + ". "
-                    + (_view.Count > 0 ? RowReport() : W.NoRows),
+                    + (_view.Count > 0 ? RowReport(T.Row) : W.NoRows),
                     Priority.Immediate, "table");
                 // A genuine station arrival is a census beat: changes that landed
                 // while away (cloud, cycle turnover, a location) speak here, queued
@@ -225,8 +243,8 @@ namespace CSAccess.Sleeper1
 
                 string keepName = null;
                 bool keepIsChar = false;
-                if (_view.Count > 0 && _row < _view.Count)
-                { keepName = _view[_row].Name; keepIsChar = _view[_row].IsCharacter; }
+                if (_view.Count > 0 && T.Row < _view.Count)
+                { keepName = _view[T.Row].Name; keepIsChar = _view[T.Row].IsCharacter; }
 
                 int before = _rows.Count;
                 _rows = fresh;
@@ -234,7 +252,7 @@ namespace CSAccess.Sleeper1
                 if (keepName != null)
                 {
                     int found = _view.FindIndex(r => r.Name == keepName && r.IsCharacter == keepIsChar);
-                    if (found >= 0) _row = found;
+                    if (found >= 0) T.Row = found;
                     else
                     {
                         // D2: the row we were on vanished this fold. Oscillating
@@ -245,7 +263,7 @@ namespace CSAccess.Sleeper1
                         _departedName = keepName;
                         _departedIsChar = keepIsChar;
                         _departedAt = Time.unscaledTime;
-                        _row = Mathf.Clamp(_row, 0, Mathf.Max(0, _view.Count - 1));
+                        T.Row = Mathf.Clamp(T.Row, 0, Mathf.Max(0, _view.Count - 1));
                     }
                 }
 
@@ -256,7 +274,7 @@ namespace CSAccess.Sleeper1
                     {
                         int back = _view.FindIndex(r =>
                             r.Name == _departedName && r.IsCharacter == _departedIsChar);
-                        if (back >= 0) { _row = back; _departedName = null; }
+                        if (back >= 0) { T.Row = back; _departedName = null; }
                     }
                     else _departedName = null; // window expired: a genuine removal
                 }
@@ -300,15 +318,7 @@ namespace CSAccess.Sleeper1
                 || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
             if (!tableKey) return false;
             FoldFresh();
-
-            if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
-            if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCol(1); return true; }
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) { MoveCol(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.Space)) { SpeakFullRow(); return true; }
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            { Commit(); return true; }
-            return false;
+            return T.HandleKeys();
         }
 
         public static void Tick()
@@ -338,10 +348,9 @@ namespace CSAccess.Sleeper1
             _pendingCommit = null;
             _rows = StationAtlas.Build();
             BuildView();
-            _row = NearestRowToCamera();
-            _col = 0;
+            T.Reset(NearestRowToCamera());
             SpeechService.Say(W.Zone(_zone) + ". "
-                + (_view.Count > 0 ? RowReport() : W.NoRows),
+                + (_view.Count > 0 ? RowReport(T.Row) : W.NoRows),
                 Priority.Queued, "table");
             // Arrival in a zone is a census beat (changes that landed while away
             // speak behind the region announce).
@@ -350,42 +359,16 @@ namespace CSAccess.Sleeper1
                 + " (" + _view.Count + " rows)");
         }
 
-        // ---------- Movement ----------
+        // ---------- Space / Enter (movement lives in the engine; the session-11
+        // pending-commit withdrawal and the camera contract ride its hooks) ----------
 
-        private static void MoveRow(int delta)
+        private static void SpeakFullRow(int rowIndex)
         {
-            // Moving on withdraws a pending commit (session-11 live: the 2 s timeout
-            // refusal spoke rows later, and a late-enabling target would have clicked
-            // a row the player had left).
-            _pendingCommit = null;
-            if (_view.Count == 0)
-            { SpeechService.Say(W.NoRows, Priority.Immediate, "table"); return; }
-
-            int prev = _row;
-            _row = Mathf.Clamp(_row + delta, 0, _view.Count - 1);
-            SpeechService.Say(_col == 0 ? RowReport() : Current().Name + ". " + CellText(_col),
-                Priority.Immediate, "table");
-            // Camera contract: write ONLY when the row actually changed (edge
-            // bare-repeats never re-write; nothing else in the table writes at all).
-            if (_row != prev) CameraTo(Current());
-        }
-
-        private static void MoveCol(int delta)
-        {
-            if (_view.Count == 0) return;
-            var cols = Columns;
-            _col = Mathf.Clamp(_col + delta, 0, cols.Count - 1);
-            SpeechService.Say(cols[_col].Header + ": " + CellText(_col), Priority.Immediate, "table");
-        }
-
-        private static void SpeakFullRow()
-        {
-            if (_view.Count == 0) return;
             var cols = Columns;
             var sb = new System.Text.StringBuilder();
             for (int i = 0; i < cols.Count; i++)
             {
-                string cell = CellRaw(cols[i]);
+                string cell = CellRaw(cols[i], rowIndex);
                 sb.Append(cols[i].Header).Append(": ")
                   .Append(cell ?? cols[i].EmptyForm ?? "none");
                 if (!sb.ToString().EndsWith(".")) sb.Append('.');
@@ -394,10 +377,9 @@ namespace CSAccess.Sleeper1
             SpeechService.Say(sb.ToString().TrimEnd(), Priority.Immediate, "table");
         }
 
-        private static void Commit()
+        private static void Commit(int rowIndex)
         {
-            if (_view.Count == 0) return;
-            var row = Current();
+            var row = _view[rowIndex];
             if (LiveInteractable(row))
             {
                 Navigator.Click(row.Button);
@@ -513,10 +495,8 @@ namespace CSAccess.Sleeper1
             // filtered into nowhere — a listed character must always be reachable
             // from some table. Locations keep the strict filter.
             _view = _rows.FindAll(r => r.Zone == _zone || (r.IsCharacter && r.Zone < 0));
-            _row = Mathf.Clamp(_row, 0, Mathf.Max(0, _view.Count - 1));
+            T.Row = Mathf.Clamp(T.Row, 0, Mathf.Max(0, _view.Count - 1));
         }
-
-        private static StationAtlas.Row Current() => _view[_row];
 
         private static string NameCell(StationAtlas.Row r)
         {
@@ -545,25 +525,25 @@ namespace CSAccess.Sleeper1
             return s != null && r.Button.activeInHierarchy && s.IsInteractable();
         }
 
-        private static string CellRaw(Column c) => c.Cell(Current());
+        private static string CellRaw(Column c, int rowIndex) => c.Cell(_view[rowIndex]);
 
-        private static string CellText(int colIndex)
+        private static string CellText(int rowIndex, int colIndex)
         {
             var col = Columns[colIndex];
-            return CellRaw(col) ?? col.EmptyForm ?? "none";
+            return CellRaw(col, rowIndex) ?? col.EmptyForm ?? "none";
         }
 
         /// <summary>Row report: name + flags, then POPULATED facets only (ruling 3 —
         /// the report carries the compression; empty cells stay visitable but silent
         /// here).</summary>
-        private static string RowReport()
+        private static string RowReport(int rowIndex)
         {
             var cols = Columns;
-            var sb = new System.Text.StringBuilder(CellRaw(cols[0]));
+            var sb = new System.Text.StringBuilder(CellRaw(cols[0], rowIndex));
             sb.Append('.');
             for (int i = 1; i < cols.Count; i++)
             {
-                string cell = CellRaw(cols[i]);
+                string cell = CellRaw(cols[i], rowIndex);
                 if (cell == null) continue;
                 // C3: zero counts are not populated facets ("Actions 0 actions.")
                 // — the column visit's terse empty covers them (row rule: report
