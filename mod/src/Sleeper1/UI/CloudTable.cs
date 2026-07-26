@@ -69,9 +69,57 @@ namespace CSAccess.Sleeper1
         private static readonly string[] CardHeaders =
             { W.HeaderName, W.HeaderDemand, W.HeaderTakes, W.HeaderNarrative };
 
-        private static int _row, _col;
         private static string _cardNode;
-        private static int _cardCol;
+
+        // Engine composition (audit A1, 2026-07-26): TWO instances — the node
+        // field and the open-node card, which IS a one-row table (owner ruling
+        // 2026-07-20) and validates the composition shape. Field rows rebuild
+        // fresh per keypress; camera-synced browse rides the pre-speech hook
+        // (station pattern, same config gate and focus mute).
+        private static readonly TableEngine T = new TableEngine
+        {
+            Rows = () => Rows().Count,
+            Cols = _ => Headers.Length,
+            OnRowArrive = (prev, row) =>
+            {
+                var n = Rows()[row];
+                MapTable.CameraToAngle(StationAtlas.MarkerAngle(
+                    n.Button != null ? n.Button.transform : n.Canvas));
+            },
+            RowSpeech = (row, col) =>
+            {
+                var n = Rows()[row];
+                return col == 0 ? RowRead(n) : n.Name + ". " + (Cell(n, col) ?? "none");
+            },
+            // The demand cell is self-labeled ("Required die: 2" / "Takes X") —
+            // no header prefix (owner ruling, session 11).
+            CellSpeech = (row, col) =>
+            {
+                var n = Rows()[row];
+                return col == 1 ? (Cell(n, col) ?? "none")
+                    : Headers[col] + ": " + (Cell(n, col) ?? "none");
+            },
+            Detail = (row, _) => T.Say(RowRead(Rows()[row])),
+            Commit = (row, _) => Commit(Rows()[row]),
+            EmptyRow = () => W.NoRows,
+        };
+
+        // Card-engine context: the latched node, set per dispatch (the latch,
+        // not row membership, decides card vs field — see latch doc).
+        private static Node _cardCtx;
+        private static readonly TableEngine TC = new TableEngine
+        {
+            Rows = () => 1, // one row: vertical moves are a bare repeat (dead-end idiom)
+            Cols = _ => CardHeaders.Length,
+            RowSpeech = (_, __) => CardRow(_cardCtx),
+            // C2: the demand cell self-labels ("Required dice: 2, 3") — the header
+            // prefix stacked two labels; same suppression the field table has.
+            CellSpeech = (_, col) => col == 1
+                ? (CardCell(_cardCtx, col) ?? W.HeaderDemand + ": none")
+                : CardHeaders[col] + ": " + (CardCell(_cardCtx, col) ?? "none"),
+            Detail = (_, __) => TC.Say(CardRow(_cardCtx)),
+            Commit = (_, __) => CommitCard(_cardCtx),
+        };
 
         private struct Node
         {
@@ -214,11 +262,11 @@ namespace CSAccess.Sleeper1
             // Auto-select the open node's row (owner: entering with a node already
             // open lands on it) — latch first, button-state flag as fallback.
             var open = OpenCanvas();
-            _row = 0; _col = 0;
+            T.Reset();
             for (int i = 0; i < rows.Count; i++)
-                if ((open != null && rows[i].Canvas == open) || rows[i].Open) { _row = i; break; }
+                if ((open != null && rows[i].Canvas == open) || rows[i].Open) { T.Row = i; break; }
             SpeechService.Say(W.TableName + " "
-                + (rows.Count > 0 ? RowRead(rows[_row]) : W.NoRows),
+                + (rows.Count > 0 ? RowRead(rows[T.Row]) : W.NoRows),
                 Priority.Immediate, "table");
         }
 
@@ -245,8 +293,8 @@ namespace CSAccess.Sleeper1
             }
             var rows = Rows();
             if (rows.Count == 0) return false;
-            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
-            SpeechService.Say(RowRead(rows[_row]), Priority.Immediate, "table");
+            T.Row = Mathf.Clamp(T.Row, 0, rows.Count - 1);
+            SpeechService.Say(RowRead(rows[T.Row]), Priority.Immediate, "table");
             return true;
         }
 
@@ -254,46 +302,15 @@ namespace CSAccess.Sleeper1
         {
             // The latch, not row membership, decides card vs field (see latch doc).
             var openCanvas = OpenCanvas();
-            if (openCanvas != null) return HandleCardKeys(LatchedNode(openCanvas));
+            if (openCanvas != null)
+            {
+                var node = LatchedNode(openCanvas);
+                if (_cardNode != node.Name) { _cardNode = node.Name; TC.Reset(); }
+                _cardCtx = node;
+                return TC.HandleKeys();
+            }
             _cardNode = null;
-            var rows = Rows();
-
-            if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
-            if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCol(1); return true; }
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) { MoveCol(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.Space)) { Detail(); return true; }
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            { Commit(); return true; }
-            return false;
-        }
-
-        // ---------- The open-node card table (one row) ----------
-
-        private static bool HandleCardKeys(Node node)
-        {
-            if (_cardNode != node.Name) { _cardNode = node.Name; _cardCol = 0; }
-
-            // One row: vertical moves are a bare repeat (dead-end idiom).
-            if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.UpArrow)
-                || Input.GetKeyDown(KeyCode.Space))
-            { SpeechService.Say(CardRow(node), Priority.Immediate, "table"); return true; }
-            if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCardCol(node, 1); return true; }
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) { MoveCardCol(node, -1); return true; }
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            { CommitCard(node); return true; }
-            return false;
-        }
-
-        private static void MoveCardCol(Node node, int delta)
-        {
-            _cardCol = Mathf.Clamp(_cardCol + delta, 0, CardHeaders.Length - 1);
-            // C2: the demand cell self-labels ("Required dice: 2, 3") — the header
-            // prefix stacked two labels; same suppression the field table has.
-            SpeechService.Say(_cardCol == 1
-                    ? (CardCell(node, _cardCol) ?? W.HeaderDemand + ": none")
-                    : CardHeaders[_cardCol] + ": " + (CardCell(node, _cardCol) ?? "none"),
-                Priority.Immediate, "table");
+            return T.HandleKeys();
         }
 
         private static void CommitCard(Node node)
@@ -324,7 +341,9 @@ namespace CSAccess.Sleeper1
         /// <summary>Full card read: name, then populated facets in column order.
         /// C1: the generic "a die" Takes drops beside a die demand — the session-12
         /// cull covered the detail read only and the row composition still spoke
-        /// "Required dice: 2, 3. a die." (column visits stay individually intact).</summary>
+        /// "Required dice: 2, 3. a die." (column visits stay individually intact).
+        /// (A8 ruling 2026-07-26: same policy family as Describe's requires-phrase
+        /// cull — parallel by data shape, deliberately not merged.)</summary>
         private static string CardRow(Node node)
         {
             var sb = new System.Text.StringBuilder(node.Name);
@@ -345,51 +364,8 @@ namespace CSAccess.Sleeper1
             return sb.ToString() + ".";
         }
 
-        private static void MoveRow(int delta)
+        private static void Commit(Node node)
         {
-            var rows = Rows();
-            if (rows.Count == 0)
-            { SpeechService.Say(W.NoRows, Priority.Immediate, "table"); return; }
-            _row = Mathf.Clamp(_row + delta, 0, rows.Count - 1);
-            var n = rows[_row];
-            // Camera-synced browse (owner live-confirmed: cloud rides the same
-            // one-axis Focus rig — W/S pans the corridor identically). Same config
-            // gate and focus mute as the station table.
-            MapTable.CameraToAngle(StationAtlas.MarkerAngle(
-                n.Button != null ? n.Button.transform : n.Canvas));
-            SpeechService.Say(_col == 0 ? RowRead(n)
-                : n.Name + ". " + (Cell(n, _col) ?? "none"),
-                Priority.Immediate, "table");
-        }
-
-        private static void MoveCol(int delta)
-        {
-            var rows = Rows();
-            if (rows.Count == 0) return;
-            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
-            _col = Mathf.Clamp(_col + delta, 0, Headers.Length - 1);
-            // The demand cell is self-labeled ("Required die: 2" / "Takes X") —
-            // no header prefix (owner ruling, session 11).
-            SpeechService.Say(_col == 1
-                    ? (Cell(rows[_row], _col) ?? "none")
-                    : Headers[_col] + ": " + (Cell(rows[_row], _col) ?? "none"),
-                Priority.Immediate, "table");
-        }
-
-        private static void Detail()
-        {
-            var rows = Rows();
-            if (rows.Count == 0) return;
-            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
-            SpeechService.Say(RowRead(rows[_row]), Priority.Immediate, "table");
-        }
-
-        private static void Commit()
-        {
-            var rows = Rows();
-            if (rows.Count == 0) return;
-            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
-            var node = rows[_row];
             if (node.Button == null)
             {
                 SpeechService.Say(node.Name + " is not clickable.", Priority.Immediate, "table");

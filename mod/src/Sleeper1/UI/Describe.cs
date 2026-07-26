@@ -162,7 +162,8 @@ namespace CSAccess.Sleeper1
             // Cloud node die demand (BL-12): the gating fact, graphics-only on the
             // card. A demand names the exact die, so the generic "a die" beside it
             // is the outlawed dupe ("Required die: 2. Takes a die." heard live) —
-            // the demand speaks alone.
+            // the demand speaks alone. (A8 ruling 2026-07-26: same policy family
+            // as CloudTable.CardRow's cull — parallel by data shape, not copies.)
             string requiresPhrase = RequiresPhrase(root);
             string demand = HackingDemand(root);
             if (demand != null && requiresPhrase == "a die") requiresPhrase = null;
