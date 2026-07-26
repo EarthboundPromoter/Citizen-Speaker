@@ -53,8 +53,25 @@ namespace CSAccess.Sleeper1
             { W.HeaderName, W.HeaderDescription, W.HeaderPerks, W.HeaderNext };
 
         private static Transform _window;
-        private static int _row, _col;
         private static bool _wasActive;
+
+        // Engine composition (audit A1, 2026-07-26): cursor/clamp/dispatch live in
+        // Scaffold; skill-row truth, wording, and the armed-upgrade policy stay here.
+        private static readonly TableEngine T = new TableEngine
+        {
+            Rows = () => Rows().Count,
+            Cols = _ => Headers.Length,
+            RowSpeech = (row, col) =>
+            {
+                var rows = Rows();
+                return col == 0 ? RowRead(rows[row])
+                    : NameCell(rows[row]) + ". " + Cell(rows[row], col);
+            },
+            CellSpeech = (row, col) => Headers[col] + ": " + Cell(Rows()[row], col),
+            Detail = (row, _) => Detail(Rows()[row]),
+            Commit = (row, _) => Commit(row),
+            EmptyRow = () => W.NoRows,
+        };
 
         public static bool IsActive()
         {
@@ -62,7 +79,7 @@ namespace CSAccess.Sleeper1
             if (w == null) return false;
             var group = w.GetComponent<CanvasGroup>();
             bool open = w.gameObject.activeInHierarchy && (group == null || group.alpha > 0.5f);
-            if (!open && _wasActive) { _row = 0; _col = 0; }
+            if (!open && _wasActive) T.Reset();
             _wasActive = open;
             return open;
         }
@@ -77,17 +94,7 @@ namespace CSAccess.Sleeper1
             return _window;
         }
 
-        public static bool HandleKeys()
-        {
-            if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
-            if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCol(1); return true; }
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) { MoveCol(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.Space)) { Detail(); return true; }
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            { Commit(); return true; }
-            return false;
-        }
+        public static bool HandleKeys() => T.HandleKeys();
 
         // ---------- Rows ----------
 
@@ -102,36 +109,11 @@ namespace CSAccess.Sleeper1
             return list;
         }
 
-        private static void MoveRow(int delta)
-        {
-            var rows = Rows();
-            if (rows.Count == 0)
-            { SpeechService.Say(W.NoRows, Priority.Immediate, "table"); return; }
-            _row = Mathf.Clamp(_row + delta, 0, rows.Count - 1);
-            SpeechService.Say(_col == 0 ? RowRead(rows[_row])
-                : NameCell(rows[_row]) + ". " + Cell(rows[_row], _col),
-                Priority.Immediate, "table");
-        }
-
-        private static void MoveCol(int delta)
-        {
-            var rows = Rows();
-            if (rows.Count == 0) return;
-            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
-            _col = Mathf.Clamp(_col + delta, 0, Headers.Length - 1);
-            SpeechService.Say(Headers[_col] + ": " + Cell(rows[_row], _col),
-                Priority.Immediate, "table");
-        }
-
         /// <summary>Space = the complete "teach me this skill" read (owner ruling
         /// 2026-07-23): name and value, the rendered function description, the ladder
         /// shape with the current rung, both perks, and the next rung with cost.</summary>
-        private static void Detail()
+        private static void Detail(Transform row)
         {
-            var rows = Rows();
-            if (rows.Count == 0) return;
-            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
-            var row = rows[_row];
             var sb = new System.Text.StringBuilder(NameCell(row));
             string desc = DescriptionCell(row);
             if (desc != null) sb.Append(". ").Append(desc);
@@ -315,7 +297,7 @@ namespace CSAccess.Sleeper1
             return rung;
         }
 
-        private static void Commit()
+        private static void Commit(int rowIndex)
         {
             var w = Window();
             if (w == null) return;
@@ -341,14 +323,14 @@ namespace CSAccess.Sleeper1
             }
             var rows = Rows();
             if (rows.Count == 0) return;
-            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
-            var button = RowButton(rows[_row]);
+            rowIndex = Mathf.Clamp(rowIndex, 0, rows.Count - 1);
+            var button = RowButton(rows[rowIndex]);
             if (button == null)
             {
                 SpeechService.Say(W.UpgradeUnavailable, Priority.Immediate, "table");
                 return;
             }
-            ArmPurchaseCheck(rows[_row]);
+            ArmPurchaseCheck(rows[rowIndex]);
             Navigator.Click(button.gameObject);
         }
 
