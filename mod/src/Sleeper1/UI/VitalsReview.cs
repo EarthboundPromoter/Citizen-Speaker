@@ -38,8 +38,31 @@ namespace CSAccess.Sleeper1
         }
 
         private static bool _active;
-        private static int _row;
-        private static int _col = -1; // -1 = row level; cells start on first Left/Right
+
+        // Engine composition (audit A1, 2026-07-26): the UI bar idiom is the
+        // -1 row-level column sentinel (cells start on the first Left/Right)
+        // plus column reset on every row change; both are engine capabilities.
+        // Space and Enter are the same bare row repeat - the band holds
+        // instruments, not affordances.
+        private static readonly TableEngine T = new TableEngine
+        {
+            Rows = () => 2,
+            Cols = row => (row == RowVitals ? GameQueries.VitalsCells()
+                                            : GameQueries.DiceCells()).Count,
+            RowSpeech = (row, _) => RowName(row) + " " + RowRead(row),
+            CellSpeech = (row, col) =>
+            {
+                var cell = (row == RowVitals ? GameQueries.VitalsCells()
+                                             : GameQueries.DiceCells())[col];
+                return cell.Label + ": " + cell.Value + ".";
+            },
+            EmptyCol = () => RowRead(T.Row),
+            Detail = (row, _) => T.Say(RowRead(row)),
+            Commit = (row, _) => T.Say(RowRead(row)),
+            ColReset = -1,
+            ResetColOnRowChange = true,
+            Source = "query",
+        };
 
         public static bool Active => _active;
 
@@ -63,8 +86,7 @@ namespace CSAccess.Sleeper1
             }
             if (_active) { Exit(mode); return; }
             _active = true;
-            _row = row;
-            _col = -1;
+            T.Reset(row);
             SpeechService.Say(RowName(row) + " " + RowRead(row), Priority.Immediate, "query");
         }
 
@@ -74,37 +96,8 @@ namespace CSAccess.Sleeper1
         {
             if (!_active) return false;
             if (!AtSurface(mode)) { _active = false; return false; }
-
-            if (Input.GetKeyDown(KeyCode.DownArrow)) { MoveRow(1); return true; }
-            if (Input.GetKeyDown(KeyCode.UpArrow)) { MoveRow(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.RightArrow)) { MoveCol(1); return true; }
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) { MoveCol(-1); return true; }
-            if (Input.GetKeyDown(KeyCode.Space)
-                || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            { SpeechService.Say(RowRead(_row), Priority.Immediate, "query"); return true; }
             if (Input.GetKeyDown(KeyCode.Backspace)) { Exit(mode); return true; }
-            return false;
-        }
-
-        private static void MoveRow(int delta)
-        {
-            int next = Mathf.Clamp(_row + delta, RowVitals, RowDice);
-            if (next != _row) { _row = next; _col = -1; }
-            // Edge = bare repeat (dead-end idiom), same speech either way.
-            SpeechService.Say(RowName(_row) + " " + RowRead(_row), Priority.Immediate, "query");
-        }
-
-        private static void MoveCol(int delta)
-        {
-            var cells = _row == RowVitals ? GameQueries.VitalsCells() : GameQueries.DiceCells();
-            if (cells.Count == 0)
-            {
-                SpeechService.Say(RowRead(_row), Priority.Immediate, "query");
-                return;
-            }
-            _col = Mathf.Clamp(_col < 0 ? (delta > 0 ? 0 : 0) : _col + delta, 0, cells.Count - 1);
-            var cell = cells[_col];
-            SpeechService.Say(cell.Label + ": " + cell.Value + ".", Priority.Immediate, "query");
+            return T.HandleKeys();
         }
 
         private static string RowName(int row)
@@ -119,7 +112,7 @@ namespace CSAccess.Sleeper1
         private static void Exit(Mode mode)
         {
             _active = false;
-            _col = -1;
+            T.Col = -1;
             if (mode == Mode.Station) { MapTable.AnnouncePosition(); return; }
             if (mode == Mode.Cloud) { CloudTable.AnnouncePosition(); return; }
             SpeechService.Say(W.Back, Priority.Immediate, "query");
