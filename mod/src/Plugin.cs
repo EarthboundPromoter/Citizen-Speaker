@@ -10,7 +10,7 @@ using Priority = CSAccess.Scaffold.Priority;
 
 namespace CSAccess
 {
-    [BepInPlugin(Id, "Citizen Sleeper Access", "0.9.6")]
+    [BepInPlugin(Id, "Citizen Sleeper Access", "0.9.7")]
     public class Plugin : BaseUnityPlugin
     {
         public const string Id = "com.sleeperaccess.mod";
