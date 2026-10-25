@@ -268,12 +268,23 @@ namespace CSAccess.Sleeper1
             SpeechService.Say(W.TableName + " "
                 + (rows.Count > 0 ? RowRead(rows[T.Row]) : W.NoRows),
                 Priority.Immediate, "table");
+            // The entry census queues behind this read. It used to fire on its own
+            // at 0.8 s, and this Immediate read at 1.2 s cut it off mid-sentence
+            // (2026-10-25).
+            if (_entryCensusAt > 0 && Time.unscaledTime >= _entryCensusAt)
+            {
+                _entryCensusAt = -1f;
+                EntryCensus();
+            }
         }
 
         /// <summary>Review-surface return path (UI bar C/V exit): re-announce the
-        /// field position.</summary>
+        /// field position — the current row, or the open node's card. EnterCloud
+        /// here reset the cursor to the first node (2026-10-25); it now runs only
+        /// when the cloud entry never settled.</summary>
         public static void AnnouncePosition()
         {
+            if (_entered && AnnounceSettled()) return;
             _entered = true;
             EnterCloud();
         }
@@ -300,6 +311,13 @@ namespace CSAccess.Sleeper1
 
         public static bool HandleKeys()
         {
+            // Called every frame at the cloud: do the node lookups only when a table
+            // key is actually down (the engine acts on nothing else) (2026-10-25).
+            if (!(Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.UpArrow)
+                  || Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.LeftArrow)
+                  || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return)
+                  || Input.GetKeyDown(KeyCode.KeypadEnter)))
+                return false;
             // The latch, not row membership, decides card vs field (see latch doc).
             var openCanvas = OpenCanvas();
             if (openCanvas != null)
@@ -572,7 +590,8 @@ namespace CSAccess.Sleeper1
                 _entryCensusAt = Time.unscaledTime + Timing.CloudEntryCensusSettle; // let Text Setup settle
             _wasCloud = cloud;
 
-            if (_entryCensusAt > 0 && Time.unscaledTime >= _entryCensusAt)
+            // Only once the entry read has spoken (EnterCloud runs it then if due).
+            if (_entryCensusAt > 0 && Time.unscaledTime >= _entryCensusAt && _entered)
             {
                 _entryCensusAt = -1f;
                 EntryCensus();

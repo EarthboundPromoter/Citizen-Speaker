@@ -77,6 +77,12 @@ namespace CSAccess.Sleeper1
             /// — matched by the shared misspelled fragment, case-insensitive.</summary>
             public const string PositionerFragment = "ostioner";
 
+            /// <summary>The same copies spelled correctly elsewhere (live 2026-10-25,
+            /// Intro and Control Tutorial: "A Positioner FR", "DPAD positioner ZH");
+            /// missed, they each counted as a prompt and the gap fill fell back to
+            /// "Shown with Enter and the arrow keys and the arrow keys...".</summary>
+            public const string PositionerFragmentCorrect = "ositioner";
+
             /// <summary>The authored localization default that leaks from unlocalized
             /// string variables; never rendered — speak nothing instead.</summary>
             public const string LocalizationLeakDescription = "Description in text table";

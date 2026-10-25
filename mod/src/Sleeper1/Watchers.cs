@@ -18,19 +18,66 @@ namespace CSAccess.Sleeper1
         private Transform _tutorialRoot;
         private Transform _notificationRoot;
         private string _lastScene = "";
+        private int _lastSceneHandle = -1;
 
+        /// <summary>True on the frames the 0.4 s poll runs. Per-frame checks only read
+        /// objects they already hold; looking objects up is left to these frames.</summary>
+        private bool _pollFrame;
+
+        /// <summary>Two cadences (2026-10-25). Every frame: what answers the player's own
+        /// keys (dice slot and odds, pause, the drive log and character window, the
+        /// title overwrite warning) and the scene check, so none of it waits up to
+        /// 0.4 s for the poll. Every 0.4 s: the rest, plus every GameObject lookup.</summary>
         public void Tick()
         {
-            if (Time.unscaledTime < _nextCheck) return;
-            _nextCheck = Time.unscaledTime + Interval;
+            _pollFrame = Time.unscaledTime >= _nextCheck;
+            if (_pollFrame) _nextCheck = Time.unscaledTime + Interval;
 
-            string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            CheckScene();
+            CheckDiceAllocation();
+            CheckDiceOutlook();
+            CheckPauseMenu();
+            CheckWarningMenus();
+            CheckTitleOverwriteWarning();
+            CheckDriveLog();
+            CheckCharacterWindow();
+
+            if (!_pollFrame) return;
+
+            CheckTutorial();
+            CheckNotifications();
+            CheckClassCarousel();
+            CheckActionOutcomes();
+            CheckSoleContinue();
+            CheckResponseFocus();
+            CheckQrCanvas();
+            WindowState.DivergenceTick();
+            // Cycle transition arming + completion summary moved to CycleGate
+            // (event-armed on the designed EndCycle entry; W2 hardening).
+            // Mode switching is last-input-wins in InputManager.Tick now — the old 3s
+            // re-assert loop fought sighted co-pilot mouse use (hid the cursor).
+        }
+
+        private void CheckScene()
+        {
+            // The handle compare is allocation-free; the name is read only when it moves.
+            var active = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (active.handle == _lastSceneHandle) return;
+            _lastSceneHandle = active.handle;
+            string scene = active.name;
             if (scene != _lastScene)
             {
                 _lastScene = scene;
                 _tutorialRoot = null;
                 _notificationRoot = null;
                 _seenPanels.Clear();
+                // A new scene re-baselines the dice watcher silently (no stray
+                // "Die picker closed." from the old scene's teardown).
+                _diceSystem = null;
+                _diceStateKnown = false;
+                _outlookPending = false;
+                _titleWarning = null;
+                _qrCanvas = null;
                 FocusPatch.OnSceneChanged();
                 WindowState.OnSceneChanged();
                 StationCensus.OnSceneChanged();
@@ -48,26 +95,6 @@ namespace CSAccess.Sleeper1
                         DumpGlobalVariables();
                 }
             }
-
-            CheckTutorial();
-            CheckNotifications();
-            CheckClassCarousel();
-            CheckActionOutcomes();
-            CheckDiceAllocation();
-            CheckDiceOutlook();
-            CheckSoleContinue();
-            CheckResponseFocus();
-            CheckPauseMenu();
-            CheckWarningMenus();
-            CheckQrCanvas();
-            CheckTitleOverwriteWarning();
-            CheckDriveLog();
-            CheckCharacterWindow();
-            WindowState.DivergenceTick();
-            // Cycle transition arming + completion summary moved to CycleGate
-            // (event-armed on the designed EndCycle entry; W2 hardening).
-            // Mode switching is last-input-wins in InputManager.Tick now — the old 3s
-            // re-assert loop fought sighted co-pilot mouse use (hid the cursor).
         }
 
         private Transform _pauseCanvas;
@@ -79,6 +106,7 @@ namespace CSAccess.Sleeper1
         {
             if (_pauseCanvas == null)
             {
+                if (!_pollFrame) return;
                 var root = GameObject.Find("PAUSE");
                 if (root == null) return;
                 _pauseCanvas = root.transform.Find("Pause Canvas");
@@ -97,8 +125,9 @@ namespace CSAccess.Sleeper1
                     if (frag.Length == 3 && int.TryParse(frag[1], out _))
                         line = frag[1] + " " + frag[2].ToLowerInvariant() + " since last autosave";
                 }
+                // Immediate: Escape is the player's own key, and this is its answer.
                 SpeechService.Say("Paused." + (line != null ? " " + line + "." : ""),
-                    Priority.Queued, "nav");
+                    Priority.Immediate, "nav");
                 // A6: pause is a world-at-rest beat tail — flush unheard census
                 // changes now (queued behind "Paused.") so a quit from here does
                 // not silently lose them.
@@ -108,13 +137,15 @@ namespace CSAccess.Sleeper1
         }
 
         private readonly Dictionary<string, bool> _warningWasOpen = new Dictionary<string, bool>();
+        private static readonly string[] PauseWarningMenus =
+            { "Warning Menu Quit Game", "Warning Menu Quit Menu" };
 
         /// <summary>Pause warning menus speak their rendered warning body on open
         /// (focus-model row 12, W3 addition).</summary>
         private void CheckWarningMenus()
         {
             if (_pauseCanvas == null) return;
-            foreach (var name in new[] { "Warning Menu Quit Game", "Warning Menu Quit Menu" })
+            foreach (var name in PauseWarningMenus)
             {
                 var menu = _pauseCanvas.Find(name);
                 if (menu == null) continue;
@@ -133,13 +164,16 @@ namespace CSAccess.Sleeper1
         }
 
         private bool _qrWasOpen;
+        private GameObject _qrCanvas;
 
         /// <summary>Title QR canvas (Update News): announce its rendered text + CLOSE on
-        /// open (focus-model row 1 — previously silent).</summary>
+        /// open (focus-model row 1 — previously silent). No scene gate: quit-to-title
+        /// arrives without a scene change (D1), and the lookup is null elsewhere.</summary>
         private void CheckQrCanvas()
         {
-            if (!_lastScene.Contains("MAIN TITLE")) return;
-            var canvas = GameObject.Find("MAIN MENU/Demo Menu/QR Code Canvas");
+            if (_qrCanvas == null)
+                _qrCanvas = GameObject.Find("MAIN MENU/Demo Menu/QR Code Canvas");
+            var canvas = _qrCanvas;
             bool open = canvas != null && canvas.activeInHierarchy;
             if (open && !_qrWasOpen)
             {
@@ -150,16 +184,28 @@ namespace CSAccess.Sleeper1
         }
 
         private bool _titleWarningWasOpen;
+        private GameObject _titleWarning;
 
         /// <summary>Title new-game overwrite warning (corpus: one shared
         /// "Demo Menu/Warning Menu" panel serves the per-slot Warning 1/2/3 states of the
         /// MAIN MENU master FSM). Previously silent — a player could overwrite a save
         /// without hearing the warning. Same rendered-body-on-open idiom as the pause
-        /// warning menus; the joined body carries its own button labels.</summary>
+        /// warning menus; the joined body carries its own button labels.
+        /// No scene gate (2026-10-25): quit-to-title arrives without a scene change
+        /// (D1), and the old MAIN TITLE gate left this warning silent after a quit.
+        /// The panel is looked up on poll frames (an inactive panel is not found by
+        /// GameObject.Find, so its parent is held) and read every frame.</summary>
         private void CheckTitleOverwriteWarning()
         {
-            if (!_lastScene.Contains("MAIN TITLE")) return;
-            var menu = GameObject.Find("MAIN MENU/Demo Menu/Warning Menu");
+            if (_titleWarning == null)
+            {
+                if (!_pollFrame) return;
+                var demo = GameObject.Find("MAIN MENU/Demo Menu");
+                var t = demo != null ? demo.transform.Find("Warning Menu") : null;
+                if (t == null) return;
+                _titleWarning = t.gameObject;
+            }
+            var menu = _titleWarning;
             bool open = menu != null && menu.activeInHierarchy;
             if (open && !_titleWarningWasOpen)
             {
@@ -346,14 +392,22 @@ namespace CSAccess.Sleeper1
             if (es == null) return;
             var selected = es.currentSelectedGameObject;
             if (selected != null && selected.name.StartsWith("Response: ")) return;
+            // FindObjectsOfType has no defined order, so the first match was any choice.
+            // Prefer the menu's first response by its own button name (2026-10-25).
+            string firstName = DialogueState.CurrentResponses.Count > 0
+                ? "Response: " + DialogueState.CurrentResponses[0] : null;
+            GameObject fallback = null;
             foreach (var b in Object.FindObjectsOfType<UnityEngine.UI.Button>())
             {
-                if (b.gameObject.name.StartsWith("Response: ") && b.IsInteractable())
+                if (!b.gameObject.name.StartsWith("Response: ") || !b.IsInteractable()) continue;
+                if (b.gameObject.name == firstName)
                 {
                     es.SetSelectedGameObject(b.gameObject);
                     return;
                 }
+                if (fallback == null) fallback = b.gameObject;
             }
+            if (fallback != null) es.SetSelectedGameObject(fallback);
         }
 
         private readonly Dictionary<int, string> _controllerStates = new Dictionary<int, string>();
@@ -382,6 +436,7 @@ namespace CSAccess.Sleeper1
             if (_controllerStates.Count > 300) _controllerStates.Clear();
         }
 
+        private PlayMakerFSM _diceSystem;
         private string _diceSystemState;
         private bool _diceStateKnown;
         private float _lastSlottedTime = -10f;
@@ -445,10 +500,15 @@ namespace CSAccess.Sleeper1
         /// ("Die removed."); Active/Reselector->Off = "Die picker closed.".</summary>
         private void CheckDiceAllocation()
         {
-            var system = GameQueries.DiceSystemFsm();
+            // Read every frame from a held reference (2026-10-25): the 0.4 s poll made
+            // "Die slotted." up to 0.4 s late and the odds up to 1.2 s. The lookup
+            // (a full FSM-list scan) runs on poll frames only.
+            if (_diceSystem == null && _pollFrame)
+                _diceSystem = GameQueries.DiceSystemFsm();
+            var system = _diceSystem;
             // A null/inactive object reads as a closed picker so the Slotted->Off
             // transition (spend or teardown) is still processed when the UI tears down.
-            string state = system != null ? system.ActiveStateName : "Off";
+            string state = system != null && system.isActiveAndEnabled ? system.ActiveStateName : "Off";
             if (string.IsNullOrEmpty(state)) state = "Off";
 
             if (!_diceStateKnown)
@@ -546,6 +606,7 @@ namespace CSAccess.Sleeper1
         {
             if (_driveLog == null)
             {
+                if (!_pollFrame) return;
                 var win = GameObject.Find("Letterbox Canvas/Drive System/CS Drive Log");
                 if (win == null) return;
                 _driveLog = win.transform;
@@ -561,6 +622,8 @@ namespace CSAccess.Sleeper1
             }
             if (open != _driveLogWasOpen)
             {
+                if (open) JournalTable.OnWindowOpened();
+                else JournalTable.OnWindowClosed();
                 SpeechService.Say(open ? "Drive log open." : "Drive log closed.",
                     Priority.Immediate, "nav");
                 _driveLogWasOpen = open;
@@ -578,6 +641,7 @@ namespace CSAccess.Sleeper1
         {
             if (_characterWindow == null)
             {
+                if (!_pollFrame) return;
                 var win = GameObject.Find("Letterbox Canvas/Character Window");
                 if (win == null) return;
                 _characterWindow = win.transform;
@@ -745,6 +809,9 @@ namespace CSAccess.Sleeper1
             {
                 string txt = tmp.text?.Trim();
                 if (string.IsNullOrEmpty(txt) || txt.Length <= 1) continue;
+                // A prompt's own two-letter glyph label ("RB", "LS") is read through
+                // the gap fill below, never as a line of its own.
+                if (txt.Length <= 2 && GlyphLabelWords.ContainsKey(txt)) continue;
                 // F4: glyph gaps ("select it with [] and []") filled with the
                 // rendered prompt's controller name; die-odds texts prefixed with
                 // the die value(s) their Die group renders.
@@ -812,34 +879,102 @@ namespace CSAccess.Sleeper1
             return txt;
         }
 
+        /// <summary>A prompt's own glyph label (the "A", "RB", "LS" drawn inside it),
+        /// for prompts whose object name says nothing ("Switch/Gamepad Prompt (3)"
+        /// draws "RB"; live 2026-10-25). Same B2 rule: the mod's key, not the pad's.
+        /// LS/LT/RT scroll the station, which the table does with the arrows; RS
+        /// rotates the camera, the game's own D key.</summary>
+        private static readonly Dictionary<string, string> GlyphLabelWords =
+            new Dictionary<string, string>
+            {
+                { "A", "Enter" },
+                { "B", "Backspace" },
+                { "X", "the O key" },
+                { "Y", "the O key" },
+                { "LB", "the J key" },
+                { "RB", "the U key" },
+                { "L1", "the J key" },
+                { "R1", "the U key" },
+                { "LS", "the arrow keys" },
+                { "LT", "the arrow keys" },
+                { "RT", "the arrow keys" },
+                { "L2", "the arrow keys" },
+                { "R2", "the arrow keys" },
+                { "RS", "the D key" },
+            };
+
+        private static string PromptWordFor(Transform prompt)
+        {
+            var label = prompt.GetComponentInChildren<TMP_Text>(false);
+            string glyph = label != null ? label.text?.Trim() : null;
+            if (!string.IsNullOrEmpty(glyph) && GlyphLabelWords.TryGetValue(glyph, out string word))
+                return word;
+            string n = prompt.name;
+            foreach (var kv in PromptWords)
+                if (n.StartsWith(kv.Key) || n.Contains(kv.Key)) return kv.Value;
+            return null;
+        }
+
         /// <summary>Fills a prompt-glyph text's whitespace gaps ("select it with
-        /// [gap] and [gap]") with its rendered prompt children's controller names,
-        /// in child order. Mismatched counts append instead (logged).</summary>
+        /// [gap] and [gap]") with its rendered prompt children's key names, in the
+        /// order they sit on screen — line by line, left to right. Child order is not
+        /// screen order ("select it with [DPAD] and [A]" has A as the first child,
+        /// which made it "with Enter and the arrow keys"; 2026-10-25). Mismatched
+        /// counts append instead (logged).</summary>
         private static string FillPromptGaps(TMP_Text tmp, string txt)
         {
-            var prompts = new List<string>();
+            var found = new List<(float X, float Y, string Word)>();
             foreach (Transform child in tmp.transform)
             {
                 if (!child.gameObject.activeSelf) continue;
                 string n = child.name;
                 if (n.IndexOf(GameVocab.Warts.PositionerFragment,
+                        System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf(GameVocab.Warts.PositionerFragmentCorrect,
                         System.StringComparison.OrdinalIgnoreCase) >= 0)
                     continue; // per-locale positioner copies ("A Prompt postioner FR")
-                foreach (var kv in PromptWords)
-                    if (n.StartsWith(kv.Key) || n.Contains(kv.Key)) { prompts.Add(kv.Value); break; }
+                // A prompt draws something; positioners are bare RectTransforms.
+                if (child.GetComponentInChildren<UnityEngine.UI.Graphic>(false) == null)
+                    continue;
+                string word = PromptWordFor(child);
+                if (word != null)
+                    found.Add((child.localPosition.x, child.localPosition.y, word));
             }
-            if (prompts.Count == 0) return txt;
+            if (found.Count == 0) return txt;
+            found.Sort((a, b) => Mathf.Abs(a.Y - b.Y) > 10f ? b.Y.CompareTo(a.Y) : a.X.CompareTo(b.X));
+            var prompts = new List<string>();
+            foreach (var f in found) prompts.Add(f.Word);
             var segments = System.Text.RegularExpressions.Regex.Split(txt, "\\s{3,}");
             if (segments.Length == prompts.Count + 1)
             {
                 var sb = new System.Text.StringBuilder(segments[0]);
                 for (int i = 0; i < prompts.Count; i++)
-                    sb.Append(' ').Append(prompts[i]).Append(' ').Append(segments[i + 1].TrimStart());
-                return sb.ToString();
+                {
+                    string next = segments[i + 1].TrimStart();
+                    sb.Append(' ').Append(prompts[i]);
+                    // No space before trailing punctuation ("with Enter.", not "Enter .").
+                    if (next.Length > 0 && !char.IsPunctuation(next[0])) sb.Append(' ');
+                    sb.Append(next);
+                }
+                return CollapseRepeatedKeys(sb.ToString(), prompts);
             }
             Plugin.Log.LogInfo("[Tutorial] prompt gap mismatch: " + prompts.Count
                 + " prompt(s), " + (segments.Length - 1) + " gap(s) — appending.");
             return txt + ". Shown with " + string.Join(" and ", prompts) + ".";
+        }
+
+        /// <summary>Pad alternatives that map to one key read once: "scroll with LS or
+        /// LT / RT" is "with the arrow keys", not "the arrow keys or the arrow keys /
+        /// the arrow keys".</summary>
+        private static string CollapseRepeatedKeys(string txt, List<string> words)
+        {
+            foreach (var w in new HashSet<string>(words))
+            {
+                string e = System.Text.RegularExpressions.Regex.Escape(w);
+                txt = System.Text.RegularExpressions.Regex.Replace(txt,
+                    e + "(?:\\s*(?:or|/)\\s*" + e + ")+", w);
+            }
+            return txt;
         }
 
         /// <summary>"Die N. " / "Dice N and M. " prefix for odds texts inside a

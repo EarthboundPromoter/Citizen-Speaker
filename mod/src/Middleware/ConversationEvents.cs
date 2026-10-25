@@ -22,6 +22,17 @@ namespace CSAccess.Middleware
             var controller = DialogueManager.instance;
             if (!ReferenceEquals(controller, _subscribed))
             {
+                // Leave the old controller first, so a controller that is replaced
+                // but not destroyed cannot deliver every event twice (2026-10-25).
+                if (!ReferenceEquals(_subscribed, null))
+                {
+                    try
+                    {
+                        _subscribed.conversationStarted -= OnStarted;
+                        _subscribed.conversationEnded -= OnEnded;
+                    }
+                    catch { }
+                }
                 if (controller != null)
                 {
                     controller.conversationStarted += OnStarted;

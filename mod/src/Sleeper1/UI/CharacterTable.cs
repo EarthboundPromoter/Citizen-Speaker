@@ -79,7 +79,10 @@ namespace CSAccess.Sleeper1
             if (w == null) return false;
             var group = w.GetComponent<CanvasGroup>();
             bool open = w.gameObject.activeInHierarchy && (group == null || group.alpha > 0.5f);
-            if (!open && _wasActive) T.Reset();
+            // Fresh cursor on every open, before the first row (-1): the open line
+            // speaks no row, so the first Down lands on row 0 (it skipped it before,
+            // 2026-10-25). Tick calls this every frame, so the open edge is seen.
+            if (open && !_wasActive) T.Reset(-1);
             _wasActive = open;
             return open;
         }
@@ -397,8 +400,10 @@ namespace CSAccess.Sleeper1
                 {
                     _confirmAnnounced = true;
                     string label = Describe.JoinTexts(confirm.gameObject, 3);
+                    // Immediate: this answers the player's Enter (2026-10-25: queued, it
+                    // waited behind whatever row read was still playing).
                     SpeechService.Say((string.IsNullOrEmpty(label) ? "Confirm upgrade" : label)
-                        + ". " + W.ConfirmPrompt, Priority.Queued, "table");
+                        + ". " + W.ConfirmPrompt, Priority.Immediate, "table");
                 }
                 _checkAt = Time.unscaledTime + Timing.PurchaseCheckDefer; // watch stays armed
                 return;
@@ -430,7 +435,7 @@ namespace CSAccess.Sleeper1
             }
             _confirmAnnounced = false;
             LastPurchaseSpokeAt = Time.unscaledTime;
-            SpeechService.Say(sb.ToString(), Priority.Queued, "table");
+            SpeechService.Say(sb.ToString(), Priority.Immediate, "table");
             _watchRow = null;
         }
     }

@@ -74,7 +74,18 @@ namespace CSAccess.Middleware
         /// the key was consumed. Slash falls through to the native tab swap.</summary>
         public static bool HandleKeys() => T.HandleKeys();
 
-        public static void OnWindowClosed() => T.Reset();
+        /// <summary>Watchers, on the drive log opening: fresh cursor before the first
+        /// row, so the first Down reads row 0 (2026-10-25: this reset had no caller,
+        /// and the cursor started on row 0 and skipped it).</summary>
+        public static void OnWindowOpened() => T.Reset(-1);
+
+        /// <summary>Watchers, on the drive log closing: drop pending Track work, which
+        /// could otherwise speak "Track not available." over the station.</summary>
+        public static void OnWindowClosed()
+        {
+            _pendingTrackQuest = null;
+            _announceTrackingAt = -1f;
+        }
 
         // ---------- Rows (stateless reads — the QuestLog is the truth every press) ----------
 
@@ -197,11 +208,12 @@ namespace CSAccess.Middleware
             {
                 case 0:
                 case 1:
-                    // Native pull-out for visual sync (the heading's own click).
-                    var heading = FindHeadingButton(quest);
-                    if (heading != null)
+                    // Native pull-out for visual sync. The highlighted row is already
+                    // expanded on arrival, and the heading click TOGGLES, so a raw click
+                    // collapsed it while saying "Expanded." (2026-10-25): ensure instead.
+                    if (FindHeadingButton(quest) != null)
                     {
-                        Navigator.Click(heading.gameObject);
+                        EnsureExpanded(quest);
                         SpeechService.Say(W.Expanded, Priority.Immediate, "table");
                     }
                     else Plugin.Log.LogInfo("[Journal] heading for '" + quest + "' not found — silent.");
@@ -271,11 +283,16 @@ namespace CSAccess.Middleware
             // The abandon button lives in the selected quest's details panel: pull the
             // quest out first if needed, then click its rendered abandon button; the
             // game's own confirmation panel takes over (its buttons stay native).
-            var heading = FindHeadingButton(quest);
-            if (heading != null) Navigator.Click(heading.gameObject);
+            // Ensure, never toggle: the row is normally already out (same trap as
+            // Enter on the name, 2026-10-25).
+            EnsureExpanded(quest);
             var abandonBtn = FindWindowButton("ABANDON");
             if (abandonBtn != null) Navigator.Click(abandonBtn.gameObject);
-            else Plugin.Log.LogInfo("[Journal] abandon button not found — silent.");
+            else
+            {
+                Plugin.Log.LogInfo("[Journal] abandon button not found.");
+                SpeechService.Say("Abandon not available.", Priority.Immediate, "table");
+            }
         }
 
         // ---------- Native-object resolution (rendered labels, graceful silence) ----------

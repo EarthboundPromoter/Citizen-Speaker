@@ -43,6 +43,12 @@ namespace CSAccess.Sleeper1
             // decision, so a swallowed or misrouted key still leaves a trace (Diag).
             Diag.CaptureKeys(shift);
 
+            // A key that moves a conversation on: the line it brings answers the key
+            // and interrupts the one still being read (DialogueState.NoteAdvance).
+            if ((mode == Mode.Dialogue || mode == Mode.ResponseMenu) && Input.anyKeyDown
+                && IsAdvanceKey())
+                DialogueState.NoteAdvance();
+
             // Pending reroll result: the new pool speaks once the dice re-render.
             TickRerollRead();
 
@@ -332,8 +338,12 @@ namespace CSAccess.Sleeper1
             if (Input.GetKeyDown(KeyCode.O))
             {
                 if (!Allowed(mode, ModKey.ScanToggle)) { Refuse(mode, "Scan"); return; }
-                ClickFirstActive("Scan",
-                    "Letterbox Canvas/Top UI/Scan Button");
+                // A successful toggle was silent until the cloud table read (1.2 s
+                // and a camera flight later) or the station read (0.6 s): say at once
+                // what the key did (2026-10-25).
+                if (ClickFirstActive("Scan", "Letterbox Canvas/Top UI/Scan Button"))
+                    SpeechService.Say(mode == Mode.Cloud ? "Leaving scan." : "Scan.",
+                        Priority.Immediate, "nav");
                 return;
             }
             if (Input.GetKeyDown(KeyCode.R) && shift)
@@ -472,6 +482,14 @@ namespace CSAccess.Sleeper1
 
         private static bool Allowed(Mode mode, ModKey key) => KeyScope.Allows(mode, key);
 
+        private static bool IsAdvanceKey()
+        {
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) return true;
+            for (int i = 0; i < 9; i++)
+                if (Input.GetKeyDown(KeyCode.Alpha1 + i)) return true;
+            return false;
+        }
+
         /// <summary>Queries speak a mode-aware refusal instead of stale data when scoped out.</summary>
         private static bool Query(Mode mode, ModKey key)
         {
@@ -586,8 +604,10 @@ namespace CSAccess.Sleeper1
         }
 
         /// <summary>Activate a controller-button-bound element: prefer a uGUI Button on the
-        /// object or its children, else fall back to a Click event on its FSM.</summary>
-        private static void ClickFirstActive(string label, params string[] paths)
+        /// object or its children, else fall back to a Click event on its FSM. Returns
+        /// true only for the silent path (a Button clicked, nothing spoken), so a caller
+        /// can voice what the key did without doubling the other paths' speech.</summary>
+        private static bool ClickFirstActive(string label, params string[] paths)
         {
             foreach (var path in paths)
             {
@@ -600,22 +620,23 @@ namespace CSAccess.Sleeper1
                     if (button.IsInteractable())
                     {
                         Navigator.Click(button.gameObject);
-                        return;
+                        return true;
                     }
                     // A disabled button is the game gating this control — report it,
                     // never bypass it through the FSM.
                     SpeechService.Say(label + " is disabled.", Priority.Immediate, "nav");
-                    return;
+                    return false;
                 }
                 var fsm = go.GetComponent<PlayMakerFSM>() ?? go.GetComponentInChildren<PlayMakerFSM>(false);
                 if (fsm != null)
                 {
                     fsm.SendEvent("Click");
                     SpeechService.Say(label + ".", Priority.Immediate, "nav");
-                    return;
+                    return false;
                 }
             }
             SpeechService.Say(label + " not available.", Priority.Immediate, "nav");
+            return false;
         }
 
         private void PickResponse(int index)
