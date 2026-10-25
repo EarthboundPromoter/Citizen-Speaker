@@ -13,7 +13,35 @@ namespace CSAccess.Sleeper1
     {
         // ---------- FSM helpers ----------
 
+        // Lookup cache (2026-10-25: the scan reads .name of ~430 FSMs per call and
+        // the mode authority calls it several times per frame). PlayMakerFSM.FsmList
+        // holds exactly the active-and-enabled FSMs (bridge-measured: 433 listed,
+        // 0 of them disabled), so a cached hit that is still alive and
+        // isActiveAndEnabled is what a fresh scan returns. Objects carrying more
+        // than one FSM are never cached (list order between them can change on a
+        // re-enable). A miss is remembered for the rest of the frame only.
+        private static readonly Dictionary<(string, string), PlayMakerFSM> _fsmHits =
+            new Dictionary<(string, string), PlayMakerFSM>();
+        private static readonly Dictionary<(string, string), int> _fsmMissFrame =
+            new Dictionary<(string, string), int>();
+
         public static PlayMakerFSM FindFsm(string goName, string pathHint = null)
+        {
+            var key = (goName, pathHint);
+            if (_fsmHits.TryGetValue(key, out var hit))
+            {
+                if (hit != null && hit.isActiveAndEnabled) return hit;
+                _fsmHits.Remove(key);
+            }
+            int frame = Time.frameCount;
+            if (_fsmMissFrame.TryGetValue(key, out int missed) && missed == frame) return null;
+            var found = ScanFsm(goName, pathHint);
+            if (found == null) _fsmMissFrame[key] = frame;
+            else if (found.GetComponents<PlayMakerFSM>().Length == 1) _fsmHits[key] = found;
+            return found;
+        }
+
+        private static PlayMakerFSM ScanFsm(string goName, string pathHint)
         {
             foreach (var fsm in PlayMakerFSM.FsmList)
             {

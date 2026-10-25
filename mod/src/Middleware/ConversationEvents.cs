@@ -47,6 +47,7 @@ namespace CSAccess.Middleware
         private static void OnStarted(Transform actor)
         {
             ConversationActive = true;
+            DialogueState.ClearMenu();
             // U2: a fresh window announces its first named speaker once.
             DialogueState.LastAnnouncedSpeaker = "";
             // The dialogue-log attribution history is per-conversation, like the
@@ -57,6 +58,7 @@ namespace CSAccess.Middleware
         private static void OnEnded(Transform actor)
         {
             ConversationActive = false;
+            DialogueState.ClearMenu();
             // A conversation's end is a census beat: dialogue is the canonical writer
             // of the story flags that spawn/remove station markers (SABINE case).
             // TIER-X (stage 1, 2026-07-25): middleware->game reference, fully

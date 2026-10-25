@@ -568,10 +568,21 @@ namespace CSAccess.Sleeper1
         public static float UnwrapForZone(int zone, float angle)
             => zone == 1 && angle < RimFrom ? angle + 360f : angle;
 
+        private static Transform _rotator;
+        private static int _rotatorMissFrame = -1;
+
+        /// <summary>Held while alive and active (2026-10-25: Build asked once per
+        /// row, each a whole-scene Find). An inactive or destroyed hold falls back
+        /// to a fresh Find, which only returns active objects — same answer.</summary>
         public static Transform RotatorTransform()
         {
+            if (_rotator != null && _rotator.gameObject.activeInHierarchy) return _rotator;
+            _rotator = null;
+            if (_rotatorMissFrame == Time.frameCount) return null;
             var go = GameObject.Find("Focus Rotator");
-            return go != null ? go.transform : null;
+            if (go == null) { _rotatorMissFrame = Time.frameCount; return null; }
+            _rotator = go.transform;
+            return _rotator;
         }
 
         public static PlayMakerFSM FocusFsm()
@@ -582,13 +593,7 @@ namespace CSAccess.Sleeper1
         }
 
         public static PlayMakerFSM LocationController()
-        {
-            foreach (var fsm in PlayMakerFSM.FsmList)
-                if (fsm != null && fsm.gameObject != null
-                    && fsm.gameObject.name == "Location Controller")
-                    return fsm;
-            return null;
-        }
+            => GameQueries.FindFsm("Location Controller");
 
         /// <summary>Current zone from Lua LOCATION (0 Rim / 1 Greenway / 2 Hub — the
         /// Location Controller's own filter source). -1 unknown.</summary>

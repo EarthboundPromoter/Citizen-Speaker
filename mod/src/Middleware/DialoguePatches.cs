@@ -47,6 +47,15 @@ namespace CSAccess.Middleware
             return UnityEngine.Time.unscaledTime - _advanceAt < AdvanceWindow;
         }
 
+        /// <summary>Conversation start/end: no menu is open across a boundary
+        /// (2026-10-25: a choice that ended the conversation left MenuOpen set, and
+        /// the mode stayed "choosing a response" at the station).</summary>
+        public static void ClearMenu()
+        {
+            MenuOpen = false;
+            CurrentResponses.Clear();
+        }
+
         /// <summary>Per-conversation subtitle history (speaker, line) for the B
         /// dialogue-log review's attribution backfill (owner design 2026-07-23):
         /// the rendered log blocks are bare text — the mod remembers who spoke each
