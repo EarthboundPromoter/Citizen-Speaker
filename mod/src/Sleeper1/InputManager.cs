@@ -52,6 +52,17 @@ namespace CSAccess.Sleeper1
             // Pending reroll result: the new pool speaks once the dice re-render.
             TickRerollRead();
 
+            // After Enter closes a tutorial, say where the player landed when
+            // nothing else speaks (2026-10-25: the key went silent, as if it had
+            // not registered).
+            if (mode == Mode.Tutorial && (Input.GetKeyDown(KeyCode.Return)
+                || Input.GetKeyDown(KeyCode.KeypadEnter)))
+            {
+                _tutorialLandingAt = Time.unscaledTime + 0.6f;
+                _tutorialLandingMark = SpeechService.LastSpokeAt;
+            }
+            TickTutorialLanding(mode);
+
             // --- Speech and queries (near-universal; KeyScope gates the title scene) ---
             if (Input.GetKeyDown(KeyCode.Z) && Allowed(mode, ModKey.Respeak))
             { SpeechService.RepeatLast(); return; }
@@ -481,6 +492,23 @@ namespace CSAccess.Sleeper1
         }
 
         private static bool Allowed(Mode mode, ModKey key) => KeyScope.Allows(mode, key);
+
+        private float _tutorialLandingAt = -1f;
+        private float _tutorialLandingMark;
+
+        private void TickTutorialLanding(Mode mode)
+        {
+            if (_tutorialLandingAt < 0f || Time.unscaledTime < _tutorialLandingAt) return;
+            if (mode == Mode.Tutorial)
+            {
+                // Still open (a chained panel or a missed click): that panel speaks.
+                if (Time.unscaledTime > _tutorialLandingAt + 2f) _tutorialLandingAt = -1f;
+                return;
+            }
+            _tutorialLandingAt = -1f;
+            if (SpeechService.LastSpokeAt > _tutorialLandingMark) return;
+            SpeechService.Say(ModeModel.Name(mode) + ".", Priority.Immediate, "nav");
+        }
 
         private static bool IsAdvanceKey()
         {

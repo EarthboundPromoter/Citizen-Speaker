@@ -43,6 +43,8 @@ its designed controls and FSM events.
 - Loading another save no longer speaks changes that never happened in it ("Cryo minus
   340"); energy is not announced twice when the action outcome already said it.
 - A choice that ended a conversation no longer leaves the mod in "choosing a response".
+- After Enter closes a tutorial and nothing else speaks, the screen is named ("Station
+  map."); the key used to go silent.
 - The spoken and logged version said 0.9.6.
 
 ### Performance

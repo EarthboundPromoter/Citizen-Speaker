@@ -120,6 +120,9 @@ namespace CSAccess.Scaffold
         /// <summary>Pending queued announcements (Diag state reads).</summary>
         public static int QueueDepth => Queue.Count;
 
+        /// <summary>When the last line was handed to the screen reader.</summary>
+        public static float LastSpokeAt => _lastSpokeAt;
+
         /// <summary>Tail of the spoken history, oldest first (Diag incident dump / /modstate).</summary>
         public static List<string> RecentHistory(int max)
         {
