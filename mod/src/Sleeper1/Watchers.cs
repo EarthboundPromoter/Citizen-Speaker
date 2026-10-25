@@ -292,42 +292,26 @@ namespace CSAccess.Sleeper1
             _notificationsBaselined = true;
         }
 
-        private string _lastClass;
-
-        /// <summary>Announce the class centered in the character-select carousel whenever it changes.</summary>
+        /// <summary>The character-select entry read, and class changes our keys did not make
+        /// (mouse, gamepad stick). Left/Right presses speak their destination themselves
+        /// (CharacterSelect.ChangeClass) and record it in LastSpoken, so nothing repeats here.
+        /// The carousel FSM's destination is read first: it is known the moment a slide
+        /// starts, where the centered-panel position only flips halfway through it.</summary>
         private void CheckClassCarousel()
         {
-            var canvas = GameObject.Find("MAIN MENU/Demo Menu/Character Select Canvas");
-            if (canvas == null)
+            if (!CharacterSelect.IsActive())
             {
-                _lastClass = null;
+                CharacterSelect.LastSpoken = null;
                 return;
             }
-            Transform movingPanel = canvas.transform.Find("Moving Panel");
-            if (movingPanel == null) return;
-
-            Transform centered = null;
-            float bestDistance = float.MaxValue;
-            float centerX = canvas.transform.position.x;
-            foreach (Transform child in movingPanel)
+            string current = CharacterSelect.Destination(CharacterSelect.CarouselFsm());
+            if (current == null)
             {
-                if (!child.gameObject.activeInHierarchy) continue;
-                if (System.Array.IndexOf(GameVocab.ClassNames, child.name) < 0) continue;
-                float d = Mathf.Abs(child.position.x - centerX);
-                if (d < bestDistance) { bestDistance = d; centered = child; }
+                var centered = CharacterSelect.CenteredClass();
+                current = centered != null ? centered.name : null;
             }
-            if (centered == null || centered.name == _lastClass) return;
-            bool firstAnnounce = _lastClass == null;
-            _lastClass = centered.name;
-            CharacterSelect.ResetReview();
-            // C5: the entry read carries the same ordinal the review read has; the
-            // bare-name Left/Right two-stage stays (mash-safe, owner-kept).
-            int ordinal = System.Array.IndexOf(GameVocab.ClassNames, centered.name) + 1;
-            SpeechService.Say(firstAnnounce
-                    ? centered.name + ", class " + ordinal + " of " + GameVocab.ClassNames.Length
-                      + ". Up and Down to review details, Left and Right to change class, Enter to start."
-                    : centered.name,
-                Priority.Immediate, "class");
+            if (current == null || current == CharacterSelect.LastSpoken) return;
+            CharacterSelect.Announce(current, intro: CharacterSelect.LastSpoken == null);
         }
 
         private long _lastSubtitleSeq;
