@@ -54,10 +54,11 @@ namespace CSAccess.Sleeper1
             }
 
             // Title carries no save-backed queries — minimal set, no V/D/K/L.
+            // Cancel = the menu's own Back event (TitleFlow.Back, 2026-10-25).
             t[Mode.Title] = new HashSet<ModKey>
-                { ModKey.Navigate, ModKey.Activate, ModKey.Respeak, ModKey.Help };
+                { ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.Respeak, ModKey.Help };
             t[Mode.CharacterSelect] = new HashSet<ModKey>
-                { ModKey.Navigate, ModKey.Activate, ModKey.ReviewArrows, ModKey.Respeak, ModKey.Help };
+                { ModKey.Navigate, ModKey.Activate, ModKey.Cancel, ModKey.ReviewArrows, ModKey.Respeak, ModKey.Help };
 
             // Listening states: game-facing keys quiet; speech and queries remain.
             t[Mode.CycleTransition] = S();

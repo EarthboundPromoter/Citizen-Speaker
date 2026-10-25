@@ -492,6 +492,14 @@ namespace CSAccess.Sleeper1
         {
             switch (mode)
             {
+                case Mode.Title:
+                case Mode.CharacterSelect:
+                    // The title menus' designed back: the MAIN MENU FSM's own Back event.
+                    if (!TitleFlow.Back())
+                        SpeechService.Say(ModeModel.Name(mode) + ". Nothing to go back to.",
+                            Priority.Immediate, "nav");
+                    return;
+
                 case Mode.Cloud:
                     // One level back per press (owner ruling 2026-07-19): node open →
                     // the universal Leave (its Leave Action sends CloseAction to

@@ -209,6 +209,11 @@ namespace CSAccess.Sleeper1
             if (!userInitiated &&
                 LastAnnounced.TryGetValue(id, out float last) && now - last < ReannounceCooldown)
                 return;
+            // Same object twice in one frame (the title slot list's Reselect and Set
+            // Selected states both select Slot 1, 2026-10-25): one announcement, even
+            // for user navigation.
+            if (userInitiated && LastAnnounced.TryGetValue(id, out float same) && same == now)
+                return;
             LastAnnounced[id] = now;
             if (LastAnnounced.Count > 200) LastAnnounced.Clear();
 
