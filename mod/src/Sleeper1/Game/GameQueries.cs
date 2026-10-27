@@ -11,6 +11,11 @@ namespace CSAccess.Sleeper1
     /// <summary>Reads game state from PlayMaker FSMs and drives the gamepad-mode dice flow.</summary>
     internal static class GameQueries
     {
+        /// <summary>The engine splash (the logo crawl before the title) is still on
+        /// screen. The MAIN MENU FSM waits on exactly this (WaitForSplashToFinish);
+        /// the crawl is unskippable and nothing is selectable until it ends.</summary>
+        public static bool SplashPlaying() => !UnityEngine.Rendering.SplashScreen.isFinished;
+
         // ---------- FSM helpers ----------
 
         // Lookup cache (2026-10-25: the scan reads .name of ~430 FSMs per call and

@@ -8,6 +8,13 @@ its designed controls and FSM events.
 
 ## Unreleased
 
+### Keys during the opening splash
+- The engine splash (the logo crawl before the title) runs for about 8 s and cannot be
+  skipped; nothing is selectable. A key there said "Nothing to focus." (or nothing at all
+  in the first 8 s), as if the game had hung. Any key now says "Loading, please wait.",
+  read from SplashScreen.isFinished, which the MAIN MENU FSM's WaitForSplashToFinish
+  waits on. The key that launched the game, landing in the first frames, stays silent.
+
 ### Faster answers to keys
 - A dialogue line the player asked for (Enter on Continue, a choice by Enter or number)
   interrupts the line still being read. Tolk_IsSpeaking is unsupported for NVDA and always

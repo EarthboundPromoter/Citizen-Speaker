@@ -79,6 +79,18 @@ namespace CSAccess.Sleeper1
                 return;
             }
 
+            // Engine splash (2026-10-27): the logo crawl before the title owns the
+            // screen for several seconds and cannot be skipped. Nothing is selectable,
+            // so a key there said "Nothing to focus." (or nothing in the first 8 s),
+            // as if the game had hung. Say it is still loading instead. The key that
+            // launched the game can land in the first frames: that one stays silent.
+            if (Input.anyKeyDown && GameQueries.SplashPlaying())
+            {
+                if (Time.frameCount > Timing.LaunchKeyFrames)
+                    SpeechService.Say("Loading, please wait.", Priority.Immediate, "nav");
+                return;
+            }
+
             // Keymap reorder (owner ruling 2026-07-19): C = meter/vitals reads,
             // V = dice. D is the game's native rotate key and passes through
             // untouched (same ruling as S/camera-scroll). Since the top-band review
