@@ -14,6 +14,13 @@ its designed controls and FSM events.
   in the first 8 s), as if the game had hung. Any key now says "Loading, please wait.",
   read from SplashScreen.isFinished, which the MAIN MENU FSM's WaitForSplashToFinish
   waits on. The key that launched the game, landing in the first frames, stays silent.
+- The title's start button says "Press Enter to start". Its label is "CLICK TO START"
+  for the mouse and "PRESS [A] TO START" for a gamepad, and the glyph was dropped, so it
+  read "PRESS TO START". After a key during the splash, the landing line is just
+  "Main menu." since the button itself now gives the instruction.
+- The first arrow at the title no longer speaks the button twice: the game re-selects it
+  when the input mode switches to gamepad, in the same frame as the dead-end repeat.
+- README: version 0.9.7 (it still said 0.9.5).
 
 ### Faster answers to keys
 - A dialogue line the player asked for (Enter on Continue, a choice by Enter or number)

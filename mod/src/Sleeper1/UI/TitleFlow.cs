@@ -27,7 +27,11 @@ namespace CSAccess.Sleeper1
             {
                 _announced = true;
                 ModeModel.ForcedTitle = true; // D1
-                SpeechService.Say("Main menu. Press Enter to start.", Priority.Queued, "scene");
+                // Once the player has pressed a key, the gate's own focus read says
+                // "Press Enter to start" (Describe); before that focus is silent, so
+                // the instruction rides this line (2026-10-27).
+                SpeechService.Say(FocusPatch.SceneSettled ? "Main menu." : "Main menu. Press Enter to start.",
+                    Priority.Queued, "scene");
             });
             FsmSignals.Subscribe("MAIN MENU", "Demo Menu", (fsm, state) =>
             {

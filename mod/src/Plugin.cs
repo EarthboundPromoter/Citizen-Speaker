@@ -65,6 +65,7 @@ namespace CSAccess
             ElementDescriber.Element = Describe.Element;
             NavSignals.UserNavigated = FocusPatch.NoteUserNavigation;
             NavSignals.ClearCooldown = FocusPatch.ClearCooldown;
+            NavSignals.SpokeElement = FocusPatch.NoteSpoken;
             Diag.ModeNameProvider = () => ModeModel.Name(ModeModel.Current());
             Diag.StateProvider = DiagState;
             Diag.FsmRecentProvider = n =>

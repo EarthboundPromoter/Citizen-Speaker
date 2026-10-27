@@ -52,6 +52,12 @@ namespace CSAccess.Sleeper1
             if (name == "Continue Button")
                 return "Continue";
 
+            // The title's press-start gate (2026-10-27): its label is "CLICK TO START"
+            // in mouse mode and "PRESS [A glyph] TO START" in gamepad mode, whose glyph
+            // child the label read skips ("PRESS TO START"). The mod drives it with Enter.
+            if (IsPressStartGate(go))
+                return "Press Enter to start";
+
             if (name == "Item Cursor")
             {
                 // BL-10: cursors carry no text; the hovered item's identity renders in
@@ -796,6 +802,10 @@ namespace CSAccess.Sleeper1
             }
             return null;
         }
+
+        public static bool IsPressStartGate(GameObject go)
+            => go != null && go.name == "NEW GAME" && go.transform.parent != null
+               && go.transform.parent.name == "Landing Canvas";
 
         private static bool UnderPromptGlyph(Transform t, Transform stopAt)
         {
