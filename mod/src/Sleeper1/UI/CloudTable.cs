@@ -334,6 +334,11 @@ namespace CSAccess.Sleeper1
         private static void CommitCard(Node node)
         {
             var button = CardButton(node);
+            if (button != null && Describe.NoDieToSlot(node.Card))
+            {
+                SpeechService.Say(Describe.NoDiceLeftLine, Priority.Immediate, "table");
+                return;
+            }
             if (button != null) { Navigator.Click(button.gameObject); return; }
             SpeechService.Say(
                 (node.Card != null ? Describe.DisabledReason(node.Card) : null)
@@ -351,7 +356,8 @@ namespace CSAccess.Sleeper1
                 case 1: return node.Card != null ? DemandFor(node.Card) : null;
                 // Verb-free under the header (owner dupe ruling, session-12 ride:
                 // "Takes: Takes a die" heard in the card table too).
-                case 2: return node.Card != null ? Describe.RequiresPhrase(node.Card) : null;
+                case 2: return node.Card != null && !Describe.ActionSpent(node.Card)
+                    ? Describe.RequiresPhrase(node.Card) : null;
                 default: return node.Card != null ? NarrativeFor(node.Card) : node.Narrative;
             }
         }
@@ -375,7 +381,10 @@ namespace CSAccess.Sleeper1
                             System.StringComparison.OrdinalIgnoreCase) >= 0)
                         // C6: "Takes SOLHEIM CIPHER. an item." — the generic item
                         // phrase dangles beside a named item demand, same dupe.
-                        || (cell.StartsWith("an item") && demand.StartsWith("Takes "))))
+                        || (cell.StartsWith("an item") && demand.StartsWith("Takes "))
+                        // "Takes SOLHEIM CIPHER. SOLHEIM CIPHER." (live 2026-10-27):
+                        // the named item twice, same dupe.
+                        || demand.Equals("Takes " + cell, System.StringComparison.OrdinalIgnoreCase)))
                     continue;
                 sb.Append(". ").Append(cell);
             }
@@ -491,6 +500,11 @@ namespace CSAccess.Sleeper1
         /// derivation kept only as fallback; TakesLine last.</summary>
         private static string DemandFor(Transform card)
         {
+            // Spent card (gate opened, node hacked): the card renders its
+            // unavailable label, not the demand (2026-10-27: an opened gate still
+            // read "Takes SOLHEIM CIPHER" until the next visit hid it).
+            if (Describe.ActionSpent(card))
+                return Describe.DisabledReason(card)?.TrimEnd('.') ?? "Unavailable";
             string demand = Describe.HackingDemand(card, InterfaceBucketCount());
             if (demand != null) return demand;
             string item = Describe.ItemDemandName(card);
@@ -514,6 +528,13 @@ namespace CSAccess.Sleeper1
         /// boundary). Falls back to the rendered Description text when active.</summary>
         private static string NarrativeFor(Transform card)
         {
+            // A spent card renders its outcome text ("the old gate flips open");
+            // the authored Action Description is the before-text.
+            if (Describe.ActionSpent(card))
+            {
+                string shown = DropPlaceholder(Describe.TextUnder(card, "Description"));
+                if (shown != null) return shown;
+            }
             foreach (var fsm in card.GetComponentsInChildren<PlayMakerFSM>(true))
             {
                 var v = fsm.FsmVariables.GetFsmString("Action Description");

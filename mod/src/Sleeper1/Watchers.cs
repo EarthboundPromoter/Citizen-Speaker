@@ -817,25 +817,35 @@ namespace CSAccess.Sleeper1
             var parts = new List<string>();
             foreach (var tmp in panel.GetComponentsInChildren<TMP_Text>(false))
             {
-                string txt = tmp.text?.Trim();
-                if (string.IsNullOrEmpty(txt) || txt.Length <= 1) continue;
-                // A prompt's own two-letter glyph label ("RB", "LS") is read through
-                // the gap fill below, never as a line of its own.
-                if (txt.Length <= 2 && GlyphLabelWords.ContainsKey(txt)) continue;
-                // F4: glyph gaps ("select it with [] and []") filled with the
-                // rendered prompt's controller name; die-odds texts prefixed with
-                // the die value(s) their Die group renders.
-                txt = FillPromptGaps(tmp, txt);
-                txt = SubstituteGamepadPhrases(txt);
-                string die = DiePrefix(tmp.transform, panel);
-                if (die != null) txt = die + txt;
-                if (!parts.Contains(txt)) parts.Add(txt);
+                string txt = TutorialBlock(tmp, panel);
+                if (txt != null && !parts.Contains(txt)) parts.Add(txt);
             }
             if (parts.Count == 0) return false;
             string line = prefix + string.Join(". ", parts) + suffix;
             if (source == "tutorial") LastTutorialLine = line;
             SpeechService.Say(line, Priority.Queued, source);
             return true;
+        }
+
+        /// <summary>One panel text as spoken, null to skip. Shared by the announce
+        /// and TutorialReview's arrow steps, so stepping through a tutorial names
+        /// the same keys the full read does (2026-10-27: the steps said "Press to
+        /// toggle this view" where the full read said "Press the O key").</summary>
+        internal static string TutorialBlock(TMP_Text tmp, Transform panel)
+        {
+            string txt = tmp.text?.Trim();
+            if (string.IsNullOrEmpty(txt) || txt.Length <= 1) return null;
+            // A prompt's own two-letter glyph label ("RB", "LS") is read through
+            // the gap fill below, never as a line of its own.
+            if (txt.Length <= 2 && GlyphLabelWords.ContainsKey(txt)) return null;
+            // F4: glyph gaps ("select it with [] and []") filled with the
+            // rendered prompt's controller name; die-odds texts prefixed with
+            // the die value(s) their Die group renders.
+            txt = FillPromptGaps(tmp, txt);
+            txt = SubstituteGamepadPhrases(txt);
+            string die = DiePrefix(tmp.transform, panel);
+            if (die != null) txt = die + txt;
+            return txt;
         }
 
         // ---------- F4: tutorial glyph + die-odds transcodes ----------

@@ -558,6 +558,10 @@ namespace CSAccess.Sleeper1
                 cells.Add(("Condition", value));
             }
             int? bits = LuaStore.Bits();
+            // Player_Bits stays unset until the first cryo arrives, so C left cryo
+            // out exactly when the player asked how much she had (2026-10-27).
+            // Unset in a live game means none: speak 0 once the other vitals read.
+            if (bits == null && cells.Count > 0) bits = 0;
             if (bits != null) cells.Add(("Cryo", bits.Value.ToString()));
             var tracker = TrackerCell();
             if (tracker != null) cells.Add(tracker.Value);
@@ -680,6 +684,17 @@ namespace CSAccess.Sleeper1
             bool live = !string.IsNullOrEmpty(s) && s != "Off";
             if (live) _lastDiceLive = Time.unscaledTime;
             return live || Time.unscaledTime - _lastDiceLive < Timing.DiceModeHysteresis;
+        }
+
+        /// <summary>True when the tray holds dice and every one is spent: a die
+        /// action would open a picker with nothing to choose (2026-10-27).</summary>
+        public static bool NoDiceLeft()
+        {
+            var dice = GetDice();
+            if (dice.Count == 0) return false;
+            foreach (var d in dice)
+                if (d.State != "Used") return false;
+            return true;
         }
 
         /// <summary>Spoken description of the die a picker cursor stands for.

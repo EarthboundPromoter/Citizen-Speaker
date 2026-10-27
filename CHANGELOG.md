@@ -8,6 +8,24 @@ its designed controls and FSM events.
 
 ## Unreleased
 
+### Action cards, dice, cycle end, tutorials, the cloud
+- A spent card (a critical action already used, an opened cloud gate) reads what the card
+  shows, "ACTION UNAVAILABLE", in the focus read, the location row and the cloud card
+  row, instead of "Requires a die" / "Takes SOLHEIM CIPHER". Enter refuses with the same
+  words. The card keeps its Gamepad Dice Slot interactable, so the mod took it for
+  activatable; the Action Controller state (Action Completed and kin) now decides. A spent
+  cloud card reads its rendered outcome text ("the old gate flips open") instead of the
+  authored before-text.
+- Cloud card row: "Takes SOLHEIM CIPHER. SOLHEIM CIPHER." says the item once.
+- Enter on a die action with every die spent says "No dice left." instead of opening a
+  picker with nothing to pick.
+- END CYCLE blocked by pending scenes names them: "Complete active scenes to proceed.
+  Active scenes: DRAGOS." (characters whose marker rests in Click to Play).
+- C (vitals) says "Cryo 0" before the first cryo; Player_Bits is unset until then and the
+  cell was dropped.
+- Stepping through a tutorial with the arrows names the keys, as the full read does
+  ("Press the O key to toggle this view", was "Press to toggle this view").
+
 ### Keys during the opening splash
 - The engine splash (the logo crawl before the title) runs for about 8 s and cannot be
   skipped; nothing is selectable. A key there said "Nothing to focus." (or nothing at all

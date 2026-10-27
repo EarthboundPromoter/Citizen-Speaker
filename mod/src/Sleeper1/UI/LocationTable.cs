@@ -146,6 +146,11 @@ namespace CSAccess.Sleeper1
             // One native click on the card's own button (single-dispatch): die actions
             // open allocation, item/cryo actions run their designed slot flow.
             var button = Describe.FindCardButton(root);
+            if (button != null && Describe.NoDieToSlot(root))
+            {
+                SpeechService.Say(Describe.NoDiceLeftLine, Priority.Immediate, "table");
+                return;
+            }
             if (button != null)
             {
                 SnapshotForDiff();
@@ -237,7 +242,9 @@ namespace CSAccess.Sleeper1
             string narrative = Cell(root, 5);
             // "Enter to activate" only on a card Enter can activate (2026-10-25: a
             // disabled card said it, then gave the reason it cannot be activated).
-            if (requires != null)
+            // A spent card speaks its unavailable label below, not what it
+            // would take (2026-10-27, used critical action).
+            if (requires != null && !Describe.ActionSpent(root))
                 sb.Append(". ").Append(W.HeaderRequires + " " + requires).Append('.');
             else if (selectable != null)
                 sb.Append(". ").Append(W.EnterToActivate).Append('.');
