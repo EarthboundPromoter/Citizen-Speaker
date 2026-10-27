@@ -24,6 +24,15 @@ namespace CSAccess.Sleeper1
         /// Null while the screen is closed, so the next entry speaks the full intro.</summary>
         internal static string LastSpoken;
 
+        /// <summary>A press made while the carousel slides (2026-10-27): the game ignores
+        /// it, so the mod keeps the class it asked for, speaks it at the press, and steps
+        /// there with the game's own arrow once the carousel rests (TickQueued).</summary>
+        private static string _queuedTarget;
+
+        /// <summary>A queued step is still on its way: the carousel watcher keeps quiet
+        /// about the classes it passes.</summary>
+        internal static bool StepPending => _queuedTarget != null;
+
         public static GameObject Canvas()
         {
             var canvas = GameObject.Find("MAIN MENU/Demo Menu/Character Select Canvas");
@@ -153,10 +162,22 @@ namespace CSAccess.Sleeper1
             }
 
             string state = fsm.ActiveStateName;
-            if (!IsClass(state))
+            if (!IsClass(state) || _queuedTarget != null)
             {
+                // Mid-slide the game ignores the arrow (both arrows hidden). Count the
+                // press from where the carousel is heading (or the class already
+                // queued), speak that class now, and step there once it rests.
                 string heading = Destination(fsm);
-                if (heading != null) Announce(heading, false);
+                if (heading == null) return;
+                string from = _queuedTarget ?? heading;
+                string next = Neighbour(fsm, from, right ? "RIGHT" : "LEFT");
+                if (next == null)
+                {
+                    Announce(from, false, right ? "Last class. " : "First class. ");
+                    return;
+                }
+                _queuedTarget = next == heading ? null : next;
+                Announce(next, false);
                 return;
             }
 
@@ -171,6 +192,36 @@ namespace CSAccess.Sleeper1
             // The click enters the Transition synchronously; if it somehow did not, the
             // carousel watcher speaks whatever the game settles on.
             if (Destination(fsm) == target) Announce(target, false);
+        }
+
+        /// <summary>Every frame: carry out a queued press once the carousel rests, with
+        /// the game's own arrow (silently; the destination was spoken at the press).</summary>
+        internal static void TickQueued()
+        {
+            if (_queuedTarget == null) return;
+            var fsm = CarouselFsm();
+            if (fsm == null) { _queuedTarget = null; return; }
+            string state = fsm.ActiveStateName;
+            if (!IsClass(state)) return; // still sliding
+            if (state == _queuedTarget) { _queuedTarget = null; return; }
+            bool right = Reaches(fsm, state, "RIGHT", _queuedTarget);
+            var arrow = Canvas()?.transform.Find(right ? "RIGHT" : "LEFT");
+            if (arrow == null || !arrow.gameObject.activeInHierarchy) return; // not back yet
+            Navigator.Click(arrow.gameObject);
+            // A click that did not start a slide: drop the queue, the watcher speaks.
+            if (Destination(fsm) == state) _queuedTarget = null;
+        }
+
+        /// <summary>Does repeating this event from a class reach the target?</summary>
+        private static bool Reaches(PlayMakerFSM fsm, string from, string eventName, string target)
+        {
+            string cur = from;
+            for (int i = 0; i < GameVocab.ClassNames.Length && cur != null; i++)
+            {
+                cur = Neighbour(fsm, cur, eventName);
+                if (cur == target) return true;
+            }
+            return false;
         }
 
         /// <summary>Items: class name + position, description, perk, then one entry per skill

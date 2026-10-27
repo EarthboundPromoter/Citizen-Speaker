@@ -22,6 +22,15 @@ its designed controls and FSM events.
   when the input mode switches to gamepad, in the same frame as the dead-end repeat.
 - README: version 0.9.7 (it still said 0.9.5).
 
+### Class select and pause menu
+- Class select: a Left/Right press during the ~0.5 s slide is no longer lost. The game
+  ignores input mid-slide, so a quick second press spoke the same class again. The mod
+  now speaks the class the press asks for and steps there with the game's own arrow once
+  the carousel rests.
+- Pause menu during a choice: focus stays on the pause menu. The mod's response-focus
+  watcher pulled focus back to the first choice every 0.4 s, so arrows walked the
+  choices behind the pause and Enter picked one while paused.
+
 ### Faster answers to keys
 - A dialogue line the player asked for (Enter on Continue, a choice by Enter or number)
   interrupts the line still being read. Tolk_IsSpeaking is unsupported for NVDA and always

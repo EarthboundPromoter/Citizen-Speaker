@@ -41,6 +41,7 @@ namespace CSAccess.Sleeper1
             CheckTitleOverwriteWarning();
             CheckDriveLog();
             CheckCharacterWindow();
+            CharacterSelect.TickQueued();
 
             if (!_pollFrame) return;
 
@@ -360,6 +361,8 @@ namespace CSAccess.Sleeper1
                 current = centered != null ? centered.name : null;
             }
             if (current == null || current == CharacterSelect.LastSpoken) return;
+            // A queued press is still stepping: the classes it passes are not news.
+            if (CharacterSelect.StepPending) return;
             CharacterSelect.Announce(current, intro: CharacterSelect.LastSpoken == null);
         }
 
@@ -391,6 +394,10 @@ namespace CSAccess.Sleeper1
         private void CheckResponseFocus()
         {
             if (!DialogueState.MenuOpen) return;
+            // Not under the pause menu (2026-10-27): this pulled focus off RESUME back
+            // to the choice behind it, so arrows walked the choices and Enter picked one
+            // while paused. On close the menu's buttons are gone and this re-focuses.
+            if (_pauseWasOpen) return;
             var es = UnityEngine.EventSystems.EventSystem.current;
             if (es == null) return;
             var selected = es.currentSelectedGameObject;
