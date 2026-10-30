@@ -11,9 +11,42 @@ namespace CSAccess.Sleeper1
     /// <summary>Reads game state from PlayMaker FSMs and drives the gamepad-mode dice flow.</summary>
     internal static class GameQueries
     {
+        /// <summary>The engine splash (the logo crawl before the title) is still on
+        /// screen. The MAIN MENU FSM waits on exactly this (WaitForSplashToFinish);
+        /// the crawl is unskippable and nothing is selectable until it ends.</summary>
+        public static bool SplashPlaying() => !UnityEngine.Rendering.SplashScreen.isFinished;
+
         // ---------- FSM helpers ----------
 
+        // Lookup cache (2026-10-25: the scan reads .name of ~430 FSMs per call and
+        // the mode authority calls it several times per frame). PlayMakerFSM.FsmList
+        // holds exactly the active-and-enabled FSMs (bridge-measured: 433 listed,
+        // 0 of them disabled), so a cached hit that is still alive and
+        // isActiveAndEnabled is what a fresh scan returns. Objects carrying more
+        // than one FSM are never cached (list order between them can change on a
+        // re-enable). A miss is remembered for the rest of the frame only.
+        private static readonly Dictionary<(string, string), PlayMakerFSM> _fsmHits =
+            new Dictionary<(string, string), PlayMakerFSM>();
+        private static readonly Dictionary<(string, string), int> _fsmMissFrame =
+            new Dictionary<(string, string), int>();
+
         public static PlayMakerFSM FindFsm(string goName, string pathHint = null)
+        {
+            var key = (goName, pathHint);
+            if (_fsmHits.TryGetValue(key, out var hit))
+            {
+                if (hit != null && hit.isActiveAndEnabled) return hit;
+                _fsmHits.Remove(key);
+            }
+            int frame = Time.frameCount;
+            if (_fsmMissFrame.TryGetValue(key, out int missed) && missed == frame) return null;
+            var found = ScanFsm(goName, pathHint);
+            if (found == null) _fsmMissFrame[key] = frame;
+            else if (found.GetComponents<PlayMakerFSM>().Length == 1) _fsmHits[key] = found;
+            return found;
+        }
+
+        private static PlayMakerFSM ScanFsm(string goName, string pathHint)
         {
             foreach (var fsm in PlayMakerFSM.FsmList)
             {
@@ -525,6 +558,10 @@ namespace CSAccess.Sleeper1
                 cells.Add(("Condition", value));
             }
             int? bits = LuaStore.Bits();
+            // Player_Bits stays unset until the first cryo arrives, so C left cryo
+            // out exactly when the player asked how much she had (2026-10-27).
+            // Unset in a live game means none: speak 0 once the other vitals read.
+            if (bits == null && cells.Count > 0) bits = 0;
             if (bits != null) cells.Add(("Cryo", bits.Value.ToString()));
             var tracker = TrackerCell();
             if (tracker != null) cells.Add(tracker.Value);
@@ -647,6 +684,17 @@ namespace CSAccess.Sleeper1
             bool live = !string.IsNullOrEmpty(s) && s != "Off";
             if (live) _lastDiceLive = Time.unscaledTime;
             return live || Time.unscaledTime - _lastDiceLive < Timing.DiceModeHysteresis;
+        }
+
+        /// <summary>True when the tray holds dice and every one is spent: a die
+        /// action would open a picker with nothing to choose (2026-10-27).</summary>
+        public static bool NoDiceLeft()
+        {
+            var dice = GetDice();
+            if (dice.Count == 0) return false;
+            foreach (var d in dice)
+                if (d.State != "Used") return false;
+            return true;
         }
 
         /// <summary>Spoken description of the die a picker cursor stands for.

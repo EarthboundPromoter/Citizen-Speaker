@@ -25,10 +25,12 @@ namespace CSAccess.Sleeper1
         public static readonly string[] SkillLuaVars =
             { "ENDURE", "ENGAGE", "ENGINEER", "INTERFACE", "INTUIT" };
 
-        /// <summary>Class names in carousel layout order — the spoken "class N of 3"
-        /// ordinal derives from this order (live-observed layout).</summary>
+        /// <summary>Class names, left to right as the carousel lays them out (live
+        /// 2026-10-25: Moving Panel local x MACHINIST -1572, OPERATOR -19, EXTRACTOR 1499;
+        /// the LEFT arrow goes toward MACHINIST). The spoken "class N of 3" reads the live
+        /// layout (CharacterSelect.Ordinal); this order is its fallback.</summary>
         public static readonly string[] ClassNames =
-            { "EXTRACTOR", "OPERATOR", "MACHINIST" };
+            { "MACHINIST", "OPERATOR", "EXTRACTOR" };
 
         /// <summary>Condition bands as the Condition System's STATE names, ascending
         /// (worst first) — ConditionWatch derives falling/improving by index.</summary>
@@ -74,6 +76,12 @@ namespace CSAccess.Sleeper1
             /// <summary>Per-locale prompt positioner copies ("A Prompt postioner FR")
             /// — matched by the shared misspelled fragment, case-insensitive.</summary>
             public const string PositionerFragment = "ostioner";
+
+            /// <summary>The same copies spelled correctly elsewhere (live 2026-10-25,
+            /// Intro and Control Tutorial: "A Positioner FR", "DPAD positioner ZH");
+            /// missed, they each counted as a prompt and the gap fill fell back to
+            /// "Shown with Enter and the arrow keys and the arrow keys...".</summary>
+            public const string PositionerFragmentCorrect = "ositioner";
 
             /// <summary>The authored localization default that leaks from unlocalized
             /// string variables; never rendered — speak nothing instead.</summary>

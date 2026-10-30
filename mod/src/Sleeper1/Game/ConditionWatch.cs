@@ -52,6 +52,14 @@ namespace CSAccess.Sleeper1
             FsmSignals.Subscribe("Condition System", null, OnState);
         }
 
+        /// <summary>Watchers, on a scene change: fresh silent baseline for the next
+        /// save (the old band made a load say "Condition improving: ...").</summary>
+        public static void OnSceneChanged()
+        {
+            _lastBand = null;
+            Queue.Clear();
+        }
+
         private static void OnState(PlayMakerFSM fsm, string state)
         {
             string trimmed = state.Trim();

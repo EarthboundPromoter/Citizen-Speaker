@@ -8,10 +8,30 @@ using CSAccess.Middleware;
 namespace CSAccess.Sleeper1
 {
     /// <summary>Explorable review of the character-creation carousel.
-    /// Up/Down step through the centered class's details; Left/Right change class; Enter starts.</summary>
+    /// Up/Down step through the centered class's details; Left/Right change class; Enter starts.
+    ///
+    /// The carousel is the Moving Panel FSM (live decode 2026-10-25): one state per class
+    /// plus four Transition states that tween the panel and FINISH into the neighbour.
+    /// LEFT/RIGHT events exist only where a neighbour exists (MACHINIST has no LEFT,
+    /// EXTRACTOR no RIGHT), and both arrow buttons are hidden while a transition runs.
+    /// An arrow click moves the FSM into its Transition synchronously, so the destination
+    /// is known at the key press and is spoken then, not after the ~0.5 s slide.</summary>
     internal static class CharacterSelect
     {
         private static int _reviewIndex = -1;
+
+        /// <summary>The class last announced, by a key press or by the carousel watcher.
+        /// Null while the screen is closed, so the next entry speaks the full intro.</summary>
+        internal static string LastSpoken;
+
+        /// <summary>A press made while the carousel slides (2026-10-27): the game ignores
+        /// it, so the mod keeps the class it asked for, speaks it at the press, and steps
+        /// there with the game's own arrow once the carousel rests (TickQueued).</summary>
+        private static string _queuedTarget;
+
+        /// <summary>A queued step is still on its way: the carousel watcher keeps quiet
+        /// about the classes it passes.</summary>
+        internal static bool StepPending => _queuedTarget != null;
 
         public static GameObject Canvas()
         {
@@ -57,15 +77,151 @@ namespace CSAccess.Sleeper1
             SpeechService.Say(boundary + items[_reviewIndex], Priority.Immediate, "class");
         }
 
-        /// <summary>The carousel arrows are plain buttons with no keyboard path; click them.</summary>
+        public static PlayMakerFSM CarouselFsm()
+        {
+            var canvas = Canvas();
+            var panel = canvas != null ? canvas.transform.Find("Moving Panel") : null;
+            return panel != null ? panel.GetComponent<PlayMakerFSM>() : null;
+        }
+
+        private static bool IsClass(string name)
+            => name != null && System.Array.IndexOf(GameVocab.ClassNames, name) >= 0;
+
+        /// <summary>The class the carousel rests on, or the one a running slide is heading to.</summary>
+        public static string Destination(PlayMakerFSM fsm)
+        {
+            string state = fsm != null ? fsm.ActiveStateName : null;
+            if (state == null) return null;
+            return IsClass(state) ? state : FinishedTarget(fsm, state);
+        }
+
+        /// <summary>Where LEFT or RIGHT leads from a class state; null at the edge.</summary>
+        private static string Neighbour(PlayMakerFSM fsm, string classState, string eventName)
+        {
+            var state = fsm.Fsm.GetState(classState);
+            if (state == null) return null;
+            foreach (var t in state.Transitions)
+                if (t.EventName == eventName)
+                    return IsClass(t.ToState) ? t.ToState : FinishedTarget(fsm, t.ToState);
+            return null;
+        }
+
+        private static string FinishedTarget(PlayMakerFSM fsm, string stateName)
+        {
+            var state = fsm.Fsm.GetState(stateName);
+            if (state == null) return null;
+            foreach (var t in state.Transitions)
+                if (t.EventName == "FINISHED" && IsClass(t.ToState)) return t.ToState;
+            return null;
+        }
+
+        /// <summary>1-based position from the left, read from the carousel's own layout
+        /// (live 2026-10-25: MACHINIST, OPERATOR, EXTRACTOR), so Left always counts down.</summary>
+        public static int Ordinal(string className)
+        {
+            var canvas = Canvas();
+            var panel = canvas != null ? canvas.transform.Find("Moving Panel") : null;
+            var self = panel != null ? panel.Find(className) : null;
+            if (self == null) return System.Array.IndexOf(GameVocab.ClassNames, className) + 1;
+            int rank = 1;
+            foreach (Transform child in panel)
+                if (child != self && IsClass(child.name) && child.localPosition.x < self.localPosition.x)
+                    rank++;
+            return rank;
+        }
+
+        private static string Position(string className)
+            => "class " + Ordinal(className) + " of " + GameVocab.ClassNames.Length;
+
+        /// <summary>Speak a class with its position. The intro form is the screen's entry read.</summary>
+        internal static void Announce(string className, bool intro, string prefix = "")
+        {
+            LastSpoken = className;
+            ResetReview();
+            SpeechService.Say(prefix + className + ", " + Position(className)
+                    + (intro ? ". Up and Down to review details, Left and Right to change class, Enter to start." : ""),
+                Priority.Immediate, "class");
+        }
+
+        /// <summary>Left/Right. The carousel arrows are plain buttons with no keyboard path;
+        /// click them, and speak the destination at the press. Every press speaks: at an
+        /// edge (arrow hidden, no FSM transition) the current class with an edge cue, and
+        /// mid-slide (both arrows hidden, input ignored by the game) where it is heading.</summary>
         public static void ChangeClass(bool right)
         {
             var canvas = Canvas();
             if (canvas == null) return;
             var arrow = canvas.transform.Find(right ? "RIGHT" : "LEFT");
-            if (arrow != null && arrow.gameObject.activeInHierarchy)
-                Navigator.Click(arrow.gameObject);
-            // The carousel watcher announces the newly centered class.
+            var fsm = CarouselFsm();
+            if (fsm == null)
+            {
+                // Unknown carousel shape: the old path, the watcher speaks when it lands.
+                if (arrow != null && arrow.gameObject.activeInHierarchy)
+                    Navigator.Click(arrow.gameObject);
+                return;
+            }
+
+            string state = fsm.ActiveStateName;
+            if (!IsClass(state) || _queuedTarget != null)
+            {
+                // Mid-slide the game ignores the arrow (both arrows hidden). Count the
+                // press from where the carousel is heading (or the class already
+                // queued), speak that class now, and step there once it rests.
+                string heading = Destination(fsm);
+                if (heading == null) return;
+                string from = _queuedTarget ?? heading;
+                string next = Neighbour(fsm, from, right ? "RIGHT" : "LEFT");
+                if (next == null)
+                {
+                    Announce(from, false, right ? "Last class. " : "First class. ");
+                    return;
+                }
+                _queuedTarget = next == heading ? null : next;
+                Announce(next, false);
+                return;
+            }
+
+            string target = Neighbour(fsm, state, right ? "RIGHT" : "LEFT");
+            if (target == null || arrow == null || !arrow.gameObject.activeInHierarchy)
+            {
+                Announce(state, false, target == null ? (right ? "Last class. " : "First class. ") : "");
+                return;
+            }
+
+            Navigator.Click(arrow.gameObject);
+            // The click enters the Transition synchronously; if it somehow did not, the
+            // carousel watcher speaks whatever the game settles on.
+            if (Destination(fsm) == target) Announce(target, false);
+        }
+
+        /// <summary>Every frame: carry out a queued press once the carousel rests, with
+        /// the game's own arrow (silently; the destination was spoken at the press).</summary>
+        internal static void TickQueued()
+        {
+            if (_queuedTarget == null) return;
+            var fsm = CarouselFsm();
+            if (fsm == null) { _queuedTarget = null; return; }
+            string state = fsm.ActiveStateName;
+            if (!IsClass(state)) return; // still sliding
+            if (state == _queuedTarget) { _queuedTarget = null; return; }
+            bool right = Reaches(fsm, state, "RIGHT", _queuedTarget);
+            var arrow = Canvas()?.transform.Find(right ? "RIGHT" : "LEFT");
+            if (arrow == null || !arrow.gameObject.activeInHierarchy) return; // not back yet
+            Navigator.Click(arrow.gameObject);
+            // A click that did not start a slide: drop the queue, the watcher speaks.
+            if (Destination(fsm) == state) _queuedTarget = null;
+        }
+
+        /// <summary>Does repeating this event from a class reach the target?</summary>
+        private static bool Reaches(PlayMakerFSM fsm, string from, string eventName, string target)
+        {
+            string cur = from;
+            for (int i = 0; i < GameVocab.ClassNames.Length && cur != null; i++)
+            {
+                cur = Neighbour(fsm, cur, eventName);
+                if (cur == target) return true;
+            }
+            return false;
         }
 
         /// <summary>Items: class name + position, description, perk, then one entry per skill
@@ -73,8 +229,7 @@ namespace CSAccess.Sleeper1
         public static List<string> BuildItems(Transform panel)
         {
             var items = new List<string>();
-            int classIndex = System.Array.IndexOf(GameVocab.ClassNames, panel.name);
-            items.Add(panel.name + ", class " + (classIndex + 1) + " of " + GameVocab.ClassNames.Length +
+            items.Add(panel.name + ", " + Position(panel.name) +
                       ". Up and Down to review details, Left and Right to change class, Enter to start.");
 
             string desc = Describe.TextUnder(panel, "DESC");

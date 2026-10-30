@@ -26,6 +26,7 @@ namespace CSAccess.Scaffold
         public const float ItemNameSettle = 0.15f;      // Inventory Display writes the new item's name
         public const float ActivateDebounce = 0.3f;     // second click mid-script breaks tutorial chains
         public const float BootQuietWindow = 8f;        // empty-world reads are boot noise, not news
+        public const int LaunchKeyFrames = 3;           // the key that launched the game can land as a press here
 
         // ---------- Dice flow ----------
         public const float DiceModeHysteresis = 0.25f;  // hold allocation mode across a one-frame null read

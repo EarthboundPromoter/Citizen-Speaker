@@ -10,10 +10,13 @@ using Priority = CSAccess.Scaffold.Priority;
 
 namespace CSAccess
 {
-    [BepInPlugin(Id, "Citizen Sleeper Access", "0.9.7")]
+    [BepInPlugin(Id, "Citizen Sleeper Access", Version)]
     public class Plugin : BaseUnityPlugin
     {
         public const string Id = "com.sleeperaccess.mod";
+        /// <summary>One source for the declared, logged and spoken version (the spoken
+        /// string still said 0.9.6 in the 0.9.7 release).</summary>
+        public const string Version = "0.9.7";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> AutoReadDialogue;
@@ -62,6 +65,7 @@ namespace CSAccess
             ElementDescriber.Element = Describe.Element;
             NavSignals.UserNavigated = FocusPatch.NoteUserNavigation;
             NavSignals.ClearCooldown = FocusPatch.ClearCooldown;
+            NavSignals.SpokeElement = FocusPatch.NoteSpoken;
             Diag.ModeNameProvider = () => ModeModel.Name(ModeModel.Current());
             Diag.StateProvider = DiagState;
             Diag.FsmRecentProvider = n =>
@@ -92,8 +96,8 @@ namespace CSAccess
             PerkWatch.Init();
             TitleFlow.Init();
 
-            Log.LogInfo("Citizen Speaker 0.9.6 loaded. Press F1 in game for commands.");
-            SpeechService.Say("Citizen Speaker 0.9.6. Press F1 for commands.", Priority.Queued, "init");
+            Log.LogInfo("Citizen Speaker " + Version + " loaded. Press F1 in game for commands.");
+            SpeechService.Say("Citizen Speaker " + Version + ". Press F1 for commands.", Priority.Queued, "init");
         }
 
         private void Update()

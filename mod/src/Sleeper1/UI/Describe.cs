@@ -52,6 +52,12 @@ namespace CSAccess.Sleeper1
             if (name == "Continue Button")
                 return "Continue";
 
+            // The title's press-start gate (2026-10-27): its label is "CLICK TO START"
+            // in mouse mode and "PRESS [A glyph] TO START" in gamepad mode, whose glyph
+            // child the label read skips ("PRESS TO START"). The mod drives it with Enter.
+            if (IsPressStartGate(go))
+                return "Press Enter to start";
+
             if (name == "Item Cursor")
             {
                 // BL-10: cursors carry no text; the hovered item's identity renders in
@@ -164,18 +170,29 @@ namespace CSAccess.Sleeper1
             // is the outlawed dupe ("Required die: 2. Takes a die." heard live) —
             // the demand speaks alone. (A8 ruling 2026-07-26: same policy family
             // as CloudTable.CardRow's cull — parallel by data shape, not copies.)
-            string requiresPhrase = RequiresPhrase(root);
-            string demand = HackingDemand(root);
-            if (demand != null && requiresPhrase == "a die") requiresPhrase = null;
-            if (requiresPhrase != null)
-                sb.Append(". ").Append("Requires ").Append(requiresPhrase);
-            else if (demand == null)
-                sb.Append(". ").Append("Enter to activate");
-            if (demand != null) sb.Append(". ").Append(demand);
+            // A spent card (critical action used, gate opened) renders ACTION
+            // UNAVAILABLE where the slot was: speak that, not what it would take
+            // (2026-10-27: "Requires a die" on a used critical action).
+            if (ActionSpent(root))
+            {
+                string spent = DisabledReason(root);
+                sb.Append(". ").Append(spent != null ? spent.TrimEnd('.') : "Unavailable");
+            }
+            else
+            {
+                string requiresPhrase = RequiresPhrase(root);
+                string demand = HackingDemand(root);
+                if (demand != null && requiresPhrase == "a die") requiresPhrase = null;
+                if (requiresPhrase != null)
+                    sb.Append(". ").Append("Requires ").Append(requiresPhrase);
+                else if (demand == null)
+                    sb.Append(". ").Append("Enter to activate");
+                if (demand != null) sb.Append(". ").Append(demand);
 
-            string buttonLabel = TextUnder(root, "Dice Slot Button");
-            if (buttonLabel != null && !buttonLabel.Equals(spokenName, System.StringComparison.OrdinalIgnoreCase))
-                sb.Append(". ").Append(buttonLabel);
+                string buttonLabel = TextUnder(root, "Dice Slot Button");
+                if (buttonLabel != null && !buttonLabel.Equals(spokenName, System.StringComparison.OrdinalIgnoreCase))
+                    sb.Append(". ").Append(buttonLabel);
+            }
 
             if (detailed)
             {
@@ -293,6 +310,17 @@ namespace CSAccess.Sleeper1
             if (takes.StartsWith("Costs ")) return takes.Substring("Costs ".Length);
             return takes;
         }
+
+        /// <summary>A die-taking card while every die is spent: Enter would open the
+        /// game's picker holding only spent dice, with nothing to pick (2026-10-27).
+        /// Item and cryo cards pass through.</summary>
+        public static bool NoDieToSlot(Transform actionRoot)
+        {
+            if (actionRoot == null || !GameQueries.NoDiceLeft()) return false;
+            return TakesLine(actionRoot) == "Takes a die" || HackingDemand(actionRoot) != null;
+        }
+
+        public const string NoDiceLeftLine = "No dice left.";
 
         public static string TakesLine(Transform actionRoot)
         {
@@ -528,6 +556,10 @@ namespace CSAccess.Sleeper1
         public static Button FindCardButton(Transform cardRoot)
         {
             if (cardRoot == null) return null;
+            // A spent card keeps its Gamepad Dice Slot interactable (live
+            // 2026-10-27, ASK FOR DIRECTIONS / SLOT SOLHEIM CIPHER): the controller
+            // state is the truth, the leftover button is not an affordance.
+            if (ActionSpent(cardRoot)) return null;
             var slot = StationAtlas.FindDeep(cardRoot, "Dice Slot Button");
             var b = slot != null ? slot.GetComponent<Button>() : null;
             if (b != null && b.gameObject.activeInHierarchy && b.IsInteractable()) return b;
@@ -600,6 +632,28 @@ namespace CSAccess.Sleeper1
         /// Temp Complete / Working all deactivate Dice Slot Button and write the
         /// label). Null when the card has no known gate (caller keeps its generic
         /// wording). Wording provisional.</summary>
+        private static readonly HashSet<string> SpentStates = new HashSet<string>
+        {
+            "Action Completed", "Temp Complete", "Not Repeatable", "Working",
+        };
+
+        /// <summary>True when the card's controller rests in a state the game
+        /// renders as unavailable (the DisabledReason completion family): the
+        /// card shows its Button Label ("ACTION UNAVAILABLE") in place of the
+        /// slot. Locked cards are not spent; they keep their own path.</summary>
+        public static bool ActionSpent(Transform actionRoot)
+        {
+            if (actionRoot == null) return false;
+            foreach (var fsm in actionRoot.GetComponentsInChildren<PlayMakerFSM>(true))
+            {
+                string owner = fsm.gameObject.name;
+                if (owner != "Action Controller" && owner != "Action Cryo Controller")
+                    continue;
+                return fsm.ActiveStateName != null && SpentStates.Contains(fsm.ActiveStateName);
+            }
+            return false;
+        }
+
         public static string DisabledReason(Transform actionRoot)
         {
             foreach (var fsm in actionRoot.GetComponentsInChildren<PlayMakerFSM>(true))
@@ -661,7 +715,33 @@ namespace CSAccess.Sleeper1
             }
             if (sb.Length == 0) return null;
             if (sb[sb.Length - 1] != '.') sb.Append('.');
+            // Which scenes (2026-10-27): the label says scenes are pending, the map
+            // shows which by their marker pulse. The atlas reads the same dial.
+            if (state == "Scenes Active")
+            {
+                string pending = PendingSceneNames();
+                if (pending != null) sb.Append(" Active scenes: ").Append(pending).Append('.');
+            }
             return sb.ToString();
+        }
+
+        /// <summary>Characters whose marker rests in the mandatory-scene state
+        /// (StationAtlas.Row.ActiveScene), comma-joined; null when none read.</summary>
+        public static string PendingSceneNames()
+        {
+            var names = new List<string>();
+            try
+            {
+                foreach (var row in StationAtlas.Build())
+                    if (row.IsCharacter && row.ActiveScene && !names.Contains(row.Name))
+                        names.Add(row.Name);
+            }
+            catch (System.Exception e)
+            {
+                Plugin.Log.LogWarning("[Describe] pending scenes read failed: " + e.Message);
+                return null;
+            }
+            return names.Count > 0 ? string.Join(", ", names) : null;
         }
 
         /// <summary>The card's rendered skill word, if any.</summary>
@@ -796,6 +876,10 @@ namespace CSAccess.Sleeper1
             }
             return null;
         }
+
+        public static bool IsPressStartGate(GameObject go)
+            => go != null && go.name == "NEW GAME" && go.transform.parent != null
+               && go.transform.parent.name == "Landing Canvas";
 
         private static bool UnderPromptGlyph(Transform t, Transform stopAt)
         {

@@ -38,6 +38,15 @@ namespace CSAccess.Sleeper1
             FsmSignals.Subscribe("Energy Bar System", null, OnState);
         }
 
+        /// <summary>Watchers, on a scene change: fresh silent baseline for the next
+        /// save (the old level was compared against the new save's).</summary>
+        public static void OnSceneChanged()
+        {
+            _lastLevel = -1;
+            _starving = false;
+            Queue.Clear();
+        }
+
         private static void OnState(PlayMakerFSM fsm, string state)
         {
             string trimmed = state.Trim();
@@ -83,9 +92,27 @@ namespace CSAccess.Sleeper1
             for (int i = Queue.Count - 1; i >= 0; i--)
             {
                 if (Time.unscaledTime < Queue[i].Due) continue;
-                SpeechService.Say(Queue[i].Text, Priority.Queued, "energy");
+                string text = Queue[i].Text;
                 Queue.RemoveAt(i);
+                // Stand down when an outcome effect line just voiced energy
+                // ("ENERGY minus 2, now 3 of 5"), as ResourceWatch does: one change,
+                // one announcement (2026-10-25). Starving always speaks.
+                if (text.StartsWith("Energy ") && OutcomeVoicedEnergy())
+                {
+                    Plugin.Log.LogInfo("[EnergyWatch] suppressed (outcome spoke): " + text);
+                    continue;
+                }
+                SpeechService.Say(text, Priority.Queued, "energy");
             }
+        }
+
+        private static bool OutcomeVoicedEnergy()
+        {
+            if (Time.unscaledTime - Watchers.RecentEffectBodiesAt > Timing.ResourceStandDownWindow)
+                return false;
+            foreach (var body in Watchers.RecentEffectBodies)
+                if (body.Contains("ENERGY")) return true;
+            return false;
         }
     }
 }

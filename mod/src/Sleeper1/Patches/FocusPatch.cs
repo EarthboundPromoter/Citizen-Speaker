@@ -25,12 +25,23 @@ namespace CSAccess.Sleeper1
         /// game-driven reselection must never interrupt the active text block.</summary>
         public static void NoteUserNavigation() => _userMoveExpires = Time.unscaledTime + Timing.UserMoveWindow;
 
+        /// <summary>Navigator spoke this element itself (dead-end repeat): the same
+        /// object selected again in this frame is an echo (same-frame guard below).</summary>
+        public static void NoteSpoken(GameObject go, string description)
+        {
+            if (go != null) LastAnnounced[go.GetInstanceID()] = Time.unscaledTime;
+        }
+
         // --- Boot-sweep silence (W2 hardening, owner design): after a Unity scene load,
         //     the game walks focus across controls the player can't touch yet. Game-driven
         //     focus stays silent until the player's first input; user navigation always
         //     speaks. Orientation comes from the designed channels (scene line, dialogue
         //     auto-read, L on demand). ---
         private static bool _sceneSettled;
+
+        /// <summary>Has the player taken control of this scene yet (game-driven focus
+        /// speaks only after that)?</summary>
+        public static bool SceneSettled => _sceneSettled;
 
         public static void OnSceneChanged() => _sceneSettled = false;
 
@@ -208,6 +219,11 @@ namespace CSAccess.Sleeper1
             // user navigation must always speak, no matter how fast it revisits.
             if (!userInitiated &&
                 LastAnnounced.TryGetValue(id, out float last) && now - last < ReannounceCooldown)
+                return;
+            // Same object twice in one frame (the title slot list's Reselect and Set
+            // Selected states both select Slot 1, 2026-10-25): one announcement, even
+            // for user navigation.
+            if (userInitiated && LastAnnounced.TryGetValue(id, out float same) && same == now)
                 return;
             LastAnnounced[id] = now;
             if (LastAnnounced.Count > 200) LastAnnounced.Clear();

@@ -111,7 +111,18 @@ namespace CSAccess.Middleware
 
         private static readonly HashSet<PlayMakerFSM> AutoplayFsms = new HashSet<PlayMakerFSM>();
 
-        public static bool AutoplayScenePending => AutoplayFsms.Count > 0;
+        /// <summary>A scene FSM destroyed while in "Autoplay" never sends its exit, so
+        /// dead entries are dropped on read; one could otherwise hold listening mode
+        /// until the next scene load (2026-10-25).</summary>
+        public static bool AutoplayScenePending
+        {
+            get
+            {
+                if (AutoplayFsms.Count == 0) return false;
+                AutoplayFsms.RemoveWhere(f => f == null);
+                return AutoplayFsms.Count > 0;
+            }
+        }
 
         private static void TrackAutoplayStates()
         {

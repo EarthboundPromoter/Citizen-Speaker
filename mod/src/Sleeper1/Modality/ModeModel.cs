@@ -165,10 +165,23 @@ namespace CSAccess.Sleeper1
         // ---------- Signals (each cited) ----------
 
         /// <summary>Pause Canvas active — live-proven (pause watcher, session 2).</summary>
+        private static Transform _pauseCanvas;
+        private static int _pauseMissFrame = -1;
+
+        // Held reference (2026-10-25): the path Find of an INACTIVE canvas searched
+        // the whole scene and cost ~0.5 ms on every mode read (bridge-timed). The
+        // canvas is found once through its always-active PAUSE root, which also
+        // reaches it while inactive; a destroyed reference is re-found.
         private static bool PauseOpen()
         {
-            var root = GameObject.Find("PAUSE/Pause Canvas");
-            return root != null && root.activeInHierarchy;
+            if (_pauseCanvas == null)
+            {
+                if (_pauseMissFrame == Time.frameCount) return false;
+                var root = GameObject.Find("PAUSE");
+                _pauseCanvas = root != null ? root.transform.Find("Pause Canvas") : null;
+                if (_pauseCanvas == null) { _pauseMissFrame = Time.frameCount; return false; }
+            }
+            return _pauseCanvas.gameObject.activeInHierarchy;
         }
 
         /// <summary>Event-derived autoplay (session-5, second trap): the Autoplay

@@ -1,6 +1,6 @@
 # Citizen Speaker
 
-**Version 0.9.5 — beta**
+**Version 0.9.7 — beta**
 
 A screen-reader mod for **Citizen Sleeper**: it speaks the game's interface, dice,
 clocks, and story through NVDA or JAWS (via [Tolk](https://github.com/dkager/tolk))

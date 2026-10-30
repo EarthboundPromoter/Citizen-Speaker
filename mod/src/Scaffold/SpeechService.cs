@@ -30,6 +30,7 @@ namespace CSAccess.Scaffold
         private static readonly Queue<Pending> Queue = new Queue<Pending>();
         private static readonly List<string> History = new List<string>();
         private static string _lastQueued;
+        private static float _lastQueuedAt;
         private static float _lastSpokeAt;
 
         private static readonly Regex TagPattern = new Regex("<[^>]{1,64}?>", RegexOptions.Compiled);
@@ -97,7 +98,11 @@ namespace CSAccess.Scaffold
             }
             else
             {
-                if (text == _lastQueued) return;
+                // Duplicate guard: the same line already waiting, or queued a moment
+                // ago. It used to be "ever the last queued line", which silenced a
+                // genuine repeat (slot a die, remove it, slot again: no second "Die
+                // slotted."; two identical dialogue lines in a row) (2026-10-25).
+                if (text == _lastQueued && Time.unscaledTime - _lastQueuedAt < 1f) return;
                 foreach (var p in Queue)
                     if (p.Text == text) return;
                 if (Queue.Count >= 20)
@@ -106,6 +111,7 @@ namespace CSAccess.Scaffold
                     return;
                 }
                 _lastQueued = text;
+                _lastQueuedAt = Time.unscaledTime;
                 Queue.Enqueue(new Pending { Text = text, Source = source });
                 Plugin.Log.LogInfo($"[Speech:{source}] [{Diag.ModeNow()} {Diag.Stamp()}] (queued) {text}");
             }
@@ -113,6 +119,9 @@ namespace CSAccess.Scaffold
 
         /// <summary>Pending queued announcements (Diag state reads).</summary>
         public static int QueueDepth => Queue.Count;
+
+        /// <summary>When the last line was handed to the screen reader.</summary>
+        public static float LastSpokeAt => _lastSpokeAt;
 
         /// <summary>Tail of the spoken history, oldest first (Diag incident dump / /modstate).</summary>
         public static List<string> RecentHistory(int max)

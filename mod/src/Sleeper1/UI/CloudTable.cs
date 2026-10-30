@@ -268,12 +268,23 @@ namespace CSAccess.Sleeper1
             SpeechService.Say(W.TableName + " "
                 + (rows.Count > 0 ? RowRead(rows[T.Row]) : W.NoRows),
                 Priority.Immediate, "table");
+            // The entry census queues behind this read. It used to fire on its own
+            // at 0.8 s, and this Immediate read at 1.2 s cut it off mid-sentence
+            // (2026-10-25).
+            if (_entryCensusAt > 0 && Time.unscaledTime >= _entryCensusAt)
+            {
+                _entryCensusAt = -1f;
+                EntryCensus();
+            }
         }
 
         /// <summary>Review-surface return path (UI bar C/V exit): re-announce the
-        /// field position.</summary>
+        /// field position — the current row, or the open node's card. EnterCloud
+        /// here reset the cursor to the first node (2026-10-25); it now runs only
+        /// when the cloud entry never settled.</summary>
         public static void AnnouncePosition()
         {
+            if (_entered && AnnounceSettled()) return;
             _entered = true;
             EnterCloud();
         }
@@ -300,6 +311,13 @@ namespace CSAccess.Sleeper1
 
         public static bool HandleKeys()
         {
+            // Called every frame at the cloud: do the node lookups only when a table
+            // key is actually down (the engine acts on nothing else) (2026-10-25).
+            if (!(Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.UpArrow)
+                  || Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.LeftArrow)
+                  || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return)
+                  || Input.GetKeyDown(KeyCode.KeypadEnter)))
+                return false;
             // The latch, not row membership, decides card vs field (see latch doc).
             var openCanvas = OpenCanvas();
             if (openCanvas != null)
@@ -316,6 +334,11 @@ namespace CSAccess.Sleeper1
         private static void CommitCard(Node node)
         {
             var button = CardButton(node);
+            if (button != null && Describe.NoDieToSlot(node.Card))
+            {
+                SpeechService.Say(Describe.NoDiceLeftLine, Priority.Immediate, "table");
+                return;
+            }
             if (button != null) { Navigator.Click(button.gameObject); return; }
             SpeechService.Say(
                 (node.Card != null ? Describe.DisabledReason(node.Card) : null)
@@ -333,7 +356,8 @@ namespace CSAccess.Sleeper1
                 case 1: return node.Card != null ? DemandFor(node.Card) : null;
                 // Verb-free under the header (owner dupe ruling, session-12 ride:
                 // "Takes: Takes a die" heard in the card table too).
-                case 2: return node.Card != null ? Describe.RequiresPhrase(node.Card) : null;
+                case 2: return node.Card != null && !Describe.ActionSpent(node.Card)
+                    ? Describe.RequiresPhrase(node.Card) : null;
                 default: return node.Card != null ? NarrativeFor(node.Card) : node.Narrative;
             }
         }
@@ -357,7 +381,10 @@ namespace CSAccess.Sleeper1
                             System.StringComparison.OrdinalIgnoreCase) >= 0)
                         // C6: "Takes SOLHEIM CIPHER. an item." — the generic item
                         // phrase dangles beside a named item demand, same dupe.
-                        || (cell.StartsWith("an item") && demand.StartsWith("Takes "))))
+                        || (cell.StartsWith("an item") && demand.StartsWith("Takes "))
+                        // "Takes SOLHEIM CIPHER. SOLHEIM CIPHER." (live 2026-10-27):
+                        // the named item twice, same dupe.
+                        || demand.Equals("Takes " + cell, System.StringComparison.OrdinalIgnoreCase)))
                     continue;
                 sb.Append(". ").Append(cell);
             }
@@ -473,6 +500,11 @@ namespace CSAccess.Sleeper1
         /// derivation kept only as fallback; TakesLine last.</summary>
         private static string DemandFor(Transform card)
         {
+            // Spent card (gate opened, node hacked): the card renders its
+            // unavailable label, not the demand (2026-10-27: an opened gate still
+            // read "Takes SOLHEIM CIPHER" until the next visit hid it).
+            if (Describe.ActionSpent(card))
+                return Describe.DisabledReason(card)?.TrimEnd('.') ?? "Unavailable";
             string demand = Describe.HackingDemand(card, InterfaceBucketCount());
             if (demand != null) return demand;
             string item = Describe.ItemDemandName(card);
@@ -496,6 +528,13 @@ namespace CSAccess.Sleeper1
         /// boundary). Falls back to the rendered Description text when active.</summary>
         private static string NarrativeFor(Transform card)
         {
+            // A spent card renders its outcome text ("the old gate flips open");
+            // the authored Action Description is the before-text.
+            if (Describe.ActionSpent(card))
+            {
+                string shown = DropPlaceholder(Describe.TextUnder(card, "Description"));
+                if (shown != null) return shown;
+            }
             foreach (var fsm in card.GetComponentsInChildren<PlayMakerFSM>(true))
             {
                 var v = fsm.FsmVariables.GetFsmString("Action Description");
@@ -572,7 +611,8 @@ namespace CSAccess.Sleeper1
                 _entryCensusAt = Time.unscaledTime + Timing.CloudEntryCensusSettle; // let Text Setup settle
             _wasCloud = cloud;
 
-            if (_entryCensusAt > 0 && Time.unscaledTime >= _entryCensusAt)
+            // Only once the entry read has spoken (EnterCloud runs it then if due).
+            if (_entryCensusAt > 0 && Time.unscaledTime >= _entryCensusAt && _entered)
             {
                 _entryCensusAt = -1f;
                 EntryCensus();

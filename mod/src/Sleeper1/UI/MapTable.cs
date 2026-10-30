@@ -137,6 +137,8 @@ namespace CSAccess.Sleeper1
         private static float _surfaceAt;
         private static bool _entered;
         private static bool _emptyAtlasLogged;
+        private static float _zoneWaitSince = -1f;
+        private const float ZoneWaitCap = 3f;
 
         private static void EntryTick()
         {
@@ -179,6 +181,22 @@ namespace CSAccess.Sleeper1
                 }
                 _emptyAtlasLogged = false;
                 _zone = StationAtlas.CurrentZone();
+                // Same loading window for the zone (live 2026-10-25, new game): rows
+                // existed but the zone was not known yet, so the entry said "Station.
+                // Nothing here." and the region read followed a moment later. Wait
+                // for the zone, up to ZoneWaitCap, then enter regardless.
+                if (_zone < 0)
+                {
+                    if (_zoneWaitSince < 0) _zoneWaitSince = Time.unscaledTime;
+                    if (Time.unscaledTime - _zoneWaitSince < ZoneWaitCap)
+                    {
+                        _entered = false;
+                        // Retry in 0.2 s (an atlas build per frame is needless churn).
+                        _surfaceAt = Time.unscaledTime - Timing.StationSurfaceSettle + 0.2f;
+                        return;
+                    }
+                }
+                _zoneWaitSince = -1f;
                 BuildView();
                 T.Reset(NearestRowToCamera());
                 // Title = the bare region name (owner ruling 2026-07-22).
@@ -198,12 +216,28 @@ namespace CSAccess.Sleeper1
             }
         }
 
-        /// <summary>Review-surface return path (UI bar C/V exit): re-anchor to the
-        /// camera and re-announce — a fresh build is the honest position.</summary>
+        /// <summary>Review-surface return path (UI bar C/V exit): the table kept its
+        /// position through the excursion (VitalsReview's contract), so refresh the
+        /// rows by identity and re-speak the current row. Re-entering here re-anchored
+        /// to the camera (wrong in the Hub or with camera follow off), repeated the
+        /// region name and fired a census beat (2026-10-25). A table that never
+        /// settled still gets its full entry.</summary>
         public static void AnnouncePosition()
         {
-            _entered = true;
-            EnterStation();
+            if (!_entered || _zone < 0)
+            {
+                _entered = true;
+                EnterStation();
+                return;
+            }
+            FoldFresh();
+            if (_view.Count == 0)
+            {
+                SpeechService.Say(W.NoRows, Priority.Immediate, "table");
+                return;
+            }
+            T.Row = Mathf.Clamp(T.Row, 0, _view.Count - 1);
+            SpeechService.Say(RowReport(T.Row), Priority.Immediate, "table");
         }
 
         // ---------- Periodic freshness (owner ruling, session 11): story spawns land
@@ -317,6 +351,16 @@ namespace CSAccess.Sleeper1
                 || Input.GetKeyDown(KeyCode.Space)
                 || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
             if (!tableKey) return false;
+            // A table key during the arrival settle (StationSurfaceSettle) means the
+            // player is already here and acting: arrive now instead of letting the
+            // key browse the old view and then be overtaken by the arrival read and
+            // its cursor reset (2026-10-25). The key's answer is the arrival read.
+            if (!_entered && ModeModel.Surface() == Mode.Station)
+            {
+                _entered = true;
+                EnterStation();
+                return true;
+            }
             FoldFresh();
             return T.HandleKeys();
         }
@@ -387,7 +431,20 @@ namespace CSAccess.Sleeper1
             }
             // Camera may still be in flight to this row — wait for its button to
             // enable rather than refusing off stale state; refuse only on timeout
-            // (genuinely locked markers never enable).
+            // (genuinely locked markers never enable). The wait only makes sense
+            // while our own camera write is still settling (2026-10-25): with the
+            // camera at rest, in the Hub, or with camera follow off, nothing will
+            // enable the button, and Enter was silent for 2 s before the refusal.
+            bool cameraSettling = Plugin.MapTableCamera.Value && _zone != 2
+                && Time.unscaledTime < _muteUntil;
+            if (!cameraSettling)
+            {
+                if (row.IsCharacter && row.ActiveScene && SendMarkerClicked(row))
+                    return;
+                SpeechService.Say(row.Name + ": " + W.CommitDisabled,
+                    Priority.Immediate, "table");
+                return;
+            }
             _pendingCommit = row;
             _pendingCommitUntil = Time.unscaledTime + Timing.CommitEnableWait;
         }
@@ -547,8 +604,9 @@ namespace CSAccess.Sleeper1
                 if (cell == null) continue;
                 // C3: zero counts are not populated facets ("Actions 0 actions.")
                 // — the column visit's terse empty covers them (row rule: report
-                // carries the compression).
-                if (cell.StartsWith("0 ")) continue;
+                // carries the compression). Actions only (2026-10-25): a clock at
+                // "0 of 8" is real progress and was being dropped too.
+                if (cols[i].Header == W.HeaderActions && cell.StartsWith("0 ")) continue;
                 sb.Append(' ').Append(cols[i].Header).Append(' ').Append(cell);
                 if (!cell.EndsWith(".")) sb.Append('.');
             }

@@ -50,6 +50,17 @@ namespace CSAccess.Sleeper1
             FsmSignals.Subscribe(null, "Updating Inventory 2", OnManagerUpdate);
         }
 
+        /// <summary>Watchers, on a scene change (a save load passes through LOADING):
+        /// the next readings are a fresh silent baseline. Kept across a load, the old
+        /// save's values were diffed against the new one ("Cryo minus 340, now 20.").</summary>
+        public static void OnSceneChanged()
+        {
+            Last.Clear();
+            Queue.Clear();
+            _upgradePoints = int.MinValue;
+            _drivePoints = int.MinValue;
+        }
+
         private static void OnManagerUpdate(PlayMakerFSM fsm, string state)
         {
             string owner = fsm.gameObject.name;

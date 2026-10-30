@@ -43,7 +43,9 @@ namespace CSAccess.Sleeper1
             bool active = _panel != null && _panel.activeInHierarchy;
             if (active && !_wasActive)
             {
-                _row = 0;
+                // -1 = before the first row: the open line names the menu only, so the
+                // first Down lands on row 0 (it skipped to row 1 before, 2026-10-25).
+                _row = -1;
                 _colorsLogged = false;
                 SpeechService.Say("Options. Up and Down for settings, Left and Right to change.",
                     Priority.Queued, "nav");
@@ -65,6 +67,14 @@ namespace CSAccess.Sleeper1
         {
             var rows = Rows();
             if (rows.Count == 0) return;
+            if (_row < 0)
+            {
+                // Nothing chosen yet: land on the first setting rather than change it.
+                _row = 0;
+                SpeakRow(rows[0]);
+                return;
+            }
+            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
             var row = rows[_row];
             if (row.Values.Count == 0)
             {
@@ -72,9 +82,16 @@ namespace CSAccess.Sleeper1
                 return;
             }
             int current = CurrentValueIndex(row);
-            int target = current < 0
-                ? (direction > 0 ? 0 : row.Values.Count - 1)
-                : Mathf.Clamp(current + direction, 0, row.Values.Count - 1);
+            if (current < 0)
+            {
+                // The current value could not be read from its accent colour. Stepping
+                // from an unknown value used to jump to an end (MUSIC straight to 0);
+                // change nothing instead (2026-10-25).
+                SpeechService.Say((row.LabelText ?? "setting") + ": current value unknown, not changed.",
+                    Priority.Immediate, "nav");
+                return;
+            }
+            int target = Mathf.Clamp(current + direction, 0, row.Values.Count - 1);
             if (target == current)
             {
                 SpeakRow(row); // already at the end — restate
@@ -86,6 +103,9 @@ namespace CSAccess.Sleeper1
                 Navigator.Click(button.gameObject);
                 SpeechService.Say(Label(button) ?? "changed", Priority.Immediate, "nav");
             }
+            else
+                SpeechService.Say((Label(button) ?? "That value") + " is not available.",
+                    Priority.Immediate, "nav");
         }
 
         /// <summary>Enter: engage only where it leads onward (Back). Value rows restate.</summary>
@@ -93,6 +113,13 @@ namespace CSAccess.Sleeper1
         {
             var rows = Rows();
             if (rows.Count == 0) return false;
+            if (_row < 0)
+            {
+                _row = 0;
+                SpeakRow(rows[0]);
+                return true;
+            }
+            _row = Mathf.Clamp(_row, 0, rows.Count - 1);
             var row = rows[_row];
             if (row.Values.Count == 0 && row.Self != null)
             {

@@ -61,15 +61,18 @@ namespace CSAccess.Sleeper1
         }
 
         /// <summary>Text blocks in hierarchy (layout) order; fragments of one or two
-        /// characters are diagram labels (dice pips, bar numbers), not prose.</summary>
+        /// characters are diagram labels (dice pips, bar numbers), not prose. Each
+        /// block goes through the announce's own transcode, so key glyphs read as
+        /// the same key names the full read gives.</summary>
         private static List<string> BuildItems(Transform panel)
         {
             var items = new List<string>();
             foreach (var tmp in panel.GetComponentsInChildren<TMP_Text>(false))
             {
-                string txt = tmp.text?.Trim();
-                if (string.IsNullOrEmpty(txt) || txt.Length <= 2) continue;
-                if (!items.Contains(txt)) items.Add(txt);
+                string raw = tmp.text?.Trim();
+                if (string.IsNullOrEmpty(raw) || raw.Length <= 2) continue;
+                string txt = Watchers.TutorialBlock(tmp, panel);
+                if (txt != null && !items.Contains(txt)) items.Add(txt);
             }
             return items;
         }

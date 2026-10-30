@@ -47,6 +47,7 @@ namespace CSAccess.Sleeper1
             public const string HeaderNarrative = "Narrative";
             public const string NowDisabled = "action card disabled";
             public const string NowEnabled = "action card enabled";
+            public const string ClockNoCommit = "Clock card, nothing to activate.";
         }
 
         // Full facet set as columns (owner ruling: full read on row switch, table
@@ -126,7 +127,12 @@ namespace CSAccess.Sleeper1
         {
             var actions = GameQueries.GetActionPanels();
             if (actions.Count == 0 || row >= actions.Count)
-                return; // clocks are display-only (corpus: no selection machinery)
+            {
+                // Clocks are display-only (corpus: no selection machinery). Say so
+                // rather than leave Enter silent (2026-10-25).
+                SpeechService.Say(W.ClockNoCommit, Priority.Immediate, "table");
+                return;
+            }
             var root = actions[row];
             // Skill-locked cards keep an interactable button and open a DOOMED picker
             // (Haggle live case: LOCKED has no DiceSlotted response) — Enter states the
@@ -140,6 +146,11 @@ namespace CSAccess.Sleeper1
             // One native click on the card's own button (single-dispatch): die actions
             // open allocation, item/cryo actions run their designed slot flow.
             var button = Describe.FindCardButton(root);
+            if (button != null && Describe.NoDieToSlot(root))
+            {
+                SpeechService.Say(Describe.NoDiceLeftLine, Priority.Immediate, "table");
+                return;
+            }
             if (button != null)
             {
                 SnapshotForDiff();
@@ -229,8 +240,16 @@ namespace CSAccess.Sleeper1
             string cost = Cell(root, 3);
             string predicted = Cell(root, 4);
             string narrative = Cell(root, 5);
-            sb.Append(". ").Append(requires != null
-                ? W.HeaderRequires + " " + requires : W.EnterToActivate).Append('.');
+            // "Enter to activate" only on a card Enter can activate (2026-10-25: a
+            // disabled card said it, then gave the reason it cannot be activated).
+            // A spent card speaks its unavailable label below, not what it
+            // would take (2026-10-27, used critical action).
+            if (requires != null && !Describe.ActionSpent(root))
+                sb.Append(". ").Append(W.HeaderRequires + " " + requires).Append('.');
+            else if (selectable != null)
+                sb.Append(". ").Append(W.EnterToActivate).Append('.');
+            else
+                sb.Append('.');
             if (risk != null) sb.Append(' ').Append(risk).Append('.');
             // Disabled rows carry the reason (owner ruling 2026-07-20).
             string reason = null;
