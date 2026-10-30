@@ -1,6 +1,7 @@
 # Citizen Speaker
 
-**Version 0.9.7 — beta**
+**Version 0.9.8 — beta** (the aradix85 fork: Citizen Speaker 0.9.7 plus the fixes in
+[CHANGELOG.md](CHANGELOG.md))
 
 A screen-reader mod for **Citizen Sleeper**: it speaks the game's interface, dice,
 clocks, and story through NVDA or JAWS (via [Tolk](https://github.com/dkager/tolk))
@@ -38,21 +39,23 @@ From the [Steam store page](https://store.steampowered.com/app/1578650/Citizen_S
   (or any other reader supported by [Tolk](https://github.com/dkager/tolk);
   the Tolk speech DLLs are bundled in the release zip).
 - **[BepInEx 5 (x64)](https://github.com/BepInEx/BepInEx/releases)** — the Unity
-  mod loader the mod runs on; installation below.
+  mod loader the mod runs on. This fork's release zip already contains it
+  (BepInEx 5.4.23.5), so there is nothing to install separately.
 - Start your screen reader *before* launching the game.
 
 ## Installing
 
-1. Install **BepInEx 5 (x64)**: download the latest 5.x `BepInEx_win_x64` zip from
-   [BepInEx releases](https://github.com/BepInEx/BepInEx/releases) and extract it
-   into the Citizen Sleeper game folder (the one containing `Citizen Sleeper.exe`).
-   Launch the game once and quit, so BepInEx creates its folders.
-2. Download the latest Citizen Speaker zip from the
-   [Releases page](https://github.com/EarthboundPromoter/Citizen-Speaker/releases/latest)
-   and extract it: put `CSAccess.dll` into `BepInEx/plugins/`, and `Tolk.dll` +
-   `nvdaControllerClient64.dll` beside `Citizen Sleeper.exe`.
-3. Launch the game. You'll hear "Citizen Speaker 0.9.5. Press F1 for commands."
-   To update, replace `CSAccess.dll` with the newer one.
+1. Download the latest zip from this fork's
+   [Releases page](https://github.com/aradix85/Citizen-Speaker/releases/latest).
+2. Extract it into the Citizen Sleeper game folder (the one containing
+   `Citizen Sleeper.exe`), merging folders if asked. It carries the BepInEx mod
+   loader with the mod already in `BepInEx/plugins/`, plus the Tolk speech DLLs.
+3. Start your screen reader, launch the game, and you'll hear
+   "Citizen Speaker 0.9.8. Press F1 for commands."
+
+To update, extract the newer zip the same way and let it overwrite. Already have
+BepInEx from an earlier install? Then replacing `BepInEx/plugins/CSAccess.dll` is
+enough.
 
 ## How the mod works
 

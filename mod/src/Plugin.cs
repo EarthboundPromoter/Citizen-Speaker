@@ -16,7 +16,7 @@ namespace CSAccess
         public const string Id = "com.sleeperaccess.mod";
         /// <summary>One source for the declared, logged and spoken version (the spoken
         /// string still said 0.9.6 in the 0.9.7 release).</summary>
-        public const string Version = "0.9.7";
+        public const string Version = "0.9.8";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> AutoReadDialogue;

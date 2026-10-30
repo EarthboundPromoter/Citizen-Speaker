@@ -6,7 +6,16 @@ game through a local dev bridge (injected key presses, spoken output read back w
 numbers). The guiding rule: stay as close as possible to the game's own behaviour, driving
 its designed controls and FSM events.
 
-## Unreleased
+## 0.9.8 (2026-10-30)
+
+### Release
+- Version 0.9.8, so this fork's build is never mistaken for upstream 0.9.7.
+- The release zip is drop-in: it carries BepInEx 5.4.23.5 (x64) with the mod already in
+  `BepInEx/plugins/`, plus the Tolk speech DLLs. Extract into the game folder; there is
+  no separate BepInEx install. README install steps updated to match.
+- Smoke-tested on Citizen Sleeper 1.4.14 from a clean install: BepInEx loads the mod,
+  Tolk finds NVDA, the title speaks, the main menu walks, F1 answers, and Backspace
+  leaves the slot list; no errors or warnings in the log.
 
 ### Action cards, dice, cycle end, tutorials, the cloud
 - A spent card (a critical action already used, an opened cloud gate) reads what the card
